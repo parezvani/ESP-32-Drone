@@ -1,2 +1,2 @@
 # ESP-32-Drone
-A ESP-32 Rust 2 board drone
+A ESP32-C3-DevKit-RUST-2 board drone
