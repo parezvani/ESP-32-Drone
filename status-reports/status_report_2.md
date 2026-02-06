@@ -16,7 +16,7 @@
 - Working thorugh the different delivery times
 
 ## ToolSets:
-- Eclac.com to determine exact thrust, weight, and hover time
+- www.ecalc.ch to determine exact thrust, weight, and hover time
 
 
 ## Materials/Parts:
