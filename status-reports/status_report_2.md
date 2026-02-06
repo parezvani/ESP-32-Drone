@@ -20,8 +20,8 @@
 
 
 ## Materials/Parts:
-- Prop: Gemfan Hurricane 2" 2009-3 PC Durable Tri-Blade Prop 1.5mm Shaft (4CCW+4CW) 
-- Motor: 2207-1700KV Motor
-- Controller: ESP32-c3 Rust1
-- Battery: 3S 1800mah 11.1V 40C Lipo
-- PCB: TBD
+- **Prop**: Gemfan Hurricane 2" 2009-3 PC Durable Tri-Blade Prop 1.5mm Shaft (4CCW+4CW) 
+- **Motor**: 2207-1700KV Motor
+- **Controller**: ESP32-c3 Rust1
+- **Battery**: 3S 1800mah 11.1V 40C Lipo
+- **PCB**: TBD
