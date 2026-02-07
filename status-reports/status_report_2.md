@@ -17,6 +17,7 @@
 
 ## ToolSets:
 - www.ecalc.ch to determine exact thrust, weight, and hover time.
+- Look up table for Motor & Prop Sizes: https://oscarliang.com/table-prop-motor-lipo-weight/
 
 
 ## Materials/Parts:
