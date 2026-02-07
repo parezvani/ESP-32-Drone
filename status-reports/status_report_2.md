@@ -30,7 +30,7 @@
 - **ESP**: 9g
 - **Frame**: 30g
 - **Motors**: 7.5g * 4 = 30g
-- **Prop**:5g
-- **Battery**:161g - 213g
+- **Prop**: 5g
+- **Battery**: 161g - 213g
 - **PCBL**: 10g
 - **Ovearhead**: 200g
