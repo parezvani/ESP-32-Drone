@@ -21,8 +21,17 @@
 
 
 ## Materials/Parts:
-- **Prop**: Gemfan Hurricane 2" 2009-3 PC Durable Tri-Blade Prop 1.5mm Shaft (4CCW+4CW) 
-- **Motor**: 2207-1700KV Motor
+- **Prop**: T-Motor T76 3 Inch Ducted Propeller - Tri-Blade 
+- **Motor**: SunnySky R1106 FPV Brushless Motors
 - **Controller**: ESP32-c3 Rust1
-- **Battery**: 3S 1800mah 11.1V 40C Lipo
+- **Battery**: lipo 4s 1800mah 80/120c
 - **PCB**: TBD
+
+## Weight distribution:
+- ESP: 9g
+- Frame: 30
+- Motors: 7.5g*4 = 30
+- Prop:5g
+- Battery:161-213g
+- PCBL: 10g
+- Ovearhead: 200
