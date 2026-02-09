@@ -12,6 +12,7 @@ Ovearhead: 200
 
 
 **OPTION A:**
+
 Battery: LiPo 850 mAh 3s 25/30C	[link](https://hobbyking.com/en_us/turnigy-nano-tech-850mah-3s-25-40c-lipo-pack.html?wrh_pdp=2&utm_source=google&utm_medium=cpc&utm_campaign=google_us_shopping&countrycode=US)	**$6.18**	
 
 Motor: SunnySky R1106 FPV Brushless Motors [link](https://sunnyskyusa.com/products/r1106) **$11.99\*4 = 47.96**	
@@ -65,4 +66,5 @@ Propeller: HQProp T3.5x2x3 Propeller [link](https://www.getfpv.com/hqprop-3520-3
 
 
 * Cool motors, clean power for ESP
+
 
