@@ -23,9 +23,11 @@ wall_thickness = 2.5;
 // Motor layout (extended for larger prop options)
 motor_center_offset = 58; // motor centers at (+/-x, +/-y)
 arm_width = 10.0;
-arm_thickness = 3.8;
+arm_thickness = 4.2; // keeps ~1.4-1.5 mm shell around internal wire tunnel
 arm_root_inset_x = 10;
 arm_root_inset_y = 7;
+arm_wire_channel_w = 3.6;
+arm_wire_channel_h = 1.4;
 
 // Motor pod geometry
 motor_pod_outer_d = 19;
@@ -59,6 +61,16 @@ esp32_standoff_h = 6;
 strap_slot_spacing = 28;
 strap_slot_length = 5;
 strap_slot_width = 24;
+
+// Side-wall lightening windows
+enable_side_lightening = true;
+side_window_height = 9.0;
+side_window_bottom_clearance = 1.6; // above floor top
+long_side_window_length = 14.0;
+long_side_window_x_offset = 18.0;
+short_side_window_length = 8.0;
+short_side_window_y_offset = 12.0;
+side_window_corner_r = 2.0;
 
 // Mock electronics (for fit visualization only)
 esp32_board_length = esp32_board_kicad_y; // shown along frame X
@@ -151,6 +163,42 @@ module motor_pod(sx, sy) {
     translate([motor_x, motor_y, 0]) cylinder(h = motor_pod_height, d = motor_pod_outer_d);
 }
 
+module arm_wire_channel(sx, sy) {
+    root_x = sx * (body_length / 2 - arm_root_inset_x);
+    root_y = sy * (body_width / 2 - arm_root_inset_y);
+    motor_x = sx * motor_center_offset;
+    motor_y = sy * motor_center_offset;
+    channel_z = arm_thickness / 2;
+
+    hull() {
+        translate([root_x, root_y, channel_z]) cylinder(h = arm_wire_channel_h, d = arm_wire_channel_w, center = true);
+        translate([motor_x, motor_y, channel_z]) cylinder(h = arm_wire_channel_h, d = arm_wire_channel_w, center = true);
+    }
+}
+
+module side_lightening_cutouts() {
+    side_window_z = floor_thickness + side_window_bottom_clearance + side_window_height / 2;
+    side_cut_depth = wall_thickness + 1.0;
+
+    // Two windows per long side wall
+    for (sy = [-1, 1], x = [-long_side_window_x_offset, long_side_window_x_offset]) {
+        translate([x, sy * (body_width / 2 - wall_thickness / 2), side_window_z]) {
+            rotate([90, 0, 0]) linear_extrude(height = side_cut_depth, center = true) {
+                rounded_rect_2d(long_side_window_length, side_window_height, side_window_corner_r);
+            }
+        }
+    }
+
+    // Two windows per short side wall
+    for (sx = [-1, 1], y = [-short_side_window_y_offset, short_side_window_y_offset]) {
+        translate([sx * (body_length / 2 - wall_thickness / 2), y, side_window_z]) {
+            rotate([0, 90, 0]) linear_extrude(height = side_cut_depth, center = true) {
+                rounded_rect_2d(short_side_window_length, side_window_height, side_window_corner_r);
+            }
+        }
+    }
+}
+
 module esp32_standoffs() {
     for (sx = [-1, 1], sy = [-1, 1]) {
         x = sx * esp32_hole_spacing_x / 2;
@@ -198,6 +246,15 @@ module frame_cutouts() {
         translate([x, 0, floor_thickness / 2]) {
             cube([strap_slot_length, strap_slot_width, floor_thickness + 0.4], center = true);
         }
+    }
+
+    if (enable_side_lightening) {
+        side_lightening_cutouts();
+    }
+
+    // Internal arm channels for motor wires (body pocket -> motor pods)
+    for (sx = [-1, 1], sy = [-1, 1]) {
+        arm_wire_channel(sx, sy);
     }
 
     // Small side wire exits
