@@ -15,7 +15,7 @@ Ovearhead: 200
 
 Battery: LiPo 850 mAh 3s 25/30C	[link](https://hobbyking.com/en_us/turnigy-nano-tech-850mah-3s-25-40c-lipo-pack.html?wrh_pdp=2&utm_source=google&utm_medium=cpc&utm_campaign=google_us_shopping&countrycode=US)	**$6.18**	
 
-Motor: SunnySky R1106 FPV Brushless Motors [link]([https://sunnyskyusa.com/products/r1106](https://druav.com/products/sunnysky-r1106-fpv-motors) **$11.99\*4 = 47.96**	
+Motor: SunnySky R1106 FPV Brushless Motors [link](https://druav.com/products/sunnysky-r1106-fpv-motors) **$11.99\*4 = 47.96**	
 
 Propeller: Gemfan Hurricane 2009-3 Tri-Blade [link](https://pyrodrone.com/products/gemfan-2512-2-5inch-3-blade-1-5mm-2mm-hole-propeller-4cw-4ccw) **$4.99**
 
