@@ -38,4 +38,10 @@
 
 - Real flight time: 6–10 minutes depending on payload
 
-- Cool motors, clean power for ESP
+
+
+* Cool motors, clean power for ESP
+
+
+
+
