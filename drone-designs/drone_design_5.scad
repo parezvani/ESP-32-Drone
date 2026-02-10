@@ -1,6 +1,6 @@
 /*
   ESP32-C3 drone frame (OpenSCAD model)
-  - 3" tri-blade props
+  - 3.5" to 4.0" prop-ready layout
   - SunnySky R1106 motors
   - ESP32-C3-DevKit-RUST-1 controller
 */
@@ -12,25 +12,26 @@ show_electronics_mockup = true;
 show_esp32_header_pads = true;
 
 // Main frame geometry (mm)
+// v5 lightweight tuning: thinner shell while preserving electronics fit
 body_length = 96;
 body_width = 62;
-body_height = 22;
+body_height = 17;
 body_corner_radius = 7;
-floor_thickness = 4;
-wall_thickness = 4;
+floor_thickness = 2.5;
+wall_thickness = 2.5;
 
-// Motor layout (3" class)
-motor_center_offset = 52; // motor centers at (+/-x, +/-y)
-arm_width = 13;
-arm_thickness = 6;
+// Motor layout (extended for larger prop options)
+motor_center_offset = 58; // motor centers at (+/-x, +/-y)
+arm_width = 10.0;
+arm_thickness = 3.8;
 arm_root_inset_x = 10;
 arm_root_inset_y = 7;
 
 // Motor pod geometry
-motor_pod_outer_d = 21;
+motor_pod_outer_d = 19;
 motor_pod_inner_d = 14.6; // clearance for 1106 can and wiring
-motor_pod_height = 20;
-motor_mount_floor = 2.4;
+motor_pod_height = 17;
+motor_mount_floor = 1.8;
 motor_mount_spacing = 9; // typical 11xx square pattern
 motor_mount_hole_d = 2.2; // M2 clearance
 
@@ -51,7 +52,7 @@ esp32_hole_spacing_x = esp32_board_kicad_y - 2 * esp32_hole_center_from_bottom; 
 esp32_hole_spacing_y = esp32_board_kicad_x - 2 * esp32_hole_center_from_left; // 17.78
 
 esp32_mount_hole_d = 3.25; // clearance around 3.048 mm board holes
-esp32_standoff_d = 7;
+esp32_standoff_d = 6;
 esp32_standoff_h = 6;
 
 // Strap slots in floor for battery hold-down
@@ -70,7 +71,9 @@ battery_length = 70;
 battery_width = 35;
 battery_height = 24;
 
+motor_to_motor_side = 2 * motor_center_offset;
 motor_to_motor_diagonal = 2 * sqrt(2) * motor_center_offset;
+echo(str("motor_to_motor_side_mm=", motor_to_motor_side));
 echo(str("motor_to_motor_diagonal_mm=", motor_to_motor_diagonal));
 echo(str("esp32_hole_spacing_x_mm=", esp32_hole_spacing_x));
 echo(str("esp32_hole_spacing_y_mm=", esp32_hole_spacing_y));
