@@ -29,12 +29,13 @@
 
 - Propeller: HQProp T3.5x2x3 Propeller [link](https://www.getfpv.com/hqprop-3520-3-blade-1-5mm-shaft-propeller-set-of-4-grey.html) **$3.99**
 
-- AUW (baseline): ~230–270 g
+- AUW (baseline): ~230 – 270 g
 
-- Payload sweet spot: 0–100 g
+- Payload sweet spot: 0 – 100 g
 
-- Hover throttle: ~35–45%
+- Hover throttle: ~35 – 45%
 
-- Real flight time: 6–10 minutes depending on payload
+- Real flight time: 6 – 10 minutes depending on payload
 
 - Cool motors, clean power for ESP
+
