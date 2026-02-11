@@ -16,6 +16,7 @@
 - **Kevin**:
     - text
 - **Matin**:
+    - Made drone_design_2 but decided as a group it wouldn't work and was a bad design.
     - Made drone_design_5 in Onshape and [OpenSCAD](https://openscad.org).
     - Improved upon drone_design_5 based on group feedback.
         - Thinner, lighter, and longer motor arms.
