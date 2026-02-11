@@ -10,7 +10,9 @@
 - **Christian**:
     - text
 - **Kenny**:
-    - text
+    - Picked up a blank circuit board to take measurements and place the drawing model on top of the CAD model the CAD team designed
+    - Finalized the circuitry componenets neccessary to build the drone
+    - Working on the circuit diagram to wire everything together
 - **Kevin**:
     - text
 - **Matin**:
@@ -26,11 +28,12 @@
 
 ## To-do, In-progress, Done:
 - **To-do**:
-    - text
+    - Design a way to implement the circuit to be hot swappable
+    - Make the wires as a pin fixture instead of individual wire strands
 - **In-progress**:
     - text
 - **Done**:
-    - text
+    - Sent in the BOM to BELS
 
 ## Toolsets:
 - text
