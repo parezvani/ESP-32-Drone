@@ -14,7 +14,9 @@
     - Finalized the circuitry componenets neccessary to build the drone
     - Working on the circuit diagram to wire everything together
 - **Kevin**:
-    - text
+    - Made drone_design_1 in Onshape.
+    - 3D Printed drone_design_1 and drone_design_5.
+    - Compared printed designs for sizing and dimensions of parts.
 - **Matin**:
     - Made drone_design_2 but decided as a group it wouldn't work and was a bad design.
     - Made drone_design_5 in Onshape and [OpenSCAD](https://openscad.org).
