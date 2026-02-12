@@ -1,0 +1,2 @@
+**Notes**
+- Optimizing Modularity
