@@ -21,7 +21,9 @@
     - Improved upon drone_design_5 based on group feedback.
         - Thinner, lighter, and longer motor arms.
 - **Nick**:
-    - text
+    - Made bill_of_materials_v5 to update and include perforated circuit boards and fmeale header pins.
+    - Picked up perforated circuit boards and female header pins from BELS.
+    - Woeking with Kenny on ciruit design.
 - **Parsa**:
     - text
 - **Ryan**:
