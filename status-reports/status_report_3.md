@@ -27,7 +27,11 @@
     - Picked up perforated circuit boards and female header pins from BELS.
     - Working with Kenny on ciruit design.
 - **Parsa**:
-    - text
+    - Organized Trello Board, to see what everyone will be working on
+    - Worked on the ESP-IDF files to import to main Branch
+    - Planned our next steps on what we will be working on to stay on track
+    - Help review part diagram to see what connections we'll need to connect all the parts of the system
+
 - **Ryan**:
     - text
 
