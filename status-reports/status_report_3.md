@@ -24,6 +24,7 @@
     - Made drone_design_5 in Onshape and [OpenSCAD](https://openscad.org).
     - Improved upon drone_design_5 based on group feedback.
         - Thinner, lighter, and longer motor arms.
+    - Agreed upon drone name "SpecterFLY".
 - **Nick**:
     - Made bill_of_materials_v5 to update and include perforated circuit boards and fmeale header pins.
     - Picked up perforated circuit boards and female header pins from BELS.
