@@ -13,3 +13,7 @@
 ## General
 - got caught up on meeting with the professor
 - Talked about the perforated board
+
+## Concerns
+- Timing on when the parts would arrive, if theres any delays we would need to communicated with BELS to get some sort of expidited shipping on the main materials we need
+
