@@ -16,8 +16,8 @@
 - **Kevin**:
     - Made drone_design_1 in Onshape.
     - 3D Printed drone_design_1 and drone_design_5.
-        -Ran into problems setting up 3D Printer.
-        -Printer air printing and had to adjust filament stuck near nozzle.
+        - Ran into problems setting up 3D Printer.
+        - Printer air printing and had to adjust filament stuck near nozzle.
     - Compared printed designs for sizing and dimensions of parts.
 - **Matin**:
     - Made drone_design_2 but decided as a group it wouldn't work and was a bad design.
