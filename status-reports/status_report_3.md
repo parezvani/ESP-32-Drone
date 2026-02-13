@@ -1,7 +1,8 @@
 # Status Report 3
 
 ## Achievements from before:
-- text
+- Finished Material list
+- Finalized our CAD design 
 
 ## Setbacks from before:
 - text
