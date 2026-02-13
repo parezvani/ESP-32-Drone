@@ -26,9 +26,11 @@
         - Thinner, lighter, and longer motor arms.
     - Agreed upon drone name "SpecterFLY".
 - **Nick**:
-    - Made bill_of_materials_v5 to update and include perforated circuit boards and fmeale header pins.
+    - Made bill_of_materials_v4 to update and include perforated circuit boards and female header pins.
     - Picked up perforated circuit boards and female header pins from BELS.
     - Working with Kenny on ciruit design.
+        - Started Experimenting with layout of header pins + esp32c3 board
+    - Improved timeline orgainzation on Trello Board.
 - **Parsa**:
     - Organized Trello Board, to see what everyone will be working on
     - Worked on the ESP-IDF files to import to main Branch
