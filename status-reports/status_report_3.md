@@ -8,7 +8,10 @@
 
 ## Who Did What:
 - **Christian**:
-    - text
+    - Imported ESP-IDF filesto main branch
+    - Picked up female pins and blank circuit for measurements and design from BELS
+    - Worked on part decision and testing simulation on ensuring drone flight
+    - Helped review 3D printed designs providing feedback and testing durability
 - **Kenny**:
     - Picked up a blank circuit board to take measurements and place the drawing model on top of the CAD model the CAD team designed
     - Finalized the circuitry componenets neccessary to build the drone
