@@ -2,10 +2,10 @@
 
 ## Achievements from before:
 - Finished Material list
-- Finalized our CAD design 
+- Finalized our CAD design
 
 ## Setbacks from before:
-- text
+- Delivery of the materials might take too long to arrive
 
 ## Who Did What:
 - **Christian**:
@@ -54,11 +54,24 @@
     - Sent in the BOM to BELS
 
 ## Toolsets:
-- text
+- Github
+- Ecalc
+- online tutorials
 
 ## Final Materials/Parts:
-- text
+- Battery: LiPo 850 mAh 3s 25/30C
+- Motor: SunnySky R1106 FPV Brushless Motors
+- Propeller: Gemfan Hurricane 2009-3 Tri-Blade
+- Camera: CADDXFPV Ant Lite Analog Camera (FPV Cycle Edition)
+- Sensor: TFMini-S - Micro LiDAR Module
+- ESC: HAKRC 20A 4In1 3-6S Blheli_32 5V 3A BEC Dshot1200 Mini Size ESC
+- circuitry: Perforated Circuit Board
 
 ## Weight Distribution:
-- text
+- ESP: 9g
+- Frame: 30g
+- Motors: 7.5g * 4 = 30g
+- Prop: 5g
+- Battery: 69g
+
 
