@@ -9,13 +9,13 @@
 
 ## Who Did What:
 - **Christian**:
-    - Imported ESP-IDF filesto main branch
+    - Imported ESP-IDF files to main branch
     - Picked up female pins and blank circuit for measurements and design from BELS
     - Worked on part decision and testing simulation on ensuring drone flight
     - Helped review 3D printed designs providing feedback and testing durability
 - **Kenny**:
     - Picked up a blank circuit board to take measurements and place the drawing model on top of the CAD model the CAD team designed
-    - Finalized the circuitry componenets neccessary to build the drone
+    - Finalized the circuitry components necessary to build the drone
     - Working on the circuit diagram to wire everything together
 - **Kevin**:
     - Made drone_design_1 in Onshape.
@@ -32,9 +32,9 @@
 - **Nick**:
     - Made bill_of_materials_v4 to update and include perforated circuit boards and female header pins.
     - Picked up perforated circuit boards and female header pins from BELS.
-    - Working with Kenny on ciruit design.
+    - Working with Kenny on circuit design.
         - Started Experimenting with layout of header pins + esp32c3 board
-    - Improved timeline orgainzation on Trello Board.
+    - Improved timeline organization on Trello Board.
 - **Parsa**:
     - Organized Trello Board, to see what everyone will be working on
     - Worked on the ESP-IDF files to import to main Branch
@@ -54,8 +54,8 @@
     - Sent in the BOM to BELS
 
 ## Toolsets:
-- Github
-- Ecalc
+- GitHub
+- eCalc
 - online tutorials
 
 ## Final Materials/Parts:
@@ -73,5 +73,3 @@
 - Motors: 7.5g * 4 = 30g
 - Prop: 5g
 - Battery: 69g
-
-
