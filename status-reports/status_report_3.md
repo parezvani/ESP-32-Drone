@@ -79,7 +79,7 @@
 - Battery: 69g
 
 ## Prototype 1 Presentation
-- Electric Team (Kenny and Nick)
+- Electrical Team (Kenny and Nick)
 - Software Team (Ryan, Parsa, and Christian)
 - Hardware Team (Kevin, Matin, and Parsa)
 - We will be explaining the needs, goals, and the audience.
