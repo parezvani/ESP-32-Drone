@@ -42,7 +42,9 @@
     - Help review part diagram to see what connections we'll need to connect all the parts of the system
 
 - **Ryan**:
-    - text
+    - Finished the Persona documents
+    - Made and sent the Bill of Materials to Bells and Professor Harrison
+    - Sent follow up email to get approval
 
 ## To-do, In-progress, Done:
 - **To-do**:
