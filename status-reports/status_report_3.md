@@ -77,3 +77,12 @@
 - Motors: 7.5g * 4 = 30g
 - Prop: 5g
 - Battery: 69g
+
+## Prototype 1 Presentation
+- Electric Team (Kenny and Nick)
+- Software Team (Ryan, Parsa, and Christian)
+- Hardware Team (Kevin, Matin, and Parsa)
+- We will be explaining the needs, goals, and the audience.
+- We will then go on to explain the process of how we planned and built it.
+- Then we will talk about our future goals with what we are thinking of adding or revising.
+- Finally look for any feedback from our audeince and see if there is anything that we can do to imporve our implmentation. 
