@@ -51,7 +51,9 @@
     - Design a way to implement the circuit to be hot swappable
     - Make the wires as a pin fixture instead of individual wire strands
 - **In-progress**:
-    - text
+    - Awaiting of approval of parts sent over to BELS
+    - Development of circuit diagram to wire the battery and motors
+    - Finalizing the shape/body of the drone
 - **Done**:
     - Sent in the BOM to BELS
 
