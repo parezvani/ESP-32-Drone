@@ -1,0 +1,151 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{titlesec}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{array} % Required for text wrapping in tables
+\usepackage{makecell}
+\usepackage{float}
+
+\titleformat{\section}
+  {\normalfont\bfseries}   % bold, normal font size
+  {\thesection}            % section number
+  {1em}                    % space between number and title
+  {}                       % before-code (empty = left aligned)
+
+\titleformat{\subsection}
+  {\normalfont\bfseries}
+  {\thesubsection}
+  {1em}
+  {}
+
+\renewcommand\thesection{\arabic{section}}
+\renewcommand\thesubsection{\thesection.\arabic{subsection}}
+\renewcommand\thesubsubsection{\thesubsection.\arabic{subsubsection}}
+
+\begin{document}
+
+\title{SpectreFLY Design Document}
+\author{Christian Li, Kenny Wang, Kevin Yao, Matin Sobhani, Nick Lafredo, Parsa Rezvani, Ryan Yu}
+\date{\today}
+
+\maketitle
+\tableofcontents
+
+\vspace{1in}
+
+\begin{abstract}
+This document aims to teach the reader how to create the SpectreFLY Modular Drone.
+\end{abstract}
+
+\begin{IEEEkeywords}
+none
+\end{IEEEkeywords}
+
+\clearpage
+
+
+\section{Introduction}
+This document contains all the information needed to design and use the SpectreFLY Modular Drone.
+[more later]
+
+
+\section{System Requirements}
+[functional requirements.]
+
+[payload, flight time, range, sensor capabilities.]
+
+
+
+\section{System Architecture}
+[overall block diagram.]
+
+[flight controller, power, propulsion, communication, sensor bus.]
+
+
+
+\section{Mechanical Design}
+[frame layout and mounting points for motor, battery, ...]
+
+
+
+\section{Power and Propulsion Modules}
+[information about motors/propellers.]
+
+
+
+\section{Sensor and Payload Modules}
+[information about supported sensors (LiDAR, camera, ...), maximum excess payload, etc.]
+
+
+
+\section{Electronics and Control}
+[how to control the drone, what is needed for control, etc.]
+
+
+
+\section{Modularity and Maintainability}
+[information about how to swap parts, what can be swapped, and how.]
+
+
+
+\section{Safety and Reliability}
+[testing logs and proof that it can take damage and handle failures.]
+
+[physical safety information: prop guards, connector keying to avoid misplugging.]
+
+
+
+\section{Testing and Validation}
+[bench tests for each module.]
+
+[flight tests and criteria.]
+
+
+
+\section{Parts List}
+
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|>{\raggedright\arraybackslash}p{0.52\linewidth}|>{\centering\arraybackslash}p{0.10\linewidth}|>{\centering\arraybackslash}p{0.20\linewidth}|>{\centering\arraybackslash}p{0.10\linewidth}|}
+        \hline
+        \textbf{Part} & \textbf{Set} & \textbf{Supplier} & \textbf{Quantity} \\
+        \hline
+        CarbonX PLA+CF Filament & A & Creality & 1 \\
+        \hline
+        Battery: LiPo 850 mAh 3S 25/30C & A & HobbyKing & 1 \\
+        \hline
+        Motor: SunnySky R1106 FPV Brushless Motors & A & Druav & 4 \\
+        \hline
+        Propeller: Gemfan Hurricane 2009-3 Tri-Blade (Set of 4) & A & Pyrodrone & 1 \\
+        \hline
+        Battery: 3S 1000 mAh & B & HobbyKing & 1 \\
+        \hline
+        Motor: RCINPOWER GTS 1204 5000KV & B & Pyrodrone & 4 \\
+        \hline
+        Propeller: HQProp T3.5x2x3 & B & GetFPV & 1 \\
+        \hline
+        Caddx Ant Lite Analog Camera (FPV Cycle Edition) & A / B & CaddxFPV & 1 \\
+        \hline
+        TFMini-S Micro LiDAR Module & A / B & SparkFun & 1 \\
+        \hline
+        HAKRC 20A 4-in-1 \verb|3-6S BLHeli_32| 5V 3A BEC DShot1200 Mini ESC & A / B & Alibaba & 1 \\
+        \hline
+        Perforated Circuit Board & A / B & Adafruit & 2 \\
+        \hline
+        Female Header Pins 2x6 & A / B & AliExpress & 4 \\
+        \hline
+        Female Header Pins 2x8 & A / B & AliExpress & 2 \\
+        \hline
+        Female Header Pins 2x10 & A / B & Mikroe & 2 \\
+        \hline
+    \end{tabular}
+    \caption{Itemized Budget}
+    \label{tab:budget}
+\end{table}
+
+
+
+
+\end{document}
