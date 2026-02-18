@@ -16,7 +16,7 @@ High Level Design:
 Testing:
 
 * Data received/logged  
-* 
+* Motor spinning
 
 Prototype:
 
