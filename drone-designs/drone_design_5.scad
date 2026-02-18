@@ -15,7 +15,7 @@ show_esp32_header_pads = true;
 // v5 lightweight tuning: thinner shell while preserving electronics fit
 body_length = 96;
 body_width = 62;
-body_height = 17;
+body_height = 19;
 body_corner_radius = 7;
 floor_thickness = 2.5;
 wall_thickness = 2.5;
@@ -23,19 +23,26 @@ wall_thickness = 2.5;
 // Motor layout (extended for larger prop options)
 motor_center_offset = 58; // motor centers at (+/-x, +/-y)
 arm_width = 10.0;
-arm_thickness = 4.2; // keeps ~1.4-1.5 mm shell around internal wire tunnel
+arm_thickness = 3.8;
 arm_root_inset_x = 10;
 arm_root_inset_y = 7;
-arm_wire_channel_w = 3.6;
-arm_wire_channel_h = 1.4;
 
 // Motor pod geometry
+motor_can_d = 14.2; // SunnySky R1106 rotor/body diameter
+motor_can_l = 13.6; // SunnySky R1106 body length
 motor_pod_outer_d = 19;
-motor_pod_inner_d = 14.6; // clearance for 1106 can and wiring
+motor_pod_inner_d = 15.0; // +0.4 mm radial clearance per side for print tolerance
 motor_pod_height = 17;
 motor_mount_floor = 1.8;
 motor_mount_spacing = 9; // typical 11xx square pattern
 motor_mount_hole_d = 2.2; // M2 clearance
+
+motor_pod_cavity_h = motor_pod_height - motor_mount_floor;
+motor_pod_radial_clearance = (motor_pod_inner_d - motor_can_d) / 2;
+motor_pod_axial_clearance = motor_pod_cavity_h - motor_can_l;
+
+assert(motor_pod_radial_clearance >= 0.3, "Motor pod inner diameter too tight for SunnySky R1106.");
+assert(motor_pod_axial_clearance >= 0.8, "Motor pod cavity height too short for SunnySky R1106.");
 
 // ESP32-C3-DevKit-RUST-1 geometry from KiCad (mm)
 // KiCad board X (22.86) is mapped to frame Y.
@@ -87,6 +94,8 @@ motor_to_motor_side = 2 * motor_center_offset;
 motor_to_motor_diagonal = 2 * sqrt(2) * motor_center_offset;
 echo(str("motor_to_motor_side_mm=", motor_to_motor_side));
 echo(str("motor_to_motor_diagonal_mm=", motor_to_motor_diagonal));
+echo(str("motor_pod_radial_clearance_mm=", motor_pod_radial_clearance));
+echo(str("motor_pod_axial_clearance_mm=", motor_pod_axial_clearance));
 echo(str("esp32_hole_spacing_x_mm=", esp32_hole_spacing_x));
 echo(str("esp32_hole_spacing_y_mm=", esp32_hole_spacing_y));
 
@@ -163,19 +172,6 @@ module motor_pod(sx, sy) {
     translate([motor_x, motor_y, 0]) cylinder(h = motor_pod_height, d = motor_pod_outer_d);
 }
 
-module arm_wire_channel(sx, sy) {
-    root_x = sx * (body_length / 2 - arm_root_inset_x);
-    root_y = sy * (body_width / 2 - arm_root_inset_y);
-    motor_x = sx * motor_center_offset;
-    motor_y = sy * motor_center_offset;
-    channel_z = arm_thickness / 2;
-
-    hull() {
-        translate([root_x, root_y, channel_z]) cylinder(h = arm_wire_channel_h, d = arm_wire_channel_w, center = true);
-        translate([motor_x, motor_y, channel_z]) cylinder(h = arm_wire_channel_h, d = arm_wire_channel_w, center = true);
-    }
-}
-
 module side_lightening_cutouts() {
     side_window_z = floor_thickness + side_window_bottom_clearance + side_window_height / 2;
     side_cut_depth = wall_thickness + 1.0;
@@ -250,11 +246,6 @@ module frame_cutouts() {
 
     if (enable_side_lightening) {
         side_lightening_cutouts();
-    }
-
-    // Internal arm channels for motor wires (body pocket -> motor pods)
-    for (sx = [-1, 1], sy = [-1, 1]) {
-        arm_wire_channel(sx, sy);
     }
 
     // Small side wire exits
