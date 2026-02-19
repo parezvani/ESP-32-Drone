@@ -15,7 +15,7 @@ show_esp32_header_pads = true;
 // v5 lightweight tuning: thinner shell while preserving electronics fit
 body_length = 96;
 body_width = 62;
-body_height = 19;
+body_height = 22;
 body_corner_radius = 7;
 floor_thickness = 2.5;
 wall_thickness = 2.5;
