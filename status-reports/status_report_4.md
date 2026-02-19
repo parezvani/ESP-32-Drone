@@ -14,7 +14,10 @@
 - **Kevin**:
     - text
 - **Matin**:
-    - text
+    - Fixed drone_design_5.
+        - Taller frame to account for battery, ESP-32, ESC, etc.
+        - Removed motor arm channels intended for wire routing (too small/thin). Will route wires outside of the frame instead.
+        - Fixed motor slot circumference; motors will now fit nicely inside frame.
 - **Nick**:
     - text
 - **Parsa**:
