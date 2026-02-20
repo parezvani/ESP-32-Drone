@@ -8,7 +8,7 @@
 $fn = 80;
 
 // Visual options
-show_electronics_mockup = true;
+show_electronics_mockup = false;
 show_esp32_header_pads = true;
 
 // Main frame geometry (mm)
@@ -34,8 +34,16 @@ motor_pod_outer_d = 19;
 motor_pod_inner_d = 15.0; // +0.4 mm radial clearance per side for print tolerance
 motor_pod_height = 17;
 motor_mount_floor = 1.8;
-motor_mount_spacing = 9; // typical 11xx square pattern
+motor_mount_spacing = 9; // SunnySky schematic: 4xM2 on 9 mm square pattern
 motor_mount_hole_d = 2.2; // M2 clearance
+motor_wire_notch_w = 5.2; // side opening for 3 motor wires
+motor_wire_notch_h = 3.6;
+motor_wire_notch_depth = 4.3; // deep enough to break through pod wall
+enable_arm_frame_wire_notches = true;
+arm_frame_wire_notch_w = 4.8;
+arm_frame_wire_notch_h = 4.2;
+arm_frame_wire_inboard_len = 8.0; // extend past arm root into frame pocket
+arm_frame_wire_clear_from_pod = 0.8;
 
 motor_pod_cavity_h = motor_pod_height - motor_mount_floor;
 motor_pod_radial_clearance = (motor_pod_inner_d - motor_can_d) / 2;
@@ -72,7 +80,7 @@ strap_slot_width = 24;
 // Side-wall lightening windows
 enable_side_lightening = true;
 side_window_height = 9.0;
-side_window_bottom_clearance = 1.6; // above floor top
+side_window_z_offset = 0.0; // fine-tune vertical position while keeping windows centered
 long_side_window_length = 14.0;
 long_side_window_x_offset = 18.0;
 short_side_window_length = 8.0;
@@ -172,8 +180,55 @@ module motor_pod(sx, sy) {
     translate([motor_x, motor_y, 0]) cylinder(h = motor_pod_height, d = motor_pod_outer_d);
 }
 
+module motor_wire_notch(mx, my, wire_angle) {
+    // Keep notch above arm blend so the opening isn't blocked by the arm body.
+    notch_z = max(
+        motor_mount_floor + motor_wire_notch_h / 2 + 0.2,
+        arm_thickness + motor_wire_notch_h / 2 + 0.3
+    );
+    notch_center_r = motor_pod_outer_d / 2 - motor_wire_notch_depth / 2 + 0.2;
+
+    translate([mx, my, notch_z]) {
+        rotate([0, 0, wire_angle]) {
+            translate([notch_center_r, 0, 0]) {
+                cube([motor_wire_notch_depth, motor_wire_notch_w, motor_wire_notch_h], center = true);
+            }
+        }
+    }
+}
+
+module arm_to_frame_wire_notch(sx, sy) {
+    root_x = sx * (body_length / 2 - arm_root_inset_x);
+    root_y = sy * (body_width / 2 - arm_root_inset_y);
+    motor_x = sx * motor_center_offset;
+    motor_y = sy * motor_center_offset;
+
+    dir_x = root_x - motor_x;
+    dir_y = root_y - motor_y;
+    dir_len = sqrt(dir_x * dir_x + dir_y * dir_y);
+    ux = dir_x / dir_len;
+    uy = dir_y / dir_len;
+
+    // Keep this trench high enough to be open at the arm top and into the frame pocket.
+    notch_z = max(
+        arm_thickness - arm_frame_wire_notch_h / 2 + 0.1,
+        floor_thickness + arm_frame_wire_notch_h / 2 + 0.2
+    );
+
+    start_x = motor_x + ux * (motor_pod_outer_d / 2 + arm_frame_wire_clear_from_pod);
+    start_y = motor_y + uy * (motor_pod_outer_d / 2 + arm_frame_wire_clear_from_pod);
+    frame_x = root_x + ux * arm_frame_wire_inboard_len;
+    frame_y = root_y + uy * arm_frame_wire_inboard_len;
+
+    hull() {
+        translate([start_x, start_y, notch_z]) cylinder(h = arm_frame_wire_notch_h, d = arm_frame_wire_notch_w, center = true);
+        translate([root_x, root_y, notch_z]) cylinder(h = arm_frame_wire_notch_h, d = arm_frame_wire_notch_w, center = true);
+        translate([frame_x, frame_y, notch_z]) cylinder(h = arm_frame_wire_notch_h, d = arm_frame_wire_notch_w, center = true);
+    }
+}
+
 module side_lightening_cutouts() {
-    side_window_z = floor_thickness + side_window_bottom_clearance + side_window_height / 2;
+    side_window_z = floor_thickness + (body_height - floor_thickness) / 2 + side_window_z_offset;
     side_cut_depth = wall_thickness + 1.0;
 
     // Two windows per long side wall
@@ -214,19 +269,34 @@ module frame_cutouts() {
         );
     }
 
-    // Motor cavities + mount holes
-    for (mxs = [-1, 1], mys = [-1, 1]) {
-        mx = mxs * motor_center_offset;
-        my = mys * motor_center_offset;
+    // Motor cavities + mount holes + wire notch
+    for (sx = [-1, 1], sy = [-1, 1]) {
+        mx = sx * motor_center_offset;
+        my = sy * motor_center_offset;
+        root_x = sx * (body_length / 2 - arm_root_inset_x);
+        root_y = sy * (body_width / 2 - arm_root_inset_y);
+        wire_angle = atan2(root_y - my, root_x - mx);
+        // Keep notch centered between two holes per motor drawing 45 deg note.
+        mount_hole_angle = wire_angle + 90;
 
         translate([mx, my, motor_mount_floor]) {
             cylinder(h = motor_pod_height - motor_mount_floor + 0.2, d = motor_pod_inner_d);
         }
 
         for (hx = [-1, 1], hy = [-1, 1]) {
-            translate([mx + hx * motor_mount_spacing / 2, my + hy * motor_mount_spacing / 2, -0.1]) {
+            hole_x_local = hx * motor_mount_spacing / 2;
+            hole_y_local = hy * motor_mount_spacing / 2;
+            hole_x = hole_x_local * cos(mount_hole_angle) - hole_y_local * sin(mount_hole_angle);
+            hole_y = hole_x_local * sin(mount_hole_angle) + hole_y_local * cos(mount_hole_angle);
+            translate([mx + hole_x, my + hole_y, -0.1]) {
                 cylinder(h = motor_mount_floor + 0.4, d = motor_mount_hole_d);
             }
+        }
+
+        motor_wire_notch(mx, my, wire_angle);
+
+        if (enable_arm_frame_wire_notches) {
+            arm_to_frame_wire_notch(sx, sy);
         }
     }
 
@@ -267,6 +337,7 @@ module drone_frame() {
             }
 
             esp32_standoffs();
+
         }
         frame_cutouts();
     }
