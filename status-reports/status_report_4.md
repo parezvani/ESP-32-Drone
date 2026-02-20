@@ -13,7 +13,9 @@
 
 ## Who Did What:
 - **Christian**:
-    - text
+    - Researched bluetooth connections to ESP32, necessary PID, SPI for internal communication with IMU
+    - Researched possible ESC alternatives for replacement
+    - Started coding IMU communication with ESP using SPI
 - **Kenny**:
     - Completed the finalized circuit design
     - Researched the ESC component for replacement
