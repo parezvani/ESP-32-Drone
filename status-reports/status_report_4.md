@@ -31,9 +31,11 @@
 - **To-do**:
     - text
 - **In-progress**:
-    - text
+    - PCB Prototype
+    - Finalize CAD Design Prototype
+    - CAD Dimensions
 - **Done**:
-    - text
+    - 3D Print CAD Design Prototypes
 
 ## ...
 - ...
