@@ -15,7 +15,6 @@ Prototype vs High Level Design:
   * How high the drone is  
   * Stationary flying  
   * Flying 3 meters forward then back  
-* 
 
 Need/Goal:
 
