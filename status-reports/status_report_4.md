@@ -1,16 +1,22 @@
 # Status Report 4
 
 ## Achievements from before:
-- text
+- Updating of needs statement talk about the implmentation of wireless communication with the use of smart phones
+- Refining our objective design
+- Printed a new body for the frame design
+- Got rid of the affordability aspect of our need statement
 
 ## Setbacks from before:
-- text
+- Can not order off Alibaba
+- Waiting on parts
+- Need to find a new ESC
 
 ## Who Did What:
 - **Christian**:
     - text
 - **Kenny**:
-    - text
+    - Completed the finalized circuit design
+    - Researched the ESC component for replacement
 - **Kevin**:
     - text
 - **Matin**:
