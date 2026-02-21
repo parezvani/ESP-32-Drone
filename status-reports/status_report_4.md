@@ -10,6 +10,7 @@
 - Can not order off Alibaba
 - Waiting on parts
 - Need to find a new ESC
+- FPV Camera Compatability issues with ESP
 
 ## Who Did What:
 - **Christian**:
@@ -35,7 +36,10 @@
     - Added circuit-design directory and uploaded first design
     - Started work on server communication
 - **Parsa**:
-    - text
+    - Reveiwed code on which protocol to use for GPIO communications
+    - Talked and guided team to figure out our Problem, Need, and Goal statements
+    - Looked and found a new ESC for the drone
+    - Went to BELS to pickup Motor so we can test code with
 - **Ryan**:
     - Reasearch I2C vs SPI difference in drones
     - leanred the basics of the PID for the motors
@@ -44,13 +48,16 @@
 
 ## To-do, In-progress, Done:
 - **To-do**:
-    - text
+    - Organize ESP code files
+    - Work on the motor to esp connection
 - **In-progress**:
     - PCB Prototype
     - Finalize CAD Design Prototype
     - CAD Dimensions
+    - Finish up Problem, Need, and Goal statements
 - **Done**:
     - 3D Print CAD Design Prototypes
+    - Ordered Most parts
 
 ## ...
 - ...
