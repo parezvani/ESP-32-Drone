@@ -14,16 +14,16 @@ show_esp32_header_pads = true;
 // Main frame geometry (mm)
 // v5 lightweight tuning: thinner shell while preserving electronics fit
 body_length = 96;
-body_width = 62;
-body_height = 22;
+body_width = 68;
+body_height = 24;
 body_corner_radius = 7;
 floor_thickness = 2.5;
 wall_thickness = 2.5;
 
 // Motor layout (extended for larger prop options)
-motor_center_offset = 58; // motor centers at (+/-x, +/-y)
+motor_center_offset = 64; // motor centers at (+/-x, +/-y)
 arm_width = 10.0;
-arm_thickness = 3.8;
+arm_thickness = 5.4;
 arm_root_inset_x = 10;
 arm_root_inset_y = 7;
 
@@ -34,16 +34,17 @@ motor_pod_outer_d = 19;
 motor_pod_inner_d = 15.0; // +0.4 mm radial clearance per side for print tolerance
 motor_pod_height = 17;
 motor_mount_floor = 1.8;
-motor_mount_spacing = 9; // SunnySky schematic: 4xM2 on 9 mm square pattern
+motor_mount_bcd = 9; // SunnySky schematic: 4xM2 on 9 mm bolt-circle diameter
+motor_mount_hole_center_r = motor_mount_bcd / 2;
 motor_mount_hole_d = 2.2; // M2 clearance
-motor_wire_notch_w = 5.2; // side opening for 3 motor wires
-motor_wire_notch_h = 3.6;
-motor_wire_notch_depth = 4.3; // deep enough to break through pod wall
+motor_wire_notch_w = 6.2; // side opening for 3 motor wires
+motor_wire_notch_h = 4.4;
+motor_wire_notch_depth = 4.7; // deep enough to break through pod wall
 enable_arm_frame_wire_notches = true;
-arm_frame_wire_notch_w = 4.8;
-arm_frame_wire_notch_h = 4.2;
+arm_frame_wire_notch_w = 6.2;
+arm_frame_wire_notch_h = 6.4;
 arm_frame_wire_inboard_len = 8.0; // extend past arm root into frame pocket
-arm_frame_wire_clear_from_pod = 0.8;
+arm_frame_wire_into_pod = 2.8; // start trench inside pod OD so cutout passes through pod wall
 
 motor_pod_cavity_h = motor_pod_height - motor_mount_floor;
 motor_pod_radial_clearance = (motor_pod_inner_d - motor_can_d) / 2;
@@ -73,7 +74,8 @@ esp32_standoff_d = 6;
 esp32_standoff_h = 6;
 
 // Strap slots in floor for battery hold-down
-strap_slot_spacing = 28;
+strap_slot_count = 4;
+strap_slot_pitch = 16;
 strap_slot_length = 5;
 strap_slot_width = 24;
 
@@ -100,8 +102,12 @@ battery_height = 24;
 
 motor_to_motor_side = 2 * motor_center_offset;
 motor_to_motor_diagonal = 2 * sqrt(2) * motor_center_offset;
+inner_cavity_length = body_length - 2 * wall_thickness;
+inner_cavity_width = body_width - 2 * wall_thickness;
+inner_cavity_height = body_height - floor_thickness;
 echo(str("motor_to_motor_side_mm=", motor_to_motor_side));
 echo(str("motor_to_motor_diagonal_mm=", motor_to_motor_diagonal));
+echo(str("inner_cavity_lwh_mm=", inner_cavity_length, "x", inner_cavity_width, "x", inner_cavity_height));
 echo(str("motor_pod_radial_clearance_mm=", motor_pod_radial_clearance));
 echo(str("motor_pod_axial_clearance_mm=", motor_pod_axial_clearance));
 echo(str("esp32_hole_spacing_x_mm=", esp32_hole_spacing_x));
@@ -215,15 +221,18 @@ module arm_to_frame_wire_notch(sx, sy) {
         floor_thickness + arm_frame_wire_notch_h / 2 + 0.2
     );
 
-    start_x = motor_x + ux * (motor_pod_outer_d / 2 + arm_frame_wire_clear_from_pod);
-    start_y = motor_y + uy * (motor_pod_outer_d / 2 + arm_frame_wire_clear_from_pod);
+    start_r = max(0, motor_pod_outer_d / 2 - arm_frame_wire_into_pod);
+    start_x = motor_x + ux * start_r;
+    start_y = motor_y + uy * start_r;
     frame_x = root_x + ux * arm_frame_wire_inboard_len;
     frame_y = root_y + uy * arm_frame_wire_inboard_len;
+    notch_len = sqrt((frame_x - start_x) * (frame_x - start_x) + (frame_y - start_y) * (frame_y - start_y));
+    notch_angle = atan2(frame_y - start_y, frame_x - start_x);
 
-    hull() {
-        translate([start_x, start_y, notch_z]) cylinder(h = arm_frame_wire_notch_h, d = arm_frame_wire_notch_w, center = true);
-        translate([root_x, root_y, notch_z]) cylinder(h = arm_frame_wire_notch_h, d = arm_frame_wire_notch_w, center = true);
-        translate([frame_x, frame_y, notch_z]) cylinder(h = arm_frame_wire_notch_h, d = arm_frame_wire_notch_w, center = true);
+    translate([(start_x + frame_x) / 2, (start_y + frame_y) / 2, notch_z]) {
+        rotate([0, 0, notch_angle]) {
+            cube([notch_len, arm_frame_wire_notch_w, arm_frame_wire_notch_h], center = true);
+        }
     }
 }
 
@@ -277,17 +286,15 @@ module frame_cutouts() {
         root_y = sy * (body_width / 2 - arm_root_inset_y);
         wire_angle = atan2(root_y - my, root_x - mx);
         // Keep notch centered between two holes per motor drawing 45 deg note.
-        mount_hole_angle = wire_angle + 90;
 
         translate([mx, my, motor_mount_floor]) {
             cylinder(h = motor_pod_height - motor_mount_floor + 0.2, d = motor_pod_inner_d);
         }
 
-        for (hx = [-1, 1], hy = [-1, 1]) {
-            hole_x_local = hx * motor_mount_spacing / 2;
-            hole_y_local = hy * motor_mount_spacing / 2;
-            hole_x = hole_x_local * cos(mount_hole_angle) - hole_y_local * sin(mount_hole_angle);
-            hole_y = hole_x_local * sin(mount_hole_angle) + hole_y_local * cos(mount_hole_angle);
+        for (i = [0 : 3]) {
+            hole_angle = wire_angle + 45 + i * 90;
+            hole_x = motor_mount_hole_center_r * cos(hole_angle);
+            hole_y = motor_mount_hole_center_r * sin(hole_angle);
             translate([mx + hole_x, my + hole_y, -0.1]) {
                 cylinder(h = motor_mount_floor + 0.4, d = motor_mount_hole_d);
             }
@@ -300,15 +307,9 @@ module frame_cutouts() {
         }
     }
 
-    // ESP32 mounting holes
-    for (sx = [-1, 1], sy = [-1, 1]) {
-        x = sx * esp32_hole_spacing_x / 2;
-        y = sy * esp32_hole_spacing_y / 2;
-        translate([x, y, -0.1]) cylinder(h = floor_thickness + esp32_standoff_h + 0.4, d = esp32_mount_hole_d);
-    }
-
     // Battery strap slots
-    for (x = [-strap_slot_spacing / 2, strap_slot_spacing / 2]) {
+    for (i = [0 : strap_slot_count - 1]) {
+        x = (i - (strap_slot_count - 1) / 2) * strap_slot_pitch;
         translate([x, 0, floor_thickness / 2]) {
             cube([strap_slot_length, strap_slot_width, floor_thickness + 0.4], center = true);
         }
@@ -318,12 +319,6 @@ module frame_cutouts() {
         side_lightening_cutouts();
     }
 
-    // Small side wire exits
-    for (sx = [-1, 1]) {
-        translate([sx * (body_length / 2 - wall_thickness / 2), 0, floor_thickness + 3]) {
-            cube([wall_thickness + 0.8, 12, 6], center = true);
-        }
-    }
 }
 
 module drone_frame() {
