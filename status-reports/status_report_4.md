@@ -30,7 +30,10 @@
         - Fixed motor slot holes (for securing motors in place).
     - 3D printed CAD prototype.
 - **Nick**:
-    - text
+    - Created first iteration of design document
+    - Drew high-level drone design on lab whiteboard
+    - Added circuit-design directory and uploaded first design
+    - Started work on server communication
 - **Parsa**:
     - text
 - **Ryan**:
