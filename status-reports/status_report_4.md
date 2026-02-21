@@ -37,7 +37,10 @@
 - **Parsa**:
     - text
 - **Ryan**:
-    - text
+    - Reasearch I2C vs SPI difference in drones
+    - leanred the basics of the PID for the motors
+    - communication with Bels
+    - started the PID code
 
 ## To-do, In-progress, Done:
 - **To-do**:
