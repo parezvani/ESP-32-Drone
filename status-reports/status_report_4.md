@@ -21,7 +21,11 @@
     - Completed the finalized circuit design
     - Researched the ESC component for replacement
 - **Kevin**:
-    - text
+    - Iterated drone_design_1 and made drone_design_1_2 https://cad.onshape.com/documents/2f8d4bf0b98d0485fa75c2aa/w/5e7ce9715864a154fc551824/e/40c0eff1e2915fcc79ae984e
+        -  Added a cover for the drone case using a dovetail design
+        -  Made a channel in the motor housing and casing for motor wires
+        -  Researched dimensions of drone motor to properly fit screws and allow spacing of wires  
+    - Printed out CAD models of LIPO battery and motors to test fitting of drone designs
 - **Matin**:
     - Fixed drone_design_5.
         - Taller frame to account for battery, ESP-32, ESC, etc.
