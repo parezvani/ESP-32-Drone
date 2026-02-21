@@ -1,7 +1,7 @@
 # Status Report 4
 
 ## Achievements from before:
-- Updating of needs statement talk about the implmentation of wireless communication with the use of smart phones
+- Updating of needs statement talk about the implementation of wireless communication with the use of smartphones
 - Refining our objective design
 - Printed a new body for the frame design
 - Got rid of the affordability aspect of our need statement
@@ -10,7 +10,7 @@
 - Can not order off Alibaba
 - Waiting on parts
 - Need to find a new ESC
-- FPV Camera Compatability issues with ESP
+- FPV Camera Compatibility issues with ESP
 
 ## Who Did What:
 - **Christian**:
@@ -29,7 +29,7 @@
 - **Matin**:
     - Fixed drone_design_5.
         - Taller frame to account for battery, ESP-32, ESC, etc.
-        - Removed motor arm channels intended for wire routing (too small/thin). Will route wires ontop of the arms instead.
+        - Removed motor arm channels intended for wire routing (too small/thin). Will route wires on top of the arms instead.
         - Added motor-to-frame notches/holes for clean motor wire routing.
         - Fixed motor slot circumference; motors will now fit nicely inside frame.
         - Fixed motor slot holes (for securing motors in place).
@@ -40,13 +40,13 @@
     - Added circuit-design directory and uploaded first design
     - Started work on server communication
 - **Parsa**:
-    - Reveiwed code on which protocol to use for GPIO communications
+    - Reviewed code on which protocol to use for GPIO communications
     - Talked and guided team to figure out our Problem, Need, and Goal statements
     - Looked and found a new ESC for the drone
     - Went to BELS to pickup Motor so we can test code with
 - **Ryan**:
-    - Reasearch I2C vs SPI difference in drones
-    - leanred the basics of the PID for the motors
+    - Research I2C vs SPI difference in drones
+    - learned the basics of the PID for the motors
     - communication with Bels
     - started the PID code
 
@@ -62,6 +62,3 @@
 - **Done**:
     - 3D Print CAD Design Prototypes
     - Ordered Most parts
-
-## ...
-- ...
