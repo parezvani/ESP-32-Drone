@@ -21,7 +21,7 @@ floor_thickness = 2.5;
 wall_thickness = 2.5;
 
 // Motor layout (extended for larger prop options)
-motor_center_offset = 66; // motor centers at (+/-x, +/-y)
+motor_center_offset = 74; // motor centers at (+/-x, +/-y)
 arm_width = 10.0;
 arm_thickness = 5.4;
 arm_root_inset_x = 10;
@@ -31,8 +31,8 @@ arm_root_inset_y = 7;
 motor_can_d = 16.1; // RCINPOWER GTS 1204 rotor/body diameter
 motor_can_l = 10.9; // RCINPOWER GTS 1204 body length above the mount face
 motor_pod_outer_d = 22.0;
-motor_pod_inner_d = 17.0; // +0.45 mm radial clearance per side for print tolerance
-motor_pod_height = 12.6;
+motor_pod_inner_d = 18.0; // +0.45 mm radial clearance per side for print tolerance
+motor_pod_height = 9.0;
 motor_mount_floor = 1.8;
 motor_mount_bcd = 9; // fit check on the real motor confirms the 4xM2 pattern sits on a 9 mm bolt circle
 motor_mount_hole_center_r = motor_mount_bcd / 2;
@@ -44,7 +44,7 @@ motor_wire_notch_h = 4.4;
 motor_wire_notch_depth = 4.7; // deep enough to break through pod wall
 enable_arm_frame_wire_notches = true;
 arm_frame_wire_notch_w = 6.2;
-arm_frame_wire_notch_h = 6.4;
+arm_frame_wire_notch_h = 21.5;
 arm_frame_wire_inboard_len = 8.0; // extend past arm root into frame pocket
 arm_frame_wire_into_pod = 3.2; // start trench inside pod OD so cutout passes through pod wall
 
