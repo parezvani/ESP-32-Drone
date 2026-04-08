@@ -32,12 +32,13 @@ motor_can_d = 16.1; // RCINPOWER GTS 1204 rotor/body diameter
 motor_can_l = 10.9; // RCINPOWER GTS 1204 body length above the mount face
 motor_pod_outer_d = 22.0;
 motor_pod_inner_d = 17.0; // +0.45 mm radial clearance per side for print tolerance
-motor_pod_height = 13.6;
+motor_pod_height = 12.6;
 motor_mount_floor = 1.8;
-motor_mount_pattern_pitch = 9; // official motor drawing shows 4xM2 on a 9 mm square pattern
-motor_mount_half_pitch = motor_mount_pattern_pitch / 2;
+motor_mount_bcd = 9; // fit check on the real motor confirms the 4xM2 pattern sits on a 9 mm bolt circle
+motor_mount_hole_center_r = motor_mount_bcd / 2;
 motor_mount_hole_d = 2.2; // M2 clearance
 motor_mount_center_relief_d = 5.2; // clears the center boss / wire exit feature on the motor base
+motor_pod_min_wall_height = 2.0; // open-top pod only needs enough wall to register and protect the can
 motor_wire_notch_w = 6.2; // side opening for 3 motor wires
 motor_wire_notch_h = 4.4;
 motor_wire_notch_depth = 4.7; // deep enough to break through pod wall
@@ -50,9 +51,11 @@ arm_frame_wire_into_pod = 3.2; // start trench inside pod OD so cutout passes th
 motor_pod_cavity_h = motor_pod_height - motor_mount_floor;
 motor_pod_radial_clearance = (motor_pod_inner_d - motor_can_d) / 2;
 motor_pod_axial_clearance = motor_pod_cavity_h - motor_can_l;
+motor_pod_wall_capture_h = min(motor_pod_cavity_h, motor_can_l);
+motor_pod_can_exposed_h = max(0, -motor_pod_axial_clearance);
 
 assert(motor_pod_radial_clearance >= 0.3, "Motor pod inner diameter too tight for RCINPOWER GTS 1204.");
-assert(motor_pod_axial_clearance >= 0.8, "Motor pod cavity height too short for RCINPOWER GTS 1204.");
+assert(motor_pod_cavity_h >= motor_pod_min_wall_height, "Motor pod wall height is too short to retain the RCINPOWER GTS 1204.");
 
 // ESP32-C3-DevKit-RUST-1 geometry from KiCad (mm)
 // KiCad board X (22.86) is mapped to frame Y.
@@ -111,6 +114,8 @@ echo(str("motor_to_motor_diagonal_mm=", motor_to_motor_diagonal));
 echo(str("inner_cavity_lwh_mm=", inner_cavity_length, "x", inner_cavity_width, "x", inner_cavity_height));
 echo(str("motor_pod_radial_clearance_mm=", motor_pod_radial_clearance));
 echo(str("motor_pod_axial_clearance_mm=", motor_pod_axial_clearance));
+echo(str("motor_pod_wall_capture_mm=", motor_pod_wall_capture_h));
+echo(str("motor_pod_can_exposed_mm=", motor_pod_can_exposed_h));
 echo(str("esp32_hole_spacing_x_mm=", esp32_hole_spacing_x));
 echo(str("esp32_hole_spacing_y_mm=", esp32_hole_spacing_y));
 
@@ -296,9 +301,10 @@ module frame_cutouts() {
             cylinder(h = motor_mount_floor + 0.4, d = motor_mount_center_relief_d);
         }
 
-        for (hx = [-motor_mount_half_pitch, motor_mount_half_pitch], hy = [-motor_mount_half_pitch, motor_mount_half_pitch]) {
-            hole_x = hx * cos(wire_angle) - hy * sin(wire_angle);
-            hole_y = hx * sin(wire_angle) + hy * cos(wire_angle);
+        for (i = [0 : 3]) {
+            hole_angle = wire_angle + 45 + i * 90;
+            hole_x = motor_mount_hole_center_r * cos(hole_angle);
+            hole_y = motor_mount_hole_center_r * sin(hole_angle);
             translate([mx + hole_x, my + hole_y, -0.1]) {
                 cylinder(h = motor_mount_floor + 0.4, d = motor_mount_hole_d);
             }
