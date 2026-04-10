@@ -106,9 +106,16 @@ battery_height = 24;
 
 motor_to_motor_side = 2 * motor_center_offset;
 motor_to_motor_diagonal = 2 * sqrt(2) * motor_center_offset;
+body_half_length = body_length / 2;
+body_half_width = body_width / 2;
 inner_cavity_length = body_length - 2 * wall_thickness;
 inner_cavity_width = body_width - 2 * wall_thickness;
 inner_cavity_height = body_height - floor_thickness;
+inner_cavity_corner_r = max(body_corner_radius - wall_thickness, 2);
+motor_cavity_cut_h = motor_pod_height - motor_mount_floor + 0.2;
+motor_mount_cut_h = motor_mount_floor + 0.4;
+strap_slot_cut_h = floor_thickness + 0.4;
+side_cut_depth = wall_thickness + 1.0;
 echo(str("motor_to_motor_side_mm=", motor_to_motor_side));
 echo(str("motor_to_motor_diagonal_mm=", motor_to_motor_diagonal));
 echo(str("inner_cavity_lwh_mm=", inner_cavity_length, "x", inner_cavity_width, "x", inner_cavity_height));
@@ -174,25 +181,86 @@ module esp32_board_2d() {
     polygon(points = esp32_outline_points());
 }
 
+function arm_root_xy(sx, sy) = [
+    sx * (body_half_length - arm_root_inset_x),
+    sy * (body_half_width - arm_root_inset_y)
+];
+
+function motor_xy(sx, sy) = [sx * motor_center_offset, sy * motor_center_offset];
+
+function esp32_hole_xy(sx, sy) = [sx * esp32_hole_spacing_x / 2, sy * esp32_hole_spacing_y / 2];
+
+function board_xy_from_kicad(kicad_x, kicad_y) = [
+    kicad_y - esp32_board_length / 2,
+    kicad_x - esp32_board_width / 2
+];
+
+function xy_from_polar(r, angle_deg) = [r * cos(angle_deg), r * sin(angle_deg)];
+
+function xy_add(a, b) = [a[0] + b[0], a[1] + b[1]];
+
+function xy_sub(a, b) = [a[0] - b[0], a[1] - b[1]];
+
+function xy_scale(v, scale) = [v[0] * scale, v[1] * scale];
+
+function xy_length(v) = sqrt(v[0] * v[0] + v[1] * v[1]);
+
+function xy_unit(from_xy, to_xy) =
+    let(delta = xy_sub(to_xy, from_xy), len = xy_length(delta))
+    [delta[0] / len, delta[1] / len];
+
+function xy_midpoint(a, b) = xy_scale(xy_add(a, b), 0.5);
+
+function xy_angle(from_xy, to_xy) = atan2(to_xy[1] - from_xy[1], to_xy[0] - from_xy[0]);
+
+function strap_slot_x(i) = (i - (strap_slot_count - 1) / 2) * strap_slot_pitch;
+
+module translate_xy(xy, z = 0) {
+    translate([xy[0], xy[1], z]) children();
+}
+
+module motor_mount_pattern(motor_xy_pos, wire_angle) {
+    translate_xy(motor_xy_pos, motor_mount_floor) {
+        cylinder(h = motor_cavity_cut_h, d = motor_pod_inner_d);
+    }
+
+    translate_xy(motor_xy_pos, -0.1) {
+        cylinder(h = motor_mount_cut_h, d = motor_mount_center_relief_d);
+    }
+
+    for (i = [0 : 3]) {
+        hole_xy = xy_add(
+            motor_xy_pos,
+            xy_from_polar(motor_mount_hole_center_r, wire_angle + 45 + i * 90)
+        );
+        translate_xy(hole_xy, -0.1) {
+            cylinder(h = motor_mount_cut_h, d = motor_mount_hole_d);
+        }
+    }
+}
+
+module esp32_pin_row(board_center_z, pin_kicad_x, pin_kicad_y_start, pin_count) {
+    for (i = [0 : pin_count - 1]) {
+        pin_xy = board_xy_from_kicad(pin_kicad_x, pin_kicad_y_start + i * 2.54);
+        translate_xy(pin_xy, board_center_z + 0.9) cylinder(h = 1.2, d = 1.1);
+    }
+}
+
 module frame_arm(sx, sy) {
-    root_x = sx * (body_length / 2 - arm_root_inset_x);
-    root_y = sy * (body_width / 2 - arm_root_inset_y);
-    motor_x = sx * motor_center_offset;
-    motor_y = sy * motor_center_offset;
+    root_xy_pos = arm_root_xy(sx, sy);
+    motor_xy_pos = motor_xy(sx, sy);
 
     hull() {
-        translate([root_x, root_y, 0]) cylinder(h = arm_thickness, d = arm_width);
-        translate([motor_x, motor_y, 0]) cylinder(h = arm_thickness, d = arm_width);
+        translate_xy(root_xy_pos) cylinder(h = arm_thickness, d = arm_width);
+        translate_xy(motor_xy_pos) cylinder(h = arm_thickness, d = arm_width);
     }
 }
 
 module motor_pod(sx, sy) {
-    motor_x = sx * motor_center_offset;
-    motor_y = sy * motor_center_offset;
-    translate([motor_x, motor_y, 0]) cylinder(h = motor_pod_height, d = motor_pod_outer_d);
+    translate_xy(motor_xy(sx, sy)) cylinder(h = motor_pod_height, d = motor_pod_outer_d);
 }
 
-module motor_wire_notch(mx, my, wire_angle) {
+module motor_wire_notch(motor_xy_pos, wire_angle) {
     // Keep notch above arm blend so the opening isn't blocked by the arm body.
     notch_z = max(
         motor_mount_floor + motor_wire_notch_h / 2 + 0.2,
@@ -200,7 +268,7 @@ module motor_wire_notch(mx, my, wire_angle) {
     );
     notch_center_r = motor_pod_outer_d / 2 - motor_wire_notch_depth / 2 + 0.2;
 
-    translate([mx, my, notch_z]) {
+    translate_xy(motor_xy_pos, notch_z) {
         rotate([0, 0, wire_angle]) {
             translate([notch_center_r, 0, 0]) {
                 cube([motor_wire_notch_depth, motor_wire_notch_w, motor_wire_notch_h], center = true);
@@ -210,16 +278,9 @@ module motor_wire_notch(mx, my, wire_angle) {
 }
 
 module arm_to_frame_wire_notch(sx, sy) {
-    root_x = sx * (body_length / 2 - arm_root_inset_x);
-    root_y = sy * (body_width / 2 - arm_root_inset_y);
-    motor_x = sx * motor_center_offset;
-    motor_y = sy * motor_center_offset;
-
-    dir_x = root_x - motor_x;
-    dir_y = root_y - motor_y;
-    dir_len = sqrt(dir_x * dir_x + dir_y * dir_y);
-    ux = dir_x / dir_len;
-    uy = dir_y / dir_len;
+    root_xy_pos = arm_root_xy(sx, sy);
+    motor_xy_pos = motor_xy(sx, sy);
+    unit_xy = xy_unit(motor_xy_pos, root_xy_pos);
 
     // Keep this trench high enough to be open at the arm top and into the frame pocket.
     notch_z = max(
@@ -228,14 +289,12 @@ module arm_to_frame_wire_notch(sx, sy) {
     );
 
     start_r = max(0, motor_pod_outer_d / 2 - arm_frame_wire_into_pod);
-    start_x = motor_x + ux * start_r;
-    start_y = motor_y + uy * start_r;
-    frame_x = root_x + ux * arm_frame_wire_inboard_len;
-    frame_y = root_y + uy * arm_frame_wire_inboard_len;
-    notch_len = sqrt((frame_x - start_x) * (frame_x - start_x) + (frame_y - start_y) * (frame_y - start_y));
-    notch_angle = atan2(frame_y - start_y, frame_x - start_x);
+    start_xy = xy_add(motor_xy_pos, xy_scale(unit_xy, start_r));
+    frame_xy = xy_add(root_xy_pos, xy_scale(unit_xy, arm_frame_wire_inboard_len));
+    notch_len = xy_length(xy_sub(frame_xy, start_xy));
+    notch_angle = xy_angle(start_xy, frame_xy);
 
-    translate([(start_x + frame_x) / 2, (start_y + frame_y) / 2, notch_z]) {
+    translate_xy(xy_midpoint(start_xy, frame_xy), notch_z) {
         rotate([0, 0, notch_angle]) {
             cube([notch_len, arm_frame_wire_notch_w, arm_frame_wire_notch_h], center = true);
         }
@@ -244,11 +303,10 @@ module arm_to_frame_wire_notch(sx, sy) {
 
 module side_lightening_cutouts() {
     side_window_z = floor_thickness + (body_height - floor_thickness) / 2 + side_window_z_offset;
-    side_cut_depth = wall_thickness + 1.0;
 
     // Two windows per long side wall
     for (sy = [-1, 1], x = [-long_side_window_x_offset, long_side_window_x_offset]) {
-        translate([x, sy * (body_width / 2 - wall_thickness / 2), side_window_z]) {
+        translate([x, sy * (body_half_width - wall_thickness / 2), side_window_z]) {
             rotate([90, 0, 0]) linear_extrude(height = side_cut_depth, center = true) {
                 rounded_rect_2d(long_side_window_length, side_window_height, side_window_corner_r);
             }
@@ -257,7 +315,7 @@ module side_lightening_cutouts() {
 
     // Two windows per short side wall
     for (sx = [-1, 1], y = [-short_side_window_y_offset, short_side_window_y_offset]) {
-        translate([sx * (body_length / 2 - wall_thickness / 2), y, side_window_z]) {
+        translate([sx * (body_half_length - wall_thickness / 2), y, side_window_z]) {
             rotate([0, 90, 0]) linear_extrude(height = side_cut_depth, center = true) {
                 rounded_rect_2d(short_side_window_length, side_window_height, side_window_corner_r);
             }
@@ -267,9 +325,8 @@ module side_lightening_cutouts() {
 
 module esp32_standoffs() {
     for (sx = [-1, 1], sy = [-1, 1]) {
-        x = sx * esp32_hole_spacing_x / 2;
-        y = sy * esp32_hole_spacing_y / 2;
-        translate([x, y, floor_thickness]) cylinder(h = esp32_standoff_h, d = esp32_standoff_d);
+        hole_xy = esp32_hole_xy(sx, sy);
+        translate_xy(hole_xy, floor_thickness) cylinder(h = esp32_standoff_h, d = esp32_standoff_d);
     }
 }
 
@@ -277,40 +334,23 @@ module frame_cutouts() {
     // Electronics pocket
     translate([0, 0, floor_thickness]) {
         rounded_box(
-            body_length - 2 * wall_thickness,
-            body_width - 2 * wall_thickness,
-            body_height - floor_thickness + 0.2,
-            max(body_corner_radius - wall_thickness, 2)
+            inner_cavity_length,
+            inner_cavity_width,
+            inner_cavity_height + 0.2,
+            inner_cavity_corner_r
         );
     }
 
     // Motor cavities + mount holes + wire notch
     for (sx = [-1, 1], sy = [-1, 1]) {
-        mx = sx * motor_center_offset;
-        my = sy * motor_center_offset;
-        root_x = sx * (body_length / 2 - arm_root_inset_x);
-        root_y = sy * (body_width / 2 - arm_root_inset_y);
-        wire_angle = atan2(root_y - my, root_x - mx);
+        motor_xy_pos = motor_xy(sx, sy);
+        root_xy_pos = arm_root_xy(sx, sy);
+        wire_angle = xy_angle(motor_xy_pos, root_xy_pos);
         // Keep notch centered between two holes per motor drawing 45 deg note.
 
-        translate([mx, my, motor_mount_floor]) {
-            cylinder(h = motor_pod_height - motor_mount_floor + 0.2, d = motor_pod_inner_d);
-        }
+        motor_mount_pattern(motor_xy_pos, wire_angle);
 
-        translate([mx, my, -0.1]) {
-            cylinder(h = motor_mount_floor + 0.4, d = motor_mount_center_relief_d);
-        }
-
-        for (i = [0 : 3]) {
-            hole_angle = wire_angle + 45 + i * 90;
-            hole_x = motor_mount_hole_center_r * cos(hole_angle);
-            hole_y = motor_mount_hole_center_r * sin(hole_angle);
-            translate([mx + hole_x, my + hole_y, -0.1]) {
-                cylinder(h = motor_mount_floor + 0.4, d = motor_mount_hole_d);
-            }
-        }
-
-        motor_wire_notch(mx, my, wire_angle);
+        motor_wire_notch(motor_xy_pos, wire_angle);
 
         if (enable_arm_frame_wire_notches) {
             arm_to_frame_wire_notch(sx, sy);
@@ -319,9 +359,8 @@ module frame_cutouts() {
 
     // Battery strap slots
     for (i = [0 : strap_slot_count - 1]) {
-        x = (i - (strap_slot_count - 1) / 2) * strap_slot_pitch;
-        translate([x, 0, floor_thickness / 2]) {
-            cube([strap_slot_length, strap_slot_width, floor_thickness + 0.4], center = true);
+        translate([strap_slot_x(i), 0, floor_thickness / 2]) {
+            cube([strap_slot_length, strap_slot_width, strap_slot_cut_h], center = true);
         }
     }
 
@@ -356,9 +395,8 @@ module electronics_mockup() {
             difference() {
                 esp32_board_2d();
                 for (sx = [-1, 1], sy = [-1, 1]) {
-                    x = sx * esp32_hole_spacing_x / 2;
-                    y = sy * esp32_hole_spacing_y / 2;
-                    translate([x, y]) circle(d = esp32_hole_d);
+                    hole_xy = esp32_hole_xy(sx, sy);
+                    translate(hole_xy) circle(d = esp32_hole_d);
                 }
             }
         }
@@ -374,30 +412,17 @@ module electronics_mockup() {
         translate([8, 0, board_center_z + 2.4]) cube([18, 16, 4.8], center = true);
 
         // Approximate battery JST area from board coordinates
-        connector_x = battery_connector_y - esp32_board_length / 2;
-        connector_y = battery_connector_x - esp32_board_width / 2;
-        translate([connector_x, connector_y, board_center_z + 2]) cube([9, 6, 3.8], center = true);
+        connector_xy = board_xy_from_kicad(battery_connector_x, battery_connector_y);
+        translate_xy(connector_xy, board_center_z + 2) cube([9, 6, 3.8], center = true);
     }
 
     if (show_esp32_header_pads) {
-        // Left row: X=1.27 from left, 16 pins from Y=11.43..49.53
         color([0.85, 0.68, 0.16, 0.95]) {
-            for (i = [0 : 15]) {
-                pin_kicad_x = 1.27;
-                pin_kicad_y = 11.43 + i * 2.54;
-                pin_x = pin_kicad_y - esp32_board_length / 2;
-                pin_y = pin_kicad_x - esp32_board_width / 2;
-                translate([pin_x, pin_y, board_center_z + 0.9]) cylinder(h = 1.2, d = 1.1);
-            }
+            // Left row: X=1.27 from left, 16 pins from Y=11.43..49.53
+            esp32_pin_row(board_center_z, 1.27, 11.43, 16);
 
             // Right row: X=21.59 from left, 12 pins from Y=21.59..49.53
-            for (i = [0 : 11]) {
-                pin_kicad_x = 21.59;
-                pin_kicad_y = 21.59 + i * 2.54;
-                pin_x = pin_kicad_y - esp32_board_length / 2;
-                pin_y = pin_kicad_x - esp32_board_width / 2;
-                translate([pin_x, pin_y, board_center_z + 0.9]) cylinder(h = 1.2, d = 1.1);
-            }
+            esp32_pin_row(board_center_z, 21.59, 21.59, 12);
         }
     }
 
