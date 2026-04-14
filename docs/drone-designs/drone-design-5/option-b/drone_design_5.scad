@@ -30,7 +30,7 @@ arm_root_inset_y = 7;
 // Motor pod geometry
 motor_can_d = 16.1; // RCINPOWER GTS 1204 rotor/body diameter
 motor_can_l = 10.9; // RCINPOWER GTS 1204 body length above the mount face
-motor_pod_outer_d = 22.0;
+motor_pod_outer_d = 21.0;
 motor_pod_inner_d = 18.0; // +0.45 mm radial clearance per side for print tolerance
 motor_pod_height = 9.0;
 motor_mount_floor = 1.8;
@@ -78,10 +78,14 @@ esp32_standoff_d = 6;
 esp32_standoff_h = 6;
 
 // Strap slots in floor for battery hold-down
-strap_slot_count = 4;
-strap_slot_pitch = 16;
+strap_slot_x_positions = [-24, 24]; // keep only the outer pair to leave ESC room in the center
 strap_slot_length = 5;
 strap_slot_width = 24;
+
+// ESC mounting holes in floor
+esc_mount_spacing = 25.5; // HGLRC Specter 40A AIO install pattern
+esc_mount_hole_d = 2.2; // M2 clearance
+esc_mount_hole_offset = esc_mount_spacing / 2;
 
 // Side-wall lightening windows
 enable_side_lightening = true;
@@ -213,8 +217,6 @@ function xy_midpoint(a, b) = xy_scale(xy_add(a, b), 0.5);
 
 function xy_angle(from_xy, to_xy) = atan2(to_xy[1] - from_xy[1], to_xy[0] - from_xy[0]);
 
-function strap_slot_x(i) = (i - (strap_slot_count - 1) / 2) * strap_slot_pitch;
-
 module translate_xy(xy, z = 0) {
     translate([xy[0], xy[1], z]) children();
 }
@@ -330,6 +332,14 @@ module esp32_standoffs() {
     }
 }
 
+module esc_mount_holes() {
+    for (sx = [-1, 1], sy = [-1, 1]) {
+        translate_xy([sx * esc_mount_hole_offset, sy * esc_mount_hole_offset], -0.1) {
+            cylinder(h = strap_slot_cut_h, d = esc_mount_hole_d);
+        }
+    }
+}
+
 module frame_cutouts() {
     // Electronics pocket
     translate([0, 0, floor_thickness]) {
@@ -358,11 +368,14 @@ module frame_cutouts() {
     }
 
     // Battery strap slots
-    for (i = [0 : strap_slot_count - 1]) {
-        translate([strap_slot_x(i), 0, floor_thickness / 2]) {
+    for (slot_x = strap_slot_x_positions) {
+        translate([slot_x, 0, floor_thickness / 2]) {
             cube([strap_slot_length, strap_slot_width, strap_slot_cut_h], center = true);
         }
     }
+
+    // HGLRC Specter 40A AIO: 25.5 x 25.5 mm M2 mounting pattern
+    esc_mount_holes();
 
     if (enable_side_lightening) {
         side_lightening_cutouts();
