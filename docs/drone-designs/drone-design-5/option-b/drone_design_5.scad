@@ -78,7 +78,7 @@ esp32_standoff_d = 6;
 esp32_standoff_h = 6;
 
 // Strap slots in floor for battery hold-down
-strap_slot_x_positions = [-24, 24]; // keep only the outer pair to leave ESC room in the center
+strap_slot_x_positions = [-30, 30]; // keep only the outer pair to leave ESC room in the center
 strap_slot_length = 5;
 strap_slot_width = 24;
 
@@ -86,6 +86,7 @@ strap_slot_width = 24;
 esc_mount_spacing = 25.5; // HGLRC Specter 40A AIO install pattern
 esc_mount_hole_d = 2.2; // M2 clearance
 esc_mount_hole_offset = esc_mount_spacing / 2;
+esc_mount_rotation = 45; // diamond orientation for more slot clearance
 
 // Side-wall lightening windows
 enable_side_lightening = true;
@@ -333,9 +334,11 @@ module esp32_standoffs() {
 }
 
 module esc_mount_holes() {
-    for (sx = [-1, 1], sy = [-1, 1]) {
-        translate_xy([sx * esc_mount_hole_offset, sy * esc_mount_hole_offset], -0.1) {
-            cylinder(h = strap_slot_cut_h, d = esc_mount_hole_d);
+    rotate([0, 0, esc_mount_rotation]) {
+        for (sx = [-1, 1], sy = [-1, 1]) {
+            translate_xy([sx * esc_mount_hole_offset, sy * esc_mount_hole_offset], -0.1) {
+                cylinder(h = strap_slot_cut_h, d = esc_mount_hole_d);
+            }
         }
     }
 }
