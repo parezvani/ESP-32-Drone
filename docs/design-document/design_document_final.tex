@@ -235,6 +235,178 @@ FireFly can be deployed in multiple locations at the boundary of a detected fire
 \subsection{Design Objectives}
 The objective of this project is to develop a robust aerial monitoring platform capable of reliable operation in remote, high-risk environments. To achieve this, the system requires a long-range communication link and high-speed data transmission to ensure low-latency control and real-time environmental telemetry. Furthermore, the power architecture must be optimized to sustain extended monitoring missions.
 
+\subsection{System Requirements and Acceptance Criteria}
+
+\textit{Template: convert the need statement into measurable engineering requirements. Replace bracketed values with finalized targets and use the status column during verification.}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.12\textwidth}|p{0.26\textwidth}|p{0.18\textwidth}|p{0.20\textwidth}|p{0.10\textwidth}|}
+        \hline
+        \textbf{ID} & \textbf{Requirement} & \textbf{Target} & \textbf{Verification Method} & \textbf{Status} \\
+        \hline
+        REQ-01 & Mission endurance / usable flight time & [fill in] & [simulation, bench, flight] & [ ] \\
+        \hline
+        REQ-02 & Telemetry range (line of sight) & [fill in] & [range test] & [ ] \\
+        \hline
+        REQ-03 & Telemetry latency / update interval & [fill in] & [timing log] & [ ] \\
+        \hline
+        REQ-04 & Sensor readout accuracy / stability & [fill in] & [calibration comparison] & [ ] \\
+        \hline
+        REQ-05 & Alert generation delay from threshold crossing & [fill in] & [injected test event] & [ ] \\
+        \hline
+        REQ-06 & Deployment and setup time & [fill in] & [field procedure timing] & [ ] \\
+        \hline
+        REQ-07 & Maximum takeoff mass / payload margin & [fill in] & [mass measurement] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{System requirements and acceptance criteria template.}
+    \label{tab:requirements_template}
+\end{table}
+
+\subsection{System Architecture Overview}
+
+\textit{Template: summarize the baseline system architecture in one paragraph and keep future-work modules clearly separated from the prototype baseline.}
+
+\subsubsection*{Subsystem Inventory}
+\begin{itemize}
+    \item Airframe / mechanical structure: [frame geometry, material, manufacturing process]
+    \item Propulsion stack: [motors, propellers, ESC, battery, power distribution]
+    \item Flight stabilization stack: [flight controller / control method / current status]
+    \item Environmental sensing stack: [temperature, humidity, smoke, and any optional future sensors]
+    \item Wireless telemetry link: [protocol, frequency band, packet format, update rate]
+    \item Ground station: [receiver hardware, host machine, server/dashboard software]
+\end{itemize}
+
+\subsubsection*{End-to-End Data Path}
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.18\textwidth}|p{0.18\textwidth}|p{0.18\textwidth}|p{0.16\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{Stage} & \textbf{Source} & \textbf{Destination} & \textbf{Format / Protocol} & \textbf{Notes} \\
+        \hline
+        1 & [sensor] & [onboard processor] & [I2C / SPI / ADC] & [sampling rate] \\
+        \hline
+        2 & [onboard processor] & [wireless link] & [packet structure] & [fields included] \\
+        \hline
+        3 & [ground receiver] & [host computer] & [USB serial / UART] & [baud rate / framing] \\
+        \hline
+        4 & [host software] & [dashboard / operator] & [HTTP / file log / UI] & [refresh interval] \\
+        \hline
+    \end{tabular}
+    \caption{System architecture and data-path template.}
+    \label{tab:architecture_template}
+\end{table}
+
+\subsection{Mass Budget}
+
+\textit{Template: list both measured and estimated masses, then compare to the allowable all-up weight and payload margin derived from simulation or testing.}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.28\textwidth}|p{0.12\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{Component} & \textbf{Qty.} & \textbf{Mass Each} & \textbf{Total Mass} & \textbf{Measured / Estimated} \\
+        \hline
+        Frame & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Motors and propellers & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        ESC / power hardware & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Battery & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Flight controller / onboard MCU & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Sensor payload & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Wiring / mounting / overhead & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Total all-up weight & & & [ ] & [compare to thrust model] \\
+        \hline
+    \end{tabular}
+    \caption{Mass budget template.}
+    \label{tab:mass_budget_template}
+\end{table}
+
+\subsection{Sensor and Alert Logic}
+
+\textit{Template: document the exact sensing baseline of the prototype, any optional future sensors, and the logic used to generate alerts at the ground station.}
+
+\subsubsection*{Sensor Baseline}
+\begin{itemize}
+    \item Baseline prototype sensors: [list sensors included in the current build only]
+    \item Deferred / future-work sensors: [camera, GPS, CO2, LiDAR, etc. only if not part of the baseline]
+    \item Sampling rate per sensor: [fill in]
+    \item Expected operating range per sensor: [fill in]
+\end{itemize}
+
+\subsubsection*{Alert Threshold Template}
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.20\textwidth}|p{0.20\textwidth}|p{0.16\textwidth}|p{0.18\textwidth}|p{0.16\textwidth}|}
+        \hline
+        \textbf{Signal} & \textbf{Condition} & \textbf{Threshold} & \textbf{Filtering / Time Window} & \textbf{Alert Output} \\
+        \hline
+        Temperature & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Humidity & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Smoke / particulate / gas & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Combined risk score & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Alert-threshold template.}
+    \label{tab:alert_threshold_template}
+\end{table}
+
+\subsubsection*{Calibration and Environmental Limits}
+\begin{itemize}
+    \item Calibration reference used: [fill in]
+    \item Pre-flight sensor validation procedure: [fill in]
+    \item Known limitations (wind, heat soak, smoke dilution, drift): [fill in]
+    \item False-positive and false-negative mitigation strategy: [fill in]
+\end{itemize}
+
+\subsection{Safety, Reliability, and Operational Constraints}
+
+\textit{Template: keep this section grounded in prototype reality. Record what the system does today on link loss, low battery, bad sensor data, and structural damage.}
+
+\subsubsection*{Risk Register Template}
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.22\textwidth}|p{0.18\textwidth}|p{0.16\textwidth}|p{0.18\textwidth}|p{0.14\textwidth}|}
+        \hline
+        \textbf{Failure / Hazard} & \textbf{Cause} & \textbf{Impact} & \textbf{Mitigation / Failsafe} & \textbf{Residual Risk} \\
+        \hline
+        Link loss & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Low battery / brownout & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Sensor fault / drift & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Propulsion failure & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        Structural damage / crash & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Risk and reliability template.}
+    \label{tab:risk_template}
+\end{table}
+
+\subsubsection*{Operational Constraints}
+\begin{itemize}
+    \item Environmental limits: [wind, ambient temperature, visibility, terrain constraints]
+    \item Regulatory constraints: [airspace rules, operator requirements, test-site limitations]
+    \item Field safety procedures: [arming/disarming, exclusion radius, battery handling, recovery procedure]
+\end{itemize}
+
 \newpage
 
 \subsection{Aesthetic Prototype}
@@ -301,6 +473,32 @@ Maintenance access is provided by the open top cavity, side-wall windows, and po
     \label{fig:state_transition}
 \end{figure}
 
+\subsection{Interface Definitions}
+
+\textit{Template: define the electrical and software interfaces between subsystems so assembly and debugging are reproducible.}
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \begin{tabular}{|p{0.16\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
+        \hline
+        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
+        \hline
+        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
+        \hline
+        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
+        \hline
+        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
+        \hline
+        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
+        \hline
+        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Interface-definition template.}
+    \label{tab:interface_template}
+\end{table}
+
 \subsection{Technology (Languages, Hardware, etc.)}
 
 FireFly uses a two-node wireless architecture connected via a low-latency peer-to-peer radio protocol. The drone carries an onboard microcontroller that reads sensor data from a temperature and humidity sensor and a smoke detector, packages the readings into a structured telemetry packet, and transmits it wirelessly to a ground receiver. The communication link operates on the 2.4GHz band with a range of approximately 400 meters line-of-sight and latency under 10ms, making it well suited for remote wildfire monitoring scenarios where reliable low-latency telemetry is critical.
@@ -328,6 +526,56 @@ As of the initial submission, FireFly's functional prototype is currently under 
 
 \subsection{Testing}
 Initial bench testing has validated point-to-point wireless communication between the drone-side and ground-side microcontrollers, confirmed sensor readout from the temperature/humidity and smoke sensors, and verified JSON telemetry forwarding over USB serial to the Flask dashboard. Full tethered and open-field flight testing with threshold-based alert verification is planned for the prototype phase. Detailed test procedures and results are documented in Appendix 3.
+
+\subsection{Measured Results Summary}
+
+\textit{Template: record only measured or directly observed values in this section. If a number is estimated or simulated, label it explicitly.}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.24\textwidth}|p{0.18\textwidth}|p{0.18\textwidth}|p{0.24\textwidth}|}
+        \hline
+        \textbf{Metric} & \textbf{Measured Value} & \textbf{Units} & \textbf{Test Context / Notes} \\
+        \hline
+        Hover time & [ ] & [ ] & [ ] \\
+        \hline
+        Telemetry range & [ ] & [ ] & [ ] \\
+        \hline
+        Packet latency & [ ] & [ ] & [ ] \\
+        \hline
+        Sensor update period & [ ] & [ ] & [ ] \\
+        \hline
+        Alert trigger delay & [ ] & [ ] & [ ] \\
+        \hline
+        Total all-up weight & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Measured-results summary template.}
+    \label{tab:measured_results_template}
+\end{table}
+
+\subsection{Observed Issues and Next Iteration}
+
+\textit{Template: list concrete issues found during testing, the suspected cause, and the design action planned for the next build.}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.22\textwidth}|p{0.20\textwidth}|p{0.20\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{Issue} & \textbf{Observed During} & \textbf{Probable Cause} & \textbf{Planned Design Change} \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Issue-tracking template for evaluation.}
+    \label{tab:issue_template}
+\end{table}
 
 \newpage
 
@@ -365,7 +613,78 @@ Initial bench testing has validated point-to-point wireless communication betwee
     \label{tab:budget}
 \end{table}
 
+\subsection{Expanded Bill of Materials Template}
+
+\textit{Template: expand the current parts list into a procurement-ready bill of materials with exact part numbers, cost, and integration status.}
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \begin{tabular}{|p{0.20\textwidth}|p{0.16\textwidth}|p{0.10\textwidth}|p{0.10\textwidth}|p{0.10\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
+        \hline
+        \textbf{Part / Part Number} & \textbf{Function} & \textbf{Qty.} & \textbf{Unit Cost} & \textbf{Total} & \textbf{Source / Lead Time} & \textbf{Status} \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] & [ ] & [ ] & [ordered / received / tested] \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Expanded bill-of-materials template.}
+    \label{tab:bom_expanded_template}
+\end{table}
+
+\subsection{Cost Summary Template}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.28\textwidth}|p{0.18\textwidth}|p{0.34\textwidth}|}
+        \hline
+        \textbf{Category} & \textbf{Subtotal} & \textbf{Notes} \\
+        \hline
+        Mechanical / printed parts & [ ] & [ ] \\
+        \hline
+        Propulsion and power & [ ] & [ ] \\
+        \hline
+        Computing and telemetry & [ ] & [ ] \\
+        \hline
+        Sensors and payload & [ ] & [ ] \\
+        \hline
+        Spares / iteration cost & [ ] & [ ] \\
+        \hline
+        Total prototype cost & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Cost-summary template.}
+    \label{tab:cost_summary_template}
+\end{table}
+
+\subsection{Procurement and Assembly Notes}
+\begin{itemize}
+    \item Long-lead items and alternates: [fill in]
+    \item Components reused from lab inventory: [fill in]
+    \item Components still unselected or unverified: [fill in]
+    \item Assembly dependencies that affect schedule: [fill in]
+\end{itemize}
+
 \newpage
+
+% ============================================================
+\section{References}
+% ============================================================
+
+\textit{Template: replace placeholder entries with the sources that support system claims, component choices, simulations, and safety/regulatory statements.}
+
+\begin{enumerate}
+    \item Journal article / paper on wildfire detection approaches: [citation]
+    \item Datasheet for onboard temperature/humidity sensor: [citation]
+    \item Datasheet for smoke / gas sensor used in prototype baseline: [citation]
+    \item Datasheet for motors, propellers, ESC, and battery: [citation]
+    \item Simulation / multicopter calculator source: [citation]
+    \item Safety or regulatory reference used for field testing: [citation]
+\end{enumerate}
 
 % ============================================================
 \section{Appendix 1 - Problem Formulation}
@@ -557,6 +876,93 @@ The test plan consists of three phases:
 
     We will test the drone in an open field to evaluate durability, structural integrity, and real-world sensor performance. Outdoor conditions including wind and heat will allow us to assess how environmental factors affect flight stability and sensor accuracy, providing direct feedback on both the mechanical design and the telemetry pipeline under realistic deployment conditions.
 \end{enumerate}
+
+\subsection{Bench Test Log Template}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.12\textwidth}|p{0.18\textwidth}|p{0.18\textwidth}|p{0.18\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
+        \hline
+        \textbf{Test ID} & \textbf{Objective} & \textbf{Procedure} & \textbf{Expected Result} & \textbf{Observed Result} & \textbf{Pass / Fail} \\
+        \hline
+        B-01 & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        B-02 & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        B-03 & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Bench-test log template.}
+    \label{tab:bench_test_template}
+\end{table}
+
+\subsection{Tethered Flight Log Template}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.12\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{Flight ID} & \textbf{Configuration} & \textbf{Duration} & \textbf{Stability Notes} & \textbf{Telemetry Notes} & \textbf{Issues / Corrective Action} \\
+        \hline
+        T-01 & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        T-02 & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        T-03 & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Tethered-flight test log template.}
+    \label{tab:tethered_flight_template}
+\end{table}
+
+\subsection{Open Field Flight Log Template}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.10\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.14\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{Flight ID} & \textbf{Wind / Weather} & \textbf{Payload} & \textbf{Flight Time} & \textbf{Range} & \textbf{Alert Behavior} & \textbf{Observations} \\
+        \hline
+        F-01 & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        F-02 & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        F-03 & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Open-field flight test log template.}
+    \label{tab:open_field_template}
+\end{table}
+
+\subsection{Sensor Calibration Log Template}
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.16\textwidth}|p{0.16\textwidth}|p{0.16\textwidth}|p{0.16\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{Sensor} & \textbf{Reference Instrument} & \textbf{Reference Value} & \textbf{Measured Value} & \textbf{Offset / Correction} \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+        [ ] & [ ] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Sensor-calibration template.}
+    \label{tab:calibration_template}
+\end{table}
+
+\subsection{Post-Test Design Changes}
+\begin{itemize}
+    \item Change 1: [test finding -> design response]
+    \item Change 2: [test finding -> design response]
+    \item Change 3: [test finding -> design response]
+\end{itemize}
 
 \newpage
 
