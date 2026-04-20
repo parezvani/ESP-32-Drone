@@ -18,6 +18,17 @@ COLOR_MAP = {
 # --- Config ---
 ALERT_THRESHOLD_SECONDS = 3  # how long Fire must be present before logging
 
+# --- Camera / GSD Config ---
+# GSD = Ground Sampling Distance (meters per pixel)
+# Formula: GSD = (altitude_m * sensor_width_mm) / (focal_length_mm * image_width_px)
+# Defaults assume: 50m altitude, DJI Mavic-class camera (4.5mm focal, 6.3mm sensor, 1920px wide)
+# Update ALTITUDE_M and FOCAL_LENGTH_MM when real drone specs are known
+ALTITUDE_M       = 50.0   # meters above ground — typical drone survey altitude
+SENSOR_WIDTH_MM  = 6.3    # mm — common 1/2.3" sensor width
+FOCAL_LENGTH_MM  = 4.5    # mm — typical wide drone lens
+IMAGE_WIDTH_PX   = 1920   # px — camera resolution width
+GSD = (ALTITUDE_M * SENSOR_WIDTH_MM) / (FOCAL_LENGTH_MM * IMAGE_WIDTH_PX)  # m/px
+
 def main():
     model = YOLO(MODEL_PATH)
     print("Model names (from weights):", model.names)
@@ -50,9 +61,22 @@ def main():
             if label == "Fire":
                 fire_detected_this_frame = True
 
+            w = int(x2 - x1)
+            h = int(y2 - y1)
+            real_w = w * GSD
+            real_h = h * GSD
+            real_area = real_w * real_h
+            real_perimeter = 2 * (real_w + real_h)
+
             cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), color, 2)
             cv2.putText(frame, label, (int(x1), int(y1) - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+            cv2.putText(frame, f"Size: {real_w:.1f}m x {real_h:.1f}m  Area: {real_area:.1f}m2",
+                        (int(x1), int(y2) + 18),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 1)
+            cv2.putText(frame, f"Perimeter: {real_perimeter:.1f}m",
+                        (int(x1), int(y2) + 36),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 1)
 
         # --- Fire duration tracking ---
         if fire_detected_this_frame:
