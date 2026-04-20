@@ -73,16 +73,23 @@ fire risk thresholds are crossed.
 
 \vspace{0.5em}
 
-The design centers on a 3D-printed X-frame carrying a dedicated onboard microcontroller, temperature and humidity sensor, and smoke detector. A flight controller manages propulsion and stabilization while the onboard microcontroller handles sensor acquisition and wireless transmission to a ground receiver. A 3S LiPo battery powers both propulsion and electronics for the duration of a monitoring mission.
+The system is designed to support real-time wildfire monitoring and situational awareness for emergency response teams through an aerial sensing network. It combines real time imaging with analysis to detect fire and smoke signatures, localize ignition points, and generate geospatial maps of affected regions. The system continuously tracks fire perimeter evolution to estimate spread direction, growth rate, and emerging risk zones.
 
 \vspace{0.5em}
 
-Validation consists of bench testing individual modules (power, propulsion,
-sensors, and communications) followed by tethered and open-field flight
-testing for stable hover, data link verification, and threshold-based smoke
-and temperature detection. The goal is to demonstrate that FireFly can serve
-as a practical proof-of-concept for infrastructure-independent wildfire
-monitoring.
+Upon detection of a potential fire event, FireFly performs multi-drone data fusion to improve localization accuracy and robustness. Each drone contributes synchronized environmental and visual sensor data, including temperature, humidity, CO2 concentration, optical density, and UV/IR-based flame signatures. Data is synchronized across the network to support consistent spatial reconstruction and triangulation of fire sources.
+
+\vspace{0.5em}
+
+The system is designed with redundancy and resilience in mind, allowing continued operation under partial network loss or individual drone failure. Environmental measurements and visual observations are distributed across multiple agents to ensure coverage persistence even under degraded conditions.
+
+\vspace{0.5em}
+
+Multiple drones operate together in a coordinated formation, enabling adaptive area coverage, improved triangulation accuracy, and high resolution mapping of fire boundaries. Drone positioning is continuously adjusted based on detected fire intensity and spread patterns to optimize sensing in high-risk regions. Processed telemetry and summarized fire intelligence are transmitted to ground infrastructure for operational decision support, while raw or high-bandwidth data streams are selectively prioritized based on link availability.
+
+\vspace{0.5em}
+
+Validation is conducted through a staged testing process beginning with bench-level verification of core subsystems, including power delivery, propulsion, sensing, and communications. This is followed by controlled flight tests to evaluate flight stability, data link reliability, and real-time environmental sensing performance under operational conditions. Final open-field testing assesses behavior in realistic environments, including detection of smoke and temperature thresholds as well as consistency of data transmission. The objective is to validate FireFly as a functional proof-of-concept for autonomous, infrastructure-independent wildfire monitoring and data collection.
 
 \clearpage
 
@@ -94,15 +101,19 @@ This document contains all the information needed to design and use the FireFly 
 
 \vspace{1em}
 
-Why is collecting data during a pre-fire window important? A pre-fire window, the period before an incident occurs, is critical because it provides time-sensitive information that improves responder safety, reduces property damage, and enables faster, more effective emergency response. Data on vegetation conditions, topography, temperature, humidity, and smoke concentration helps predict fire behavior, identify high-risk areas, and support mitigation actions such as controlled burns or targeted thinning operations. Without this information, emergency crews arrive with incomplete situational awareness and must gather critical details in real time under dangerous conditions.
+The FireFly system is designed to support early ignition detection and real time wildfire intelligence for first responders and ecological researchers. The platform operates as a multi-drone autonomous sensing network that can be deployed to a geospatial region of interest using approximate coordinates. Once deployed, each drone uses live visual input combined with onboard inference to navigate toward active fire zones for closer inspection and continuous monitoring.
 
 \vspace{1em}
 
-For wildfire response specifically, the challenge is compounded by geography. High-risk areas are frequently roadless wilderness where permanent sensor infrastructure cannot be installed or maintained. Satellite imagery and aerial patrols provide coverage, but both suffer from response delays and gaps during the highest-risk windows. The result is a critical blind spot: the pre-fire period in remote terrain is precisely where early awareness matters most, yet it is the hardest environment in which to collect data.
+A key limitation in existing wildfire monitoring systems is the lack of persistent, high resolution observation during the earliest stages of ignition, particularly in remote or infrastructure limited environments. Satellite based systems provide broad coverage but suffer from temporal latency, while ground based sensors are sparse and often unavailable in high risk wilderness regions. As a result, early fire growth and boundary formation often occur without sufficient real time spatial data.
 
 \vspace{1em}
 
-FireFly addresses this gap directly. By deploying a sensor-equipped quadcopter into areas with zero existing infrastructure, FireFly enables real-time collection of temperature, humidity, and smoke data during the pre-fire window, transmitting live readings to a ground station and triggering alerts when fire risk thresholds are crossed. The platform is designed for rapid deployment by field crews without requiring extensive training or specialized support, transforming what would otherwise be a period of uncertainty into a structured, data-driven response.
+FireFly addresses this gap by enabling continuous aerial tracking of early stage fire events. In its operational configuration, a fleet of three drones collaborates to localize fire sources through multi-point observation and triangulation. Each drone contributes synchronized visual data and localized environmental measurements, including temperature, humidity, CO2 concentration, and smoke density estimation. An onboard microcontroller based subsystem is responsible for environmental sensing and communication, relaying telemetry data to a ground station for aggregation and analysis.
+
+\vspace{1em}
+
+The system prioritizes adaptive fire boundary mapping as its core functional output. As the fire evolves, FireFly continuously updates perimeter estimates and directional spread models, enabling the identification of high risk zones, propagation direction, and relative intensity changes over time. This persistent mapping capability provides responders with continuously updated situational awareness rather than static snapshots, supporting more informed decision making during rapidly changing fire conditions.
 
 \subsection{Need Statement}
 Remote and high fire-risk areas lack the sensor infrastructure necessary to monitor environmental conditions during the critical pre-fire window, leaving fire response teams without the real-time data needed to act early.
