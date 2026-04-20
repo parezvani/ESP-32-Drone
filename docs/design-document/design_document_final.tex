@@ -210,30 +210,30 @@ Sustainability includes the protection of human capital. FireFly enhances the sa
 \textbf{Ethics Statement:}
 As engineers, we recognize that our work has a direct impact on public safety and the environment. We are committed to upholding the highest standards of honesty, transparency, and responsibility throughout the design and development of FireFly. Our system is intended solely to support fire prevention and responder safety. We will not misrepresent the capabilities of the prototype, will clearly communicate the limitations of sensor accuracy and flight duration, and will ensure that any data collected during testing is handled responsibly. We adhere to the NSPE Code of Ethics, holding paramount the safety, health, and welfare of the public in all design decisions.
 
-\subsection{Operational Scenarios for Wildfire Detection}
-FireFly is designed to perform in three main scenarios to assist first responders quickly and ecological researchers in maintaining and preventing active wildfire threats.
+\subsection{Operational Scenarios for Wildfire Monitoring}
+FireFly is designed to perform in three main scenarios to assist first responders quickly and ecological researchers in monitoring and analyzing active wildfire threats.
 
 \vspace{1em}
 
 \textbf{Active Fire Detection:}
-FireFly will serve as a primary detection node in blind spot regions. These regions are areas where satellites and tower coverage is blocked due to topography. By monitoring for rapid spikes in CO2 and temperature readings onboard the platform, we can confirm with visuals from the camera. FireFly can verify an ignition before it spreads to a reasonable level.
+FireFly will serve as a primary monitoring node in blind spot regions. These regions are areas where satellites and tower coverage is blocked due to topography. By monitoring real time feed from the camera, FireFly uses image recognition models to detect fire and smoke at a high accuracy. FireFly can verify ignition and smoke for early detection.
 
 \vspace{1em}
 
 \textbf{Fire Propagation and Heading Analysis:}
-By utilizing real time data, FireFly can track the movement of a fire. By comparing sensor data such as increasing temperature gradients and changing smoke concentrations alongside the GPS, the system can determine the direction and speed at which a fire is heading.
+By utilizing real time calibrated camera data, FireFly can track the movement of a fire. By comparing sensor data such as increasing temperature gradients and changing smoke concentrations alongside the GPS, the system can determine the direction and speed at which a fire is heading as well as changes in intensity.
 
 \vspace{1em}
 
 \textbf{Perimeter Mapping and Size Assessment:}
-FireFly can be deployed in multiple locations at the boundary of a detected fire. By logging the points where the sensors pick up a change compared to clear air, the ground station can plot a geofenced perimeter. This can provide responders with an accurate estimate of total area affected in the terrain.
+FireFly can be deployed in multiple locations at the boundary of a detected fire. By triangulating the area of the fire, the ground station can plot a geofenced perimeter. This provides responders with an accurate estimate of total area affected in the terrain.
 
 % ============================================================
 \section{Design}
 % ============================================================
 
 \subsection{Design Objectives}
-The objective of this project is to develop a robust aerial monitoring platform capable of reliable operation in remote, high-risk environments. To achieve this, the system requires a long-range communication link and high-speed data transmission to ensure low-latency control and real-time environmental telemetry. Furthermore, the power architecture must be optimized to sustain extended monitoring missions.
+The objective of this project is to develop a robust aerial monitoring platform capable of reliable operation in remote environments with a high fire risk. To achieve this, the system requires a long-range communication link and high-speed data transmission to ensure low-latency control and real-time environmental telemetry. Furthermore, the power architecture must be optimized to sustain extended monitoring missions. The system will be able to detect fire location, intensity, and direction of travel, allowing responders to properly handle and mitigate damages.
 
 \subsection{System Requirements and Acceptance Criteria}
 
@@ -276,7 +276,7 @@ The objective of this project is to develop a robust aerial monitoring platform 
     \item Flight stabilization stack: [flight controller / control method / current status]
     \item Environmental sensing stack: [temperature, humidity, smoke, and any optional future sensors]
     \item Wireless telemetry link: [protocol, frequency band, packet format, update rate]
-    \item Ground station: [receiver hardware, host machine, server/dashboard software]
+    \item Ground station: [receiver hardware, host machine, server/dashboard software, fire image recognition]
 \end{itemize}
 
 \subsubsection*{End-to-End Data Path}
