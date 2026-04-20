@@ -512,11 +512,11 @@ Maintenance access is provided by the open top cavity, side-wall windows, and po
 
 \subsection{Technology (Languages, Hardware, etc.)}
 
-FireFly uses a two-node wireless architecture connected via a low-latency peer-to-peer radio protocol. The drone carries an onboard microcontroller that reads sensor data from a temperature and humidity sensor and a smoke detector, packages the readings into a structured telemetry packet, and transmits it wirelessly to a ground receiver. The communication link operates on the 2.4GHz band with a range of approximately 400 meters line-of-sight and latency under 10ms, making it well suited for remote wildfire monitoring scenarios where reliable low-latency telemetry is critical.
+The FireFly system utilizes a custom-integrated hardware architecture designed for high-reliability telemetry in extreme environments. Rather than utilizing external third-party modules, the drone features a custom-designed Flight Control and Sensing PCB. This board integrates a high-performance 32-bit microcontroller with a dedicated RF front-end optimized for the 2.4GHz spectrum. The onboard sensor suite is deeply integrated into the hardware logic, utilizing an I2C-based sensor bus to interface custom environmental monitoring circuits—specifically high-precision thermistor arrays and particulate matter sensors—directly with the primary processing unit.
 
 \vspace{0.5em}
 
-The ground station consists of a second microcontroller that acts as a dedicated receiver, unpacks the incoming telemetry data, and forwards it as a JSON stream over USB serial to a host machine. The host machine runs a Python Flask server that reads the serial stream and exposes a local HTTP endpoint, which a browser-based dashboard polls at one-second intervals to display live sensor readings. Firmware on both microcontrollers is written in C, with the ground station dashboard implemented in Python and JavaScript.
+The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
 
 \subsection{Simulations}
 
