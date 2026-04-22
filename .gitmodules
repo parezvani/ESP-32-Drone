@@ -1,0 +1,3 @@
+[submodule "litewing/LiteWing"]
+	path = litewing/LiteWing
+	url = https://github.com/Circuit-Digest/LiteWing.git
