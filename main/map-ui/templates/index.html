@@ -17,7 +17,24 @@
     <div class="row"><span>Fires</span><span id="fire-count">0</span></div>
     <div class="row"><span>Last update</span><span id="last-update">—</span></div>
     <label class="row follow"><input type="checkbox" id="follow" checked /> Follow drone</label>
+    <button id="cam-toggle" class="hud-btn" type="button">Open camera</button>
   </div>
+
+  <div id="cam-panel" class="hidden">
+    <div class="cam-header">
+      <span>Drone camera</span>
+      <button id="cam-close" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="cam-body">
+      <img id="cam-stream" alt="" />
+      <div id="cam-placeholder">
+        <div class="ph-title">No video feed</div>
+        <div class="ph-sub">TBD for cam.</div>
+      </div>
+    </div>
+    <div class="cam-foot" id="cam-url">—</div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>

@@ -95,10 +95,39 @@ async function poll() {
 
     $("fire-count").textContent = s.fires.length;
     $("last-update").textContent = fmtTime(s.server_ts);
+
+    updateCamera(s.camera_url);
   } catch (e) {
     console.error("poll failed", e);
   }
 }
+
+let currentCamUrl = null;
+function updateCamera(url) {
+  if (url === currentCamUrl) return;
+  currentCamUrl = url;
+  const img = $("cam-stream");
+  const ph = $("cam-placeholder");
+  const foot = $("cam-url");
+  if (url) {
+    img.src = url;
+    img.classList.add("live");
+    ph.classList.add("hidden");
+    foot.textContent = url;
+  } else {
+    img.removeAttribute("src");
+    img.classList.remove("live");
+    ph.classList.remove("hidden");
+    foot.textContent = "no stream URL configured — POST one to /api/camera";
+  }
+}
+
+$("cam-toggle").addEventListener("click", () => {
+  $("cam-panel").classList.toggle("hidden");
+});
+$("cam-close").addEventListener("click", () => {
+  $("cam-panel").classList.add("hidden");
+});
 
 setInterval(poll, POLL_MS);
 poll();

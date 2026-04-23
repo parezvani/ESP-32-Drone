@@ -1,0 +1,15 @@
+menu "FireFly GPS Broadcaster"
+
+    config GPS_WIFI_SSID
+        string "WiFi SSID"
+        default "myssid"
+
+    config GPS_WIFI_PASSWORD
+        string "WiFi Password"
+        default "mypassword"
+
+    config GPS_UDP_PORT
+        int "UDP broadcast port"
+        default 4210
+
+endmenu

@@ -60,3 +60,97 @@ html, body, #map {
   border: 2px solid #ffeb3b;
   box-shadow: 0 0 10px #ff4a1c;
 }
+
+.hud-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: 6px 10px;
+  background: #ff7a3a;
+  color: #111;
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hud-btn:hover { background: #ff8f5a; }
+
+#cam-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 600;
+  width: 480px;
+  max-width: 90vw;
+  background: rgba(18, 18, 20, 0.95);
+  color: #f5f5f5;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  font-size: 13px;
+}
+#cam-panel.hidden { display: none; }
+
+.cam-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #1d1d20;
+  border-bottom: 1px solid #2a2a2e;
+  font-weight: 600;
+}
+.cam-header button {
+  background: transparent;
+  color: #f5f5f5;
+  border: 0;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.cam-header button:hover { color: #ff7a3a; }
+
+.cam-body {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cam-body img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: none;
+}
+.cam-body img.live { display: block; }
+
+#cam-placeholder {
+  text-align: center;
+  padding: 0 16px;
+  color: #888;
+}
+#cam-placeholder.hidden { display: none; }
+.ph-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+.ph-sub {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.cam-foot {
+  padding: 6px 12px;
+  background: #1d1d20;
+  border-top: 1px solid #2a2a2e;
+  font-size: 11px;
+  color: #888;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  word-break: break-all;
+}
