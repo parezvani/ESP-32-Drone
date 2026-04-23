@@ -526,6 +526,19 @@ Before building and flying, we used simulation tools to verify that the FireFly 
 
 A simplified quadcopter dynamics model was used to tune attitude and altitude control parameters, verifying that the platform can hold a stable position over a monitoring area, a prerequisite for consistent sensor sampling. Research on quadcopter modeling confirms that such simulations can predict controller behavior and reduce the number of risky test flights needed to achieve stable flight. Together, these simulations provide evidence that FireFly can meet its need statement requirements: reaching areas with zero sensor infrastructure and sustaining flight long enough to collect and transmit temperature, humidity, and smoke data before committing to full implementation and field testing.
 
+
+\subsection{Navigation and Perimeter Mapping}
+
+FireFly utilizes an autonomous patrol and respond logic designed to maximize coverage. This ensures data can be captured upon fire detection. During the initial search phase, the drone performs a preset pattern, typically a circular orbit or in parallel lines like a lawnmower at a constant altitude. This phase provides steady environmental monitoring, where the onboard systems are continuously sampling data from temperature, humidity, and CO2 levels. The camera provides a live visual feed for detection and data training. By sweeping the area under a stabilized flight path, the system provides a baseline for specific geographical areas. This allows the onboard processor to differentiate between normal atmospheric variations and detected sharp spikes associated with wildfires.
+
+\vspace{0.5em}
+
+When the drone detects a fire triggered by a threshold in CO2 concentration, a rise in thermal readings, or automated visual confirmation from an onboard model, the drone shifts to a search state and begins tracking. The integrated camera utilizes the pretrained detection framework to identify smoke and flame signatures in real time providing an automated verification layer. The system immediately records telemetry data and sends a packet containing the drone's precise GPS coordinates (latitude, longitude, and altitude), direction, specific sensor values, and a visual confidence score. This data is transmitted to the ground station, where it is recorded. By utilizing the camera, operators at the base station can confirm the fire's existence, cut down on false positives, and assess the intensity before the drone begins the mapping sequence. 
+
+\vspace{0.5em}
+
+
+
 \newpage
 
 % ============================================================
