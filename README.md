@@ -1,26 +1,24 @@
-# ESP-32-Drone (FireFLY)
-
-FireFLY is a student-built drone platform centered on the `ESP32-C3-DevKit-RUST-1` for fire risk monitoring in areas without existing sensor coverage.
-
-## Need
-Remote and high fire-risk areas lack the sensor infrastructure necessary to monitor environmental conditions during the critical pre-fire window, leaving fire response teams without the real-time data needed to act early.
-
-## Goal
-Provide fire response teams with real-time temperature, humidity, and smoke readings from high-risk, infrastructure-free terrain by deploying a rapidly mobilized monitoring system that transmits real-time data to a ground station and alerts operators when fire risk thresholds are crossed.
+# ESP-32-Drone / FireFly
+FireFly is a student-built drone and ground-station project for fire-risk monitoring in areas without existing sensor coverage. The repository currently contains ESP-IDF firmware prototypes, a simple telemetry server, a Flask/Leaflet map UI, fire-detection experiments, hardware documentation, and a LiteWing reference submodule.
 
 ## Repository Layout
-- `main/`: source code, firmware experiments, and hardware tests.
-  - `scripts/`: ESP-NOW communication and control prototypes.
-  - `base-server/fire-server/`: Rust ground-station server/client for telemetry.
-  - `testing/motor/`: motor test firmware and hardware validation code.
-  - `lab4_1/`: earlier lab firmware kept for reference.
-  - `scrapped/`: older discarded experiments and scratch files.
-- `docs/`: project documentation and design artifacts.
-  - `drone-designs/`: CAD models, frame iterations, and dimensions.
-  - `circuit-design/`: wiring diagrams, schematics, and circuit photos.
-  - `bill-of-materials/`: BoM revisions and pricing snapshots.
-  - `design-document/`: LaTeX source and exported design document PDFs.
-  - `status-reports/`: progress reports and planning artifacts.
-  - `meeting-notes/`: team notes, decisions, and action items.
-  - `research-notes/`: reference material gathered during development.
-- `esp/esp-idf/`: local checkout of the ESP-IDF framework used by the embedded work.
+- `main/scripts/`: ESP-NOW control prototypes and the shared `ESPNowEasy` helper.
+- `main/base-server/fire-server/`: Rust TCP server and test client for the FireFly telemetry payload.
+- `main/base-server/espnow_drone_sender/`: ESP-IDF drone-side telemetry sender.
+- `main/base-server/espnow_drone_base_server/`: ESP-IDF base-station ESP-NOW receiver.
+- `main/map-ui/`: Flask/Leaflet map UI plus a drone/fire simulator.
+- `main/fire_detect/`: camera/video fire-detection prototypes.
+- `main/read_pos_data/`: ESP-IDF GPS reader that broadcasts position JSON over UDP.
+- `main/testing/`: hardware test firmware, including motor/PWM testing.
+- `main/lab4_1/` and `main/scrapped/`: older lab/reference code and discarded experiments.
+- `docs/`: design documents, CAD/frame work, schematics, bills of materials, status reports, research notes, and meeting notes.
+- `esp/esp-idf/`: local ESP-IDF checkout, when present in the working tree.
+- `litewing/LiteWing/`: LiteWing firmware/hardware reference project submodule.
+
+## Documentation
+- `docs/design-document/`: design-document source and exported PDFs.
+- `docs/drone-designs/`: frame dimensions, CAD, STL, G-code, and design images.
+- `docs/circuit-design/`: schematics, wiring diagrams, and circuit images.
+- `docs/bill-of-materials/`: bill-of-materials revisions.
+- `docs/status-reports/`: weekly reports and project planning artifacts.
+- `docs/research-notes/project_review_findings.md`: source review notes and known integration risks.
