@@ -17,3 +17,6 @@ Thumbs.db
 # Python bytecode
 __pycache__/
 *.py[cod]
+
+# Claude Code local config
+.claude/

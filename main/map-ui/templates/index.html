@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FireFly Ground Station</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div id="map"></div>
+  <div id="hud">
+    <div class="title">FireFly</div>
+    <div class="row"><span>Drone</span><span id="drone-coords">—</span></div>
+    <div class="row"><span>Altitude</span><span id="drone-alt">—</span></div>
+    <div class="row"><span>Heading</span><span id="drone-hdg">—</span></div>
+    <div class="row"><span>Fires</span><span id="fire-count">0</span></div>
+    <div class="row"><span>Last update</span><span id="last-update">—</span></div>
+    <label class="row follow"><input type="checkbox" id="follow" checked /> Follow drone</label>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
