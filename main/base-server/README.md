@@ -36,3 +36,31 @@ FIRE /telemetry DRONE/1.0\nFire-Detected: yes; Fire-Distance: 120; Fire-Range: 4
 
 
 
+LITEWING ESPNOW TELEMETRY/COMMAND TEST:
+------------------------------------------------------------------------------------------------------------------------------------------
+The LiteWing firmware now broadcasts compact JSON telemetry over native ESP-NOW on the configured Wi-Fi channel, default channel 6.
+It also receives compact LiteWing command packets and legacy 7-byte "now" joystick packets. Command packets are converted into the
+existing CRTP RPYT commander path.
+
+Base-station test app:
+- `main/base-server/espnow_drone_base_server/` receives telemetry and prints it over USB serial.
+- The same app broadcasts a safe command stream every 250 ms: disarm + zero thrust.
+- This bridge is for communication testing, not flight, because it intentionally keeps the drone disarmed.
+- Keep `ESPNOW_CHANNEL` in `fire_bridge.c` matched to LiteWing `CONFIG_WIFI_CHANNEL`.
+
+Build/flash LiteWing drone firmware:
+- `. ./esp/esp-idf/export.sh`
+- `cd litewing/LiteWing`
+- `idf.py set-target esp32s3`
+- `idf.py build flash monitor`
+
+Build/flash the base-station ESP32-C3:
+- `. ./esp/esp-idf/export.sh`
+- `cd main/base-server/espnow_drone_base_server`
+- `idf.py set-target esp32c3`
+- `idf.py build flash monitor`
+
+Expected result:
+- The base station logs JSON lines beginning with `{"type":"telemetry",...}`.
+- The LiteWing monitor logs ESP-NOW initialization on the same channel.
+- The base station periodically logs `Safe command stream active: disarm + zero thrust` after telemetry is seen.

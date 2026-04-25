@@ -5,7 +5,7 @@ FireFly is a student-built drone and ground-station project for fire-risk monito
 - `main/scripts/`: ESP-NOW control prototypes and the shared `ESPNowEasy` helper.
 - `main/base-server/fire-server/`: Rust TCP server and test client for the FireFly telemetry payload.
 - `main/base-server/espnow_drone_sender/`: ESP-IDF drone-side telemetry sender.
-- `main/base-server/espnow_drone_base_server/`: ESP-IDF base-station ESP-NOW receiver.
+- `main/base-server/espnow_drone_base_server/`: ESP-IDF base-station ESP-NOW receiver and LiteWing command test bridge.
 - `main/map-ui/`: Flask/Leaflet map UI plus a drone/fire simulator.
 - `main/fire_detect/`: camera/video fire-detection prototypes.
 - `main/read_pos_data/`: ESP-IDF GPS reader that broadcasts position JSON over UDP.
