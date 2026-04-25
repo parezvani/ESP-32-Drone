@@ -99,6 +99,8 @@ static double nmea_to_deg(const char *nmea, const char *hemi)
     return deg;
 }
 
+static uint32_t seq_num = 0; // Add this tracking variable
+
 static void broadcast_fix(double lat, double lon, double alt,
                           int sats, double hdop)
 {
@@ -109,10 +111,13 @@ static void broadcast_fix(double lat, double lon, double alt,
     gettimeofday(&tv, NULL);
     long long ms = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
 
+    seq_num++; // Increment the sequence number for every packet
+
     char json[192];
+    // Add the "seq" field to the JSON string
     int len = snprintf(json, sizeof(json),
-        "{\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
-        lat, lon, alt, sats, hdop, ms);
+        "{\"seq\":%lu,\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
+        seq_num, lat, lon, alt, sats, hdop, ms);
 
     int sent = sendto(s_udp_sock, json, len, 0,
                       (struct sockaddr *)&s_bcast_addr, sizeof(s_bcast_addr));
