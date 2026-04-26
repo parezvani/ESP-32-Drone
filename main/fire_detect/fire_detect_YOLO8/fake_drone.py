@@ -7,9 +7,9 @@ import math
 import time
 import requests
 
-SERVER = "http://localhost:5000"
-CENTER_LAT = 36.95253
-CENTER_LON = -122.04498
+SERVER = "http://127.0.0.1:5000"
+CENTER_LAT = 36.9914
+CENTER_LON = -122.0609
 RADIUS_M = 80.0
 ALT_M = 100.0
 PERIOD_S = 60.0
