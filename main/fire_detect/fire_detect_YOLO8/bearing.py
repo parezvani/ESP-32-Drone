@@ -1,6 +1,6 @@
 import math
 
-EARTH_R = 6378137.0
+EARTH_R = 6378137.0 # Earth's radius in meters (WGS84) needs to convert distance in meters back into degrees of latitude and longitude
 
 
 def fire_position(drone_state, bbox, frame_size, camera):
