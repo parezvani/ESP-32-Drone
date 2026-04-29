@@ -7,7 +7,7 @@ from bearing import fire_position
 
 MODEL_PATH = "Trained-Models/last.pt"
 VIDEO_PATH = os.environ.get("FIREFLY_VIDEO", "test_videos/palisades_fire.mp4")
-MAP_SERVER = os.environ.get("FIREFLY_SERVER", "http://127.0.0.1:5000")
+MAP_SERVER = os.environ.get("FIREFLY_SERVER", "http://127.0.0.1:5050")
 CAMERA = {"hfov_deg": 60.0, "vfov_deg": 40.0, "tilt_deg": 90.0}
 
 #cam - spped cont - vtx - pc reciever - python

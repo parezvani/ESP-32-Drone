@@ -13,7 +13,7 @@ def parse_center(s: str) -> tuple[float, float]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Simulate a drone flying a circle and occasionally detecting fires.")
-    ap.add_argument("--server", default="http://localhost:5000")
+    ap.add_argument("--server", default="http://127.0.0.1:5050")
     ap.add_argument("--center", type=parse_center, default=(43.2609, -79.9192),
                     help="lat,lon of the orbit center (default: McMaster-ish)")
     ap.add_argument("--radius-m", type=float, default=120.0)

@@ -5,47 +5,246 @@ html, body, #map {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-#hud {
+#panel {
   position: absolute;
   top: 12px;
   left: 12px;
   z-index: 500;
-  background: rgba(18, 18, 20, 0.85);
+  width: 320px;
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(18, 18, 20, 0.92);
   color: #f5f5f5;
-  padding: 12px 14px;
-  border-radius: 8px;
-  min-width: 230px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
   font-size: 13px;
+  overflow: hidden;
 }
 
-#hud .title {
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #2a2a2e;
+}
+.panel-head .brand {
   font-size: 15px;
-  font-weight: 600;
-  margin-bottom: 8px;
+  font-weight: 700;
   letter-spacing: 0.5px;
   color: #ff7a3a;
 }
+.panel-head .server-time {
+  font-size: 11px;
+  color: #777;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
 
-#hud .row {
+.alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  font-size: 13px;
+  border-bottom: 1px solid #2a2a2e;
+}
+.alert .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.alert.idle {
+  background: #1d1d20;
+  color: #888;
+}
+.alert.idle .dot {
+  background: #444;
+}
+.alert.active {
+  background: rgba(255, 74, 28, 0.15);
+  color: #ff7a3a;
+}
+.alert.active .dot {
+  background: #ff4a1c;
+  box-shadow: 0 0 0 0 rgba(255, 74, 28, 0.7);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0    rgba(255, 74, 28, 0.7); }
+  70%  { box-shadow: 0 0 0 10px rgba(255, 74, 28, 0);   }
+  100% { box-shadow: 0 0 0 0    rgba(255, 74, 28, 0);   }
+}
+
+.panel-section {
+  padding: 10px 14px;
+  border-bottom: 1px solid #2a2a2e;
+  overflow-y: auto;
+}
+.panel-section:last-child {
+  border-bottom: 0;
+}
+
+.section-head {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  padding: 2px 0;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-bottom: 8px;
+}
+.section-head .counter {
+  background: #2a2a2e;
+  color: #ccc;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 10px;
 }
 
-#hud .row span:first-child {
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.list .empty {
+  color: #666;
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.drone-card {
+  background: #1d1d20;
+  border: 1px solid #2a2a2e;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.drone-card.stale { opacity: 0.5; }
+.drone-card.fire {
+  border-color: #ff4a1c;
+  background: rgba(255, 74, 28, 0.08);
+}
+.drone-card .drone-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.drone-card .drone-id .badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #2a2a2e;
+  color: #888;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.drone-card .drone-id .badge.fire {
+  background: #ff4a1c;
+  color: #fff;
+}
+.drone-card .drone-id .badge.live {
+  background: #2d6a3e;
+  color: #b6e2c4;
+}
+.drone-card .stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
   color: #aaa;
 }
+.drone-card .stats .label {
+  color: #666;
+}
 
-#hud .follow {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #333;
-  justify-content: flex-start;
+.fire-card {
+  background: #1d1d20;
+  border: 1px solid #2a2a2e;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.fire-card.stale { opacity: 0.55; }
+.fire-card .fire-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.fire-card .fire-id {
+  font-weight: 600;
+}
+.fire-card .badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.fire-card .badge.active {
+  background: #ff4a1c;
+  color: #fff;
+}
+.fire-card .badge.stale {
+  background: #2a2a2e;
+  color: #888;
+}
+.fire-card .fire-meta {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #aaa;
+  display: flex;
+  justify-content: space-between;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.control-row {
+  display: flex;
+  align-items: center;
   gap: 8px;
   cursor: pointer;
+  padding: 4px 0;
 }
+
+.btn {
+  width: 100%;
+  padding: 7px 10px;
+  background: #2a2a2e;
+  color: #f5f5f5;
+  border: 1px solid #3a3a3e;
+  border-radius: 6px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 12px;
+}
+.btn:hover { background: #3a3a3e; }
+.btn.primary {
+  background: #ff7a3a;
+  color: #111;
+  border-color: #ff7a3a;
+}
+.btn.primary:hover { background: #ff8f5a; }
+.btn.danger {
+  background: transparent;
+  border-color: #553a3a;
+  color: #c97070;
+}
+.btn.danger:hover { background: #2a1a1a; color: #ff7a7a; }
 
 .drone-icon {
   font-size: 22px;
@@ -60,20 +259,6 @@ html, body, #map {
   border: 2px solid #ffeb3b;
   box-shadow: 0 0 10px #ff4a1c;
 }
-
-.hud-btn {
-  margin-top: 10px;
-  width: 100%;
-  padding: 6px 10px;
-  background: #ff7a3a;
-  color: #111;
-  border: 0;
-  border-radius: 6px;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-.hud-btn:hover { background: #ff8f5a; }
 
 #cam-panel {
   position: absolute;

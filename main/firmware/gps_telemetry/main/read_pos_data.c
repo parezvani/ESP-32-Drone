@@ -104,7 +104,7 @@ static double nmea_to_deg(const char *nmea, const char *hemi)
     return deg;
 }
 
-#define DRONE_ID "drone_1" // change this to a unique ID for each drone ex: "drone_1", "drone_2", etc.
+#define DRONE_ID "drone_1"  // unique per drone — change before flashing each board
 
 static uint32_t seq_num = 0; 
 
@@ -120,9 +120,8 @@ static void broadcast_fix(double lat, double lon, double alt,
 
     seq_num++; 
 
-    char json[256]; // Increased buffer size to fit the ID safely
-    
-    // Notice how we added "id" at the very beginning of the JSON string here!
+    char json[256];
+
     int len = snprintf(json, sizeof(json),
         "{\"id\":\"%s\",\"seq\":%lu,\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
         DRONE_ID, seq_num, lat, lon, alt, sats, hdop, ms);
@@ -237,4 +236,3 @@ void app_main(void)
         }
     }
 }
-//

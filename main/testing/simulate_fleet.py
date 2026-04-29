@@ -7,8 +7,7 @@ UDP_IP, UDP_PORT = "127.0.0.1", 4210
 LAT0, LON0 = 36.995578, -122.058878
 TRUE_FIRE_LAT, TRUE_FIRE_LON = 36.996278, -122.058078
 
-# 1. WIDENED THE FOV! 10 degrees is too narrow for a 1-second tick.
-CAMERA_FOV = 60.0 
+CAMERA_FOV = 60.0
 
 def get_bearing(lat1, lon1, lat2, lon2):
     dLon = math.radians(lon2 - lon1)
@@ -42,13 +41,11 @@ def main():
         b2 = get_bearing(lat2, lon2, TRUE_FIRE_LAT, TRUE_FIRE_LON)
         sees_fire_2 = abs((b2 - hdg2 + 180) % 360 - 180) <= CAMERA_FOV
 
-        # 2. ADD DEBUG PRINTS SO YOU CAN SEE THE SENSORS WORKING
         if sees_fire_1:
             print(f"[Time: {int(t)}s] Drone 1 sees smoke!")
         if sees_fire_2:
             print(f"[Time: {int(t)}s] Drone 2 sees smoke!")
 
-        # Broadcast raw data
         msg1 = {"id": "drone_1", "lat": lat1, "lon": lon1, "heading_deg": hdg1, "fire_detected": sees_fire_1}
         msg2 = {"id": "drone_2", "lat": lat2, "lon": lon2, "heading_deg": hdg2, "fire_detected": sees_fire_2}
         
@@ -59,4 +56,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-#

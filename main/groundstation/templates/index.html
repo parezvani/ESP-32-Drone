@@ -9,16 +9,48 @@
 </head>
 <body>
   <div id="map"></div>
-  <div id="hud">
-    <div class="title">FireFly</div>
-    <div class="row"><span>Drone</span><span id="drone-coords">—</span></div>
-    <div class="row"><span>Altitude</span><span id="drone-alt">—</span></div>
-    <div class="row"><span>Heading</span><span id="drone-hdg">—</span></div>
-    <div class="row"><span>Fires</span><span id="fire-count">0</span></div>
-    <div class="row"><span>Last update</span><span id="last-update">—</span></div>
-    <label class="row follow"><input type="checkbox" id="follow" checked /> Follow drone</label>
-    <button id="cam-toggle" class="hud-btn" type="button">Open camera</button>
-  </div>
+
+  <aside id="panel">
+    <header class="panel-head">
+      <div class="brand">FireFly</div>
+      <div class="server-time" id="server-time">—</div>
+    </header>
+
+    <div id="alert-banner" class="alert idle">
+      <span class="dot"></span>
+      <span id="alert-text">No fire detected</span>
+    </div>
+
+    <section class="panel-section">
+      <div class="section-head">
+        <span>Drones</span>
+        <span class="counter" id="drone-count">0</span>
+      </div>
+      <div id="drone-list" class="list">
+        <div class="empty">waiting for telemetry…</div>
+      </div>
+    </section>
+
+    <section class="panel-section">
+      <div class="section-head">
+        <span>Fires</span>
+        <span class="counter" id="fire-count">0</span>
+      </div>
+      <div id="fire-list" class="list">
+        <div class="empty">none yet</div>
+      </div>
+    </section>
+
+    <section class="panel-section controls">
+      <label class="control-row">
+        <input type="checkbox" id="follow" checked />
+        <span>Follow primary drone</span>
+      </label>
+      <button id="triangulate-btn" class="btn primary" type="button">Trigger triangulation</button>
+      <button id="cam-toggle" class="btn" type="button">Open camera</button>
+      <button id="reset-btn" class="btn danger" type="button">Reset all state</button>
+    </section>
+  </aside>
 
   <div id="cam-panel" class="hidden">
     <div class="cam-header">
@@ -29,7 +61,7 @@
       <img id="cam-stream" alt="" />
       <div id="cam-placeholder">
         <div class="ph-title">No video feed</div>
-        <div class="ph-sub">TBD for cam.</div>
+        <div class="ph-sub">POST a stream URL to /api/camera</div>
       </div>
     </div>
     <div class="cam-foot" id="cam-url">—</div>
