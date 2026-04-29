@@ -1,6 +1,6 @@
 const POLL_MS = 500;
 
-const map = L.map("map", { zoomControl: true }).setView([43.2609, -79.9192], 16);
+const map = L.map("map", { zoomControl: true }).setView([36.995578, -122.058878], 16);
 
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
@@ -14,9 +14,11 @@ const droneIcon = L.divIcon({
   iconAnchor: [14, 14],
 });
 
-let droneMarker = null;
-let trail = L.polyline([], { color: "#4aa3ff", weight: 2, opacity: 0.7 }).addTo(map);
-const trailPoints = [];
+// UPGRADE: Changed these to objects to hold multiple drones!
+const droneMarkers = {};
+const trails = {};
+const trailPoints = {};
+const sightLines = {};
 const MAX_TRAIL = 400;
 
 const fireLayer = L.layerGroup().addTo(map);
@@ -62,28 +64,82 @@ async function poll() {
     if (!r.ok) return;
     const s = await r.json();
 
-    const d = s.drone;
-    if (d.lat != null && d.lon != null) {
-      const latlng = [d.lat, d.lon];
-      if (!droneMarker) {
-        droneMarker = L.marker(latlng, { icon: droneIcon }).addTo(map);
-      } else {
-        droneMarker.setLatLng(latlng);
-      }
-      trailPoints.push(latlng);
-      if (trailPoints.length > MAX_TRAIL) trailPoints.shift();
-      trail.setLatLngs(trailPoints);
+    // UPGRADE: Loop through the new drones dictionary
+    let primaryDroneId = null; 
 
-      if (firstDroneFix) {
-        map.setView(latlng, 17);
-        firstDroneFix = false;
-      } else if ($("follow").checked) {
-        map.panTo(latlng, { animate: true, duration: 0.3 });
-      }
+    for (const [id, d] of Object.entries(s.drones)) {
+      if (d.lat != null && d.lon != null) {
+        const latlng = [d.lat, d.lon];
+        
+        // Pick the first drone we process to act as the "Primary" for the HUD and Camera Follow
+        if (!primaryDroneId) primaryDroneId = id;
 
-      $("drone-coords").textContent = fmtCoords(d.lat, d.lon);
-      $("drone-alt").textContent = d.alt_m != null ? `${d.alt_m.toFixed(1)} m` : "—";
-      $("drone-hdg").textContent = d.heading_deg != null ? `${d.heading_deg.toFixed(0)}°` : "—";
+        // 1. Handle the Marker
+        if (!droneMarkers[id]) {
+          // New drone detected! Create its marker and trail.
+          droneMarkers[id] = L.marker(latlng, { icon: droneIcon })
+            .addTo(map)
+            .bindPopup(`<b>${id}</b>`); // Name tag popup
+            
+          trailPoints[id] = [];
+          trails[id] = L.polyline([], { color: "#4aa3ff", weight: 2, opacity: 0.7 }).addTo(map);
+        } else {
+          // Existing drone, just update position
+          droneMarkers[id].setLatLng(latlng);
+        }
+
+        // 2. Handle the Trail
+        trailPoints[id].push(latlng);
+        if (trailPoints[id].length > MAX_TRAIL) trailPoints[id].shift();
+        trails[id].setLatLngs(trailPoints[id]);
+
+        if (d.fire_detected && d.heading_deg != null) {
+          // Calculate a point roughly 300 meters away in the direction it is looking
+          const distDeg = 0.003; 
+          const rad = d.heading_deg * (Math.PI / 180);
+          
+          // Geometry to project a line forward based on heading
+          const endLat = d.lat + Math.cos(rad) * distDeg;
+          const endLon = d.lon + Math.sin(rad) * (distDeg / Math.cos(d.lat * Math.PI / 180));
+
+          if (!sightLines[id]) {
+            // Create a dashed red line extending from the drone
+            sightLines[id] = L.polyline([latlng, [endLat, endLon]], {
+              color: "#ff4a1c",
+              weight: 3,
+              dashArray: "10, 10",
+              opacity: 0.8
+            }).addTo(map);
+          } else {
+            // Update the line's position as the drone moves
+            sightLines[id].setLatLngs([latlng, [endLat, endLon]]);
+          }
+        } else {
+          // If the drone stops seeing smoke, erase the line
+          if (sightLines[id]) {
+            sightLines[id].remove();
+            delete sightLines[id];
+          }
+        }
+        // ==========================================
+
+        // 3. Update HUD & Camera (Only for the Primary Drone)
+        if (id === primaryDroneId) {
+          if (firstDroneFix) {
+            map.setView(latlng, 17);
+            firstDroneFix = false;
+          } else if ($("follow").checked) {
+            map.panTo(latlng, { animate: true, duration: 0.3 });
+          }
+
+          $("drone-coords").textContent = fmtCoords(d.lat, d.lon);
+          $("drone-alt").textContent = d.alt_m != null ? `${d.alt_m.toFixed(1)} m` : "—";
+          $("drone-hdg").textContent = d.heading_deg != null ? `${d.heading_deg.toFixed(0)}°` : "—";
+          
+          // Optional: Update the HUD title to show which drone is driving the stats
+          document.querySelector(".title").textContent = `FireFly (${id})`;
+        }
+      }
     }
 
     for (const f of s.fires) {

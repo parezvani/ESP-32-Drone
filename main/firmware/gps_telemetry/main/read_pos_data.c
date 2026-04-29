@@ -80,13 +80,17 @@ static void udp_init(void)
         ESP_LOGE(TAG, "socket failed: errno %d", errno);
         return;
     }
-    int one = 1;
-    setsockopt(s_udp_sock, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
+    
+    // We don't need SO_BROADCAST anymore if we send directly!
+    // int one = 1;
+    // setsockopt(s_udp_sock, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
 
     memset(&s_bcast_addr, 0, sizeof(s_bcast_addr));
     s_bcast_addr.sin_family = AF_INET;
     s_bcast_addr.sin_port = htons(CONFIG_GPS_UDP_PORT);
-    s_bcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    
+    // CHANGE THIS LINE: Hardcode your Mac's IP address
+    s_bcast_addr.sin_addr.s_addr = inet_addr("10.0.0.251"); 
 }
 
 static double nmea_to_deg(const char *nmea, const char *hemi)
@@ -100,7 +104,9 @@ static double nmea_to_deg(const char *nmea, const char *hemi)
     return deg;
 }
 
-static uint32_t seq_num = 0; // Add this tracking variable
+#define DRONE_ID "drone_1" // change this to a unique ID for each drone ex: "drone_1", "drone_2", etc.
+
+static uint32_t seq_num = 0; 
 
 static void broadcast_fix(double lat, double lon, double alt,
                           int sats, double hdop)
@@ -112,13 +118,14 @@ static void broadcast_fix(double lat, double lon, double alt,
     gettimeofday(&tv, NULL);
     long long ms = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
 
-    seq_num++; // Increment the sequence number for every packet
+    seq_num++; 
 
-    char json[192];
-    // Add the "seq" field to the JSON string
+    char json[256]; // Increased buffer size to fit the ID safely
+    
+    // Notice how we added "id" at the very beginning of the JSON string here!
     int len = snprintf(json, sizeof(json),
-        "{\"seq\":%lu,\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
-        seq_num, lat, lon, alt, sats, hdop, ms);
+        "{\"id\":\"%s\",\"seq\":%lu,\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
+        DRONE_ID, seq_num, lat, lon, alt, sats, hdop, ms);
 
     int sent = sendto(s_udp_sock, json, len, 0,
                       (struct sockaddr *)&s_bcast_addr, sizeof(s_bcast_addr));
