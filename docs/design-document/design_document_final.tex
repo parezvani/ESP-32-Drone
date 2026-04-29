@@ -587,7 +587,7 @@ A simplified quadcopter dynamics model was used to tune attitude and altitude co
 
 
 \subsection{Navigation and Perimeter Mapping}
-
+% Might need to overhall some of these later like the co2 and other sensors. This is mostly an overview now.
 FireFly utilizes an autonomous patrol and respond logic designed to maximize coverage. This ensures data can be captured upon fire detection. During the initial search phase, the drone performs a preset pattern, typically a circular orbit or in parallel lines like a lawnmower at a constant altitude. This phase provides steady environmental monitoring, where the onboard systems are continuously sampling data from temperature, humidity, and CO2 levels. The camera provides a live visual feed for detection and data training. By sweeping the area under a stabilized flight path, the system provides a baseline for specific geographical areas. This allows the onboard processor to differentiate between normal atmospheric variations and detected sharp spikes associated with wildfires.
 
 \vspace{0.5em}
@@ -596,6 +596,26 @@ When the drone detects a fire triggered by a threshold in CO2 concentration, a r
 
 \vspace{0.5em}
 
+\subsubsection{Autonomy and Behavior}
+% System is a state machine, path planning such as lawn mower or orbit, fail safes and obstacle avoidance
+The flight logic is controlled by a state machine that transitions between search, engagement, and recovery. During the search phase, the system will utilize a Boustrophedon path planning algorithm, a "lawnmower" patter, to ensure systematic coverage of a designated area with a small percentage of sensor overlap. If a fire is detected, the drone dynamically adjusts its flight path to maintain a safe standoff distance based on thermal intensity. In the recovery state, built-in fail safes include an automated return to home protocol, signal loss, and hardware anomalies. These can be triggered by low battery thresholds, loss of signal exceeding five seconds, or detected malfunctions in the propulsion system.
+
+\subsubsection{Vision Detection}
+Placeholder
+% Describe how the processor analyzes frames to detect fire/smoke. Verification logic: explain how to avoid false positives
+% Confidence scoring of data. 
+
+\subsubsection{Multi-Drone Coordination}
+Placeholder
+% Explain why there are multiple drones used, relationship during mapping phase, is there leader follower logic like d1 finds fire d2 will then observe at 90 degress of center.  when shuold drone 1/2 stop and start
+
+\subsubsection{Perimeter Generation and Area Calculation}
+Placeholder
+% math behind how the "map" is created, how drones orbit/circle fire to make points, talk about algorithms to connect coordinates into a polygon, area estimation formulas
+
+\subsubsection{Telemetry and Data}
+Placeholder
+% What data is sent back and organized for ground station, spatial data: lat/long, list of coords to form ongoing perimeter, system status such as signal strength, battery. Priority Queueing of data, sending detectin alerts before raw video feed, etc.
 
 
 \newpage
