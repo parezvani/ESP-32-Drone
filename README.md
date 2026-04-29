@@ -116,28 +116,6 @@ And in Terminal 1 (the server):
 [gps] new drone connected: drone_2 from 127.0.0.1
 ```
 
-### 6. Watch the demo
-
-In the browser at <http://127.0.0.1:5050>:
-
-- Two drone markers (🛩️) appear on the map and start moving in circles
-- Each drone card in the sidebar shows its lat, lon, altitude, heading, GPS satellites, HDOP
-- When a drone "sees smoke," a red dashed line projects from it in its viewing direction
-- When **both** drones see smoke at the same time, the system triangulates and a fire pin (🔥) drops on the map at the calculated location
-- The top banner pulses red whenever any drone is currently seeing fire
-
-### 7. Stop everything
-
-`Ctrl+C` in each terminal.
-
-To clear the map without restarting:
-
-```bash
-curl -X POST http://127.0.0.1:5050/api/reset
-```
-
-Or click the "Reset all state" button in the sidebar.
-
 ---
 
 ## Optional: run the real fire detector with a fire video
