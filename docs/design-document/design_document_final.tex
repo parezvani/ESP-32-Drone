@@ -592,13 +592,20 @@ FireFly utilizes an autonomous patrol and respond logic designed to maximize cov
 
 \vspace{0.5em}
 
-When the drone detects a fire triggered by a threshold in CO2 concentration, a rise in thermal readings, or automated visual confirmation from an onboard model, the drone shifts to a search state and begins tracking. The integrated camera utilizes the pretrained detection framework to identify smoke and flame signatures in real time providing an automated verification layer. The system immediately records telemetry data and sends a packet containing the drone's precise GPS coordinates (latitude, longitude, and altitude), direction, specific sensor values, and a visual confidence score. This data is transmitted to the ground station, where it is recorded. By utilizing the camera, operators at the base station can confirm the fire's existence, cut down on false positives, and assess the intensity before the drone begins the mapping sequence. 
+When the drone detects a fire triggered by a threshold in CO2 concentration, a rise in thermal readings, or automated visual confirmation from server side detection, the drone shifts to a search state and begins tracking. The integrated camera utilizes the pretrained detection framework to identify smoke and flame signatures in real time providing an automated verification layer. The system immediately records telemetry data and sends a packet containing the drone's precise GPS coordinates (latitude, longitude, and altitude), direction, specific sensor values, and a visual confidence score. This data is transmitted to the ground station, where it is recorded. By utilizing the camera, operators at the base station can confirm the fire's existence, cut down on false positives, and assess the intensity before the drone begins the mapping sequence. 
 
 \vspace{0.5em}
 
 \subsubsection{Autonomy and Behavior}
 % System is a state machine, path planning such as lawn mower or orbit, fail safes and obstacle avoidance
-The flight logic is controlled by a state machine that transitions between search, engagement, and recovery. During the search phase, the system will utilize a Boustrophedon path planning algorithm, a "lawnmower" patter, to ensure systematic coverage of a designated area with a small percentage of sensor overlap. If a fire is detected, the drone dynamically adjusts its flight path to maintain a safe standoff distance based on thermal intensity. In the recovery state, built-in fail safes include an automated return to home protocol, signal loss, and hardware anomalies. These can be triggered by low battery thresholds, loss of signal exceeding five seconds, or detected malfunctions in the propulsion system.
+The flight logic is controlled by a state machine that transitions between search, engagement, and recovery. During the search phase, the system will utilize a Boustrophedon path planning algorithm, a "lawnmower" pattern, to ensure systematic coverage of a designated area with a small percentage of sensor overlap. If a fire is detected, the drone dynamically adjusts its flight path to maintain a safe standoff distance based on thermal intensity. In the recovery state, built-in fail safes include an automated return to home protocol, signal loss, and hardware anomalies. These can be triggered by low battery thresholds, loss of signal exceeding five seconds, or detected malfunctions in the propulsion system.
+
+\vspace{0.5em}
+
+Search State: In autonomous surveillance, the search state is the foundational operating mode where the system systematically monitors the geographic area to confirm a baseline and search for anomalies. The lawnmower pattern or a horizontal sweep pattern has several technical advantages essential for high reliability and wildfire detection.
+
+The search state is characterized by steady state flight at a constant altitude and velocity. This stability is essential for the server side processing as it provides consistent video feed and minimizes motion blur. In this state, the drone operates on a preset navigation schedule, this means it follows a computed path until a higher priority command is received from the ground station like smoke or fire being detected. The horizontal sweep pattern ensures that every square meter of a designated area is scanned. By calculating the drone's altitude and the camera's field of view, the distance between parallel passes or "track spacing" can be set to ensure no gaps exist between each pass. For the server side architecture, sensor overlap is typically set to 20\% is used as a buffer against environmental variables. This overlap compensates for wind drift, altitude variations, and server inference time. In the case of wind drift, if a gust pushes the drone off the path, the overlap ensures the intended path is still captured. When the drone tilts to compensate for wind, the camera's ground footprint shifts, overlap covers the "blind spots" during the parallel passes. 
+
 
 \subsubsection{Vision Detection}
 Placeholder
@@ -616,6 +623,7 @@ Placeholder
 \subsubsection{Telemetry and Data}
 Placeholder
 % What data is sent back and organized for ground station, spatial data: lat/long, list of coords to form ongoing perimeter, system status such as signal strength, battery. Priority Queueing of data, sending detectin alerts before raw video feed, etc.
+
 
 
 \newpage
