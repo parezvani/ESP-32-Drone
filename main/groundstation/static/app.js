@@ -263,30 +263,39 @@ async function poll() {
 }
 
 let currentCamUrl = null;
-function updateCamera(url) {
-  if (url === currentCamUrl) return;
-  currentCamUrl = url;
+function applyCamSrc() {
   const img = $("cam-stream");
   const ph = $("cam-placeholder");
   const foot = $("cam-url");
-  if (url) {
-    img.src = url;
-    img.classList.add("live");
+  const panelOpen = !$("cam-panel").classList.contains("hidden");
+
+  if (currentCamUrl && panelOpen) {
+    if (img.getAttribute("src") !== currentCamUrl) {
+      img.src = currentCamUrl;
+      img.classList.add("live");
+    }
     ph.classList.add("hidden");
-    foot.textContent = url;
+    foot.textContent = currentCamUrl;
   } else {
     img.removeAttribute("src");
     img.classList.remove("live");
     ph.classList.remove("hidden");
-    foot.textContent = "no stream URL configured — POST one to /api/camera";
+    foot.textContent = currentCamUrl || "no stream URL configured — POST one to /api/camera";
   }
+}
+
+function updateCamera(url) {
+  currentCamUrl = url || null;
+  applyCamSrc();
 }
 
 $("cam-toggle").addEventListener("click", () => {
   $("cam-panel").classList.toggle("hidden");
+  applyCamSrc();
 });
 $("cam-close").addEventListener("click", () => {
   $("cam-panel").classList.add("hidden");
+  applyCamSrc();
 });
 
 $("triangulate-btn").addEventListener("click", async () => {

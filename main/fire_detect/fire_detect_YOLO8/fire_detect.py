@@ -50,7 +50,8 @@ def report_fire(frame_shape, boxes):
     real_area = real_w * real_h
 
     try:
-        drone = requests.get(f"{MAP_SERVER}/api/state", timeout=1.0).json().get("drone", {})
+        drones = requests.get(f"{MAP_SERVER}/api/state", timeout=1.0).json().get("drones", {})
+        drone = next(iter(drones.values()), {}) if drones else {}
     except requests.RequestException as e:
         print(f"[warn] could not fetch drone state: {e}")
         drone = {}

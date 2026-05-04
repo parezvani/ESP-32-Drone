@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <sys/time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -80,17 +82,14 @@ static void udp_init(void)
         ESP_LOGE(TAG, "socket failed: errno %d", errno);
         return;
     }
-    
-    // We don't need SO_BROADCAST anymore if we send directly!
-    // int one = 1;
-    // setsockopt(s_udp_sock, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
+
+    int one = 1;
+    setsockopt(s_udp_sock, SOL_SOCKET, SO_BROADCAST, &one, sizeof(one));
 
     memset(&s_bcast_addr, 0, sizeof(s_bcast_addr));
     s_bcast_addr.sin_family = AF_INET;
     s_bcast_addr.sin_port = htons(CONFIG_GPS_UDP_PORT);
-    
-    // CHANGE THIS LINE: Hardcode your Mac's IP address
-    s_bcast_addr.sin_addr.s_addr = inet_addr("10.0.0.251"); 
+    s_bcast_addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
 }
 
 static double nmea_to_deg(const char *nmea, const char *hemi)
@@ -106,7 +105,39 @@ static double nmea_to_deg(const char *nmea, const char *hemi)
 
 #define DRONE_ID "drone_1"  // unique per drone — change before flashing each board
 
-static uint32_t seq_num = 0; 
+#define HEADING_MIN_MOVEMENT_M 1.0  // ignore GPS jitter when stationary
+
+static uint32_t seq_num = 0;
+static double prev_lat = 0.0, prev_lon = 0.0;
+static double last_heading_deg = 0.0;
+static bool has_prev = false;
+
+static double compute_heading(double lat, double lon)
+{
+    if (!has_prev) {
+        prev_lat = lat;
+        prev_lon = lon;
+        has_prev = true;
+        return last_heading_deg;
+    }
+
+    double lat_rad = prev_lat * M_PI / 180.0;
+    double dy_m = (lat - prev_lat) * 111320.0;
+    double dx_m = (lon - prev_lon) * 111320.0 * cos(lat_rad);
+    double moved_m = sqrt(dx_m * dx_m + dy_m * dy_m);
+
+    if (moved_m < HEADING_MIN_MOVEMENT_M) {
+        return last_heading_deg;
+    }
+
+    double heading = atan2(dx_m, dy_m) * 180.0 / M_PI;
+    if (heading < 0) heading += 360.0;
+
+    prev_lat = lat;
+    prev_lon = lon;
+    last_heading_deg = heading;
+    return heading;
+}
 
 static void broadcast_fix(double lat, double lon, double alt,
                           int sats, double hdop)
@@ -118,13 +149,15 @@ static void broadcast_fix(double lat, double lon, double alt,
     gettimeofday(&tv, NULL);
     long long ms = (long long)tv.tv_sec * 1000LL + tv.tv_usec / 1000;
 
-    seq_num++; 
+    seq_num++;
+
+    double heading = compute_heading(lat, lon);
 
     char json[256];
 
     int len = snprintf(json, sizeof(json),
-        "{\"id\":\"%s\",\"seq\":%lu,\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
-        DRONE_ID, seq_num, lat, lon, alt, sats, hdop, ms);
+        "{\"id\":\"%s\",\"seq\":%lu,\"lat\":%.7f,\"lon\":%.7f,\"alt_m\":%.1f,\"heading_deg\":%.1f,\"fire_detected\":false,\"sats\":%d,\"hdop\":%.2f,\"ts_ms\":%lld}",
+        DRONE_ID, seq_num, lat, lon, alt, heading, sats, hdop, ms);
 
     int sent = sendto(s_udp_sock, json, len, 0,
                       (struct sockaddr *)&s_bcast_addr, sizeof(s_bcast_addr));

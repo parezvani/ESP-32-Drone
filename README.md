@@ -49,71 +49,66 @@ git clone https://github.com/parezvani/FireFly.git
 cd FireFly
 ```
 
-### 3. Create a virtual environment and install Python packages
+### 3. Run the setup script
 
-A virtual environment keeps FireFly's dependencies separate from your other Python projects.
+The setup script creates a virtual environment and installs all Python dependencies in one shot.
 
-**Windows (PowerShell):**
+**macOS / Linux / Git Bash:**
+
+```bash
+bash setup.sh
+```
+
+**Windows PowerShell:**
 
 ```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r main/groundstation/requirements.txt
-pip install requests
+.\setup.ps1
 ```
 
-**macOS / Linux:**
+(You only run setup once per machine. After that, just activate the venv each new terminal.)
+
+After setup completes, activate the venv in any new terminal:
+
+```powershell
+.\.venv\Scripts\Activate.ps1     # Windows PowerShell
+source .venv/bin/activate        # macOS / Linux / Git Bash
+```
+
+### 4. Run the whole stack with one command
+
+From the repo root:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r main/groundstation/requirements.txt
-pip install requests
+python run.py
 ```
 
-(You only run `python -m venv .venv` once. After that, just activate it each time you open a new terminal.)
+That's it. The launcher will:
 
-### 4. Start the ground station — Terminal 1
+1. Start the FireFly server on `http://127.0.0.1:5050`
+2. Scan the local network for an ESP32-CAM (port 81 MJPEG) and auto-register the URL
+3. Start the simulated drone fleet
+4. Start YOLOv8 fire detection (only if a camera is found)
+5. Open your browser at the map UI
+
+Press `Ctrl+C` once to stop everything cleanly.
+
+### Optional flags
 
 ```bash
-cd main/groundstation
-python server.py
+python run.py --no-cam        # skip camera discovery and YOLO (sim-only demo)
+python run.py --no-yolo       # register camera in UI but skip fire detection
+python run.py --no-sim        # skip the fake drone fleet (real hardware only)
+python run.py --no-browser    # don't auto-open the browser
 ```
 
-You should see:
-
-```text
-[gps] listening for UDP broadcasts on :4210
- * Running on http://0.0.0.0:5050
-```
-
-Open <http://127.0.0.1:5050> in a browser. You'll see the map UI with "No drones connected" — that's expected, nothing's broadcasting yet.
-
-### 5. Start the simulated drone fleet — Terminal 2
-
-In a **separate** terminal (don't close Terminal 1):
+If your camera isn't on the same subnet (rare), set the URL explicitly:
 
 ```bash
-# activate the venv again in this new terminal
-# Windows: .venv\Scripts\Activate.ps1
-# Mac/Linux: source .venv/bin/activate
+# Mac/Linux
+FIREFLY_CAM_URL=http://10.0.0.137:81/stream python run.py
 
-cd main/testing
-python simulate_fleet.py
-```
-
-You should see:
-
-```text
-Fleet Simulator running. Broadcasting raw sensor data...
-[Time: 3s] Drone 1 sees smoke!
-```
-
-And in Terminal 1 (the server):
-
-```text
-[gps] new drone connected: drone_1 from 127.0.0.1
-[gps] new drone connected: drone_2 from 127.0.0.1
+# Windows PowerShell
+$env:FIREFLY_CAM_URL="http://10.0.0.137:81/stream"; python run.py
 ```
 
 ---

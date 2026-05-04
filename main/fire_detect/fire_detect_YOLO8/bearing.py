@@ -12,10 +12,10 @@ def fire_position(drone_state, bbox, frame_size, camera):
     Returns None if the bbox center maps to a ray that doesn't intersect the
     ground plane (e.g. aimed at or above the horizon).
     """
-    lat = drone_state["lat"]
-    lon = drone_state["lon"]
-    alt = drone_state["alt_m"]
-    heading = drone_state["heading_deg"]
+    lat = drone_state.get("lat")
+    lon = drone_state.get("lon")
+    alt = drone_state.get("alt_m")
+    heading = drone_state.get("heading_deg")
 
     if lat is None or lon is None or alt is None or heading is None:
         return None
