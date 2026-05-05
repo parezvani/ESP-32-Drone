@@ -54,7 +54,7 @@
     const SUPABASE_KEY = "{{ supabase_key }}";
     const $ = (id) => document.getElementById(id);
     let mode = "signin";
-    let supabase = null;
+    let sb = null;
 
     // ── attach UI handlers FIRST so the toggle works regardless of Supabase init ──
     $("toggle").addEventListener("click", () => {
@@ -81,7 +81,7 @@
       showFatal("Supabase SDK failed to load (network/CDN issue?). Reload the page.");
     } else {
       try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log("[firefly login] Supabase client ready");
       } catch (e) {
         showFatal("Supabase init failed: " + e.message);
@@ -95,7 +95,7 @@
         $("error").textContent = "Email and password required.";
         return;
       }
-      if (!supabase) {
+      if (!sb) {
         $("error").textContent = "Auth not available. Check console.";
         return;
       }
@@ -104,8 +104,8 @@
       $("error").textContent = "";
       try {
         const { data, error } = mode === "signin"
-          ? await supabase.auth.signInWithPassword({ email, password })
-          : await supabase.auth.signUp({ email, password });
+          ? await sb.auth.signInWithPassword({ email, password })
+          : await sb.auth.signUp({ email, password });
         if (error) throw error;
 
         const token = data.session?.access_token;
