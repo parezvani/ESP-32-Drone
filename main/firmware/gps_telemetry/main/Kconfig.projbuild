@@ -9,7 +9,30 @@ menu "FireFly GPS Broadcaster"
         default "mypassword"
 
     config GPS_UDP_PORT
-        int "UDP broadcast port"
+        int "UDP broadcast port (local network)"
         default 4210
+
+    config GPS_CLOUD_ENABLED
+        bool "Enable HTTPS POST to cloud server"
+        default n
+        help
+            When enabled, every GPS fix is also POSTed to the cloud server
+            in addition to being broadcast over UDP. Requires GPS_CLOUD_URL
+            and GPS_API_KEY to be set.
+
+    config GPS_CLOUD_URL
+        string "Cloud HTTPS endpoint"
+        depends on GPS_CLOUD_ENABLED
+        default "https://firefly-team6.onrender.com/api/drone"
+        help
+            Full HTTPS URL the firmware POSTs telemetry to.
+
+    config GPS_API_KEY
+        string "API key for cloud endpoint"
+        depends on GPS_CLOUD_ENABLED
+        default ""
+        help
+            Long random string registered in the cloud dashboard. Sent in
+            the X-API-Key header. Treat as a secret.
 
 endmenu

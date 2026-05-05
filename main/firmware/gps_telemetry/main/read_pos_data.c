@@ -15,6 +15,8 @@
 #include "nvs_flash.h"
 #include "lwip/sockets.h"
 
+#include "cloud_uplink.h"
+
 #define GPS_UART_NUM   UART_NUM_1
 #define GPS_TX_PIN     5
 #define GPS_RX_PIN     4
@@ -164,6 +166,8 @@ static void broadcast_fix(double lat, double lon, double alt,
     if (sent < 0) {
         ESP_LOGW(TAG, "sendto failed: errno %d", errno);
     }
+
+    cloud_uplink_post(json, (size_t)len);
 }
 
 static void parse_gga(const char *line)
@@ -210,6 +214,7 @@ void app_main(void)
 
     wifi_init_sta();
     udp_init();
+    cloud_uplink_init();
 
     uart_config_t cfg = {
         .baud_rate  = GPS_BAUD_RATE,
