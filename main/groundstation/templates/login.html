@@ -24,7 +24,9 @@
     button:hover { background: #ff8f5a; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
     .toggle { margin-top: 16px; text-align: center; font-size: 13px; color: #aaa; }
-    .toggle a { color: #ff7a3a; cursor: pointer; text-decoration: none; }
+    .toggle a { color: #ff7a3a; cursor: pointer; text-decoration: none;
+                user-select: none; }
+    .toggle a:hover { text-decoration: underline; }
     .error { color: #ff4a1c; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
   </style>
 </head>
@@ -42,7 +44,7 @@
 
     <div class="toggle">
       <span id="mode-label">No account?</span>
-      <a id="toggle">Create one</a>
+      <a id="toggle" role="button" tabindex="0">Create one</a>
     </div>
   </div>
 
@@ -50,17 +52,11 @@
   <script>
     const SUPABASE_URL = "{{ supabase_url }}";
     const SUPABASE_KEY = "{{ supabase_key }}";
-
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
-      document.getElementById("error").textContent =
-        "Server is missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY env vars.";
-    }
-
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    let mode = "signin";  // or "signup"
-
     const $ = (id) => document.getElementById(id);
+    let mode = "signin";
+    let supabase = null;
 
+    // ── attach UI handlers FIRST so the toggle works regardless of Supabase init ──
     $("toggle").addEventListener("click", () => {
       mode = mode === "signin" ? "signup" : "signin";
       $("submit").textContent = mode === "signin" ? "Sign In" : "Create Account";
@@ -69,25 +65,52 @@
       $("error").textContent = "";
     });
 
-    $("submit").addEventListener("click", async () => {
+    $("submit").addEventListener("click", doAuth);
+    $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth(); });
+
+    // ── now try to initialize Supabase ──
+    function showFatal(msg) {
+      $("error").textContent = msg;
+      $("submit").disabled = true;
+      console.error("[firefly login]", msg);
+    }
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      showFatal("Server missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY env vars.");
+    } else if (typeof window.supabase === "undefined" || !window.supabase.createClient) {
+      showFatal("Supabase SDK failed to load (network/CDN issue?). Reload the page.");
+    } else {
+      try {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("[firefly login] Supabase client ready");
+      } catch (e) {
+        showFatal("Supabase init failed: " + e.message);
+      }
+    }
+
+    async function doAuth() {
       const email = $("email").value.trim();
       const password = $("password").value;
       if (!email || !password) {
         $("error").textContent = "Email and password required.";
         return;
       }
+      if (!supabase) {
+        $("error").textContent = "Auth not available. Check console.";
+        return;
+      }
+
       $("submit").disabled = true;
       $("error").textContent = "";
       try {
-        const fn = mode === "signin"
-          ? supabase.auth.signInWithPassword({ email, password })
-          : supabase.auth.signUp({ email, password });
-        const { data, error } = await fn;
-        if (error) { throw error; }
+        const { data, error } = mode === "signin"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password });
+        if (error) throw error;
 
         const token = data.session?.access_token;
         if (!token) {
-          $("error").textContent = "Account created. Check your email to confirm, then sign in.";
+          $("error").textContent = "Account created. If email confirmation is enabled, check your inbox; otherwise sign in.";
           $("submit").disabled = false;
           return;
         }
@@ -100,14 +123,15 @@
         });
         if (!r.ok) {
           const j = await r.json();
-          throw new Error(j.error || "server rejected token");
+          throw new Error(j.error || "server rejected token (HTTP " + r.status + ")");
         }
         location.href = "/";
       } catch (e) {
         $("error").textContent = e.message || String(e);
         $("submit").disabled = false;
+        console.error("[firefly login] auth error:", e);
       }
-    });
+    }
   </script>
 </body>
 </html>
