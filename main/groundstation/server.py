@@ -1,12 +1,136 @@
+import hashlib
 import json
+import os
+import secrets
 import socket
 import threading
 import time
-from flask import Flask, jsonify, render_template, request
+from datetime import datetime, timezone
+from functools import wraps
+
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
 from triangulator import triangulate
 
+# Optional: only import if env vars are set. Allows local dev without Postgres.
+DATABASE_URL = os.environ.get("DATABASE_URL")
+JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+
+_db_engine = None
+_db_session_maker = None
+_models = None
+
+if DATABASE_URL:
+    from sqlalchemy import (
+        Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text,
+        create_engine, BigInteger, Index,
+    )
+    from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+    from sqlalchemy.dialects.postgresql import UUID
+    import uuid
+
+    Base = declarative_base()
+
+    class Drone(Base):
+        __tablename__ = "drones"
+        id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+        user_id = Column(UUID(as_uuid=True), nullable=False)
+        name = Column(Text, nullable=False)
+        last_seen = Column(DateTime(timezone=True))
+        last_lat = Column(Float)
+        last_lon = Column(Float)
+        last_heading_deg = Column(Float)
+        fire_detected = Column(Boolean, default=False)
+        created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    class ApiKey(Base):
+        __tablename__ = "api_keys"
+        id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+        drone_id = Column(UUID(as_uuid=True), ForeignKey("drones.id", ondelete="CASCADE"), nullable=False)
+        key_hash = Column(Text, nullable=False)
+        revoked_at = Column(DateTime(timezone=True))
+        created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    class Telemetry(Base):
+        __tablename__ = "telemetry"
+        id = Column(BigInteger, primary_key=True, autoincrement=True)
+        drone_id = Column(UUID(as_uuid=True), ForeignKey("drones.id", ondelete="CASCADE"), nullable=False)
+        lat = Column(Float)
+        lon = Column(Float)
+        alt_m = Column(Float)
+        heading_deg = Column(Float)
+        fire_detected = Column(Boolean)
+        sats = Column(Integer)
+        hdop = Column(Float)
+        ts = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    class Fire(Base):
+        __tablename__ = "fires"
+        id = Column(BigInteger, primary_key=True, autoincrement=True)
+        user_id = Column(UUID(as_uuid=True), nullable=False)
+        lat = Column(Float, nullable=False)
+        lon = Column(Float, nullable=False)
+        confidence = Column(Float)
+        size_m = Column(Float)
+        source = Column(Text)
+        detected_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    _db_engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_recycle=300)
+    _db_session_maker = sessionmaker(bind=_db_engine, expire_on_commit=False)
+    _models = {"Drone": Drone, "ApiKey": ApiKey, "Telemetry": Telemetry, "Fire": Fire}
+    print(f"[db] connected to {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'database'}")
+else:
+    print("[db] no DATABASE_URL set, running in memory-only mode (local dev)")
+
+
+def _hash_key(key: str) -> str:
+    """Hash an API key with SHA256 for storage. Reversible only via brute force."""
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def _verify_jwt(token: str):
+    """Decode and verify a Supabase JWT. Returns the claims dict or None if invalid."""
+    if not JWT_SECRET:
+        return None
+    try:
+        from jose import jwt
+        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+    except Exception as e:
+        print(f"[auth] JWT decode failed: {e}")
+        return None
+
+
+def require_jwt(f):
+    """Decorator: require a valid Supabase JWT in Authorization or session."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not JWT_SECRET:
+            # Auth disabled in local mode — pass through
+            request.user_id = None
+            return f(*args, **kwargs)
+
+        token = None
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+        elif "jwt" in session:
+            token = session["jwt"]
+
+        claims = _verify_jwt(token) if token else None
+        if not claims:
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "auth required"}), 401
+            return redirect(url_for("login_page"))
+
+        request.user_id = claims.get("sub")
+        return f(*args, **kwargs)
+    return wrapper
+
+
 app = Flask(__name__)
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
 
 GPS_UDP_PORT = 4210
 TRIANGULATE_COOLDOWN_S = 5.0
@@ -126,10 +250,197 @@ threading.Thread(target=_gps_listener, args=(GPS_UDP_PORT,), daemon=True).start(
 threading.Thread(target=_drone_reaper, daemon=True).start()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Public routes (no auth)
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.get("/")
 def index():
+    if JWT_SECRET and "jwt" not in session:
+        return redirect(url_for("login_page"))
     return render_template("index.html")
 
+
+@app.get("/login")
+def login_page():
+    return render_template("login.html",
+                           supabase_url=SUPABASE_URL,
+                           supabase_key=SUPABASE_PUBLISHABLE_KEY)
+
+
+@app.post("/login")
+def login_submit():
+    """Browser POSTs the JWT it got from Supabase JS. We stash it in session."""
+    data = request.get_json(force=True, silent=True) or {}
+    token = data.get("token")
+    if not token:
+        return jsonify({"error": "missing token"}), 400
+    claims = _verify_jwt(token)
+    if not claims:
+        return jsonify({"error": "invalid token"}), 401
+    session["jwt"] = token
+    session["user_id"] = claims.get("sub")
+    return jsonify({"ok": True})
+
+
+@app.get("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login_page"))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Drone HTTPS uplink (API key auth — used by ESP32 firmware)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/drone")
+def post_drone():
+    """Telemetry endpoint for drones. Requires X-API-Key header."""
+    if not _db_session_maker:
+        return jsonify({"error": "database not configured"}), 503
+
+    api_key = request.headers.get("X-API-Key")
+    if not api_key:
+        return jsonify({"error": "X-API-Key required"}), 401
+
+    msg = request.get_json(force=True, silent=True) or {}
+    lat = msg.get("lat")
+    lon = msg.get("lon")
+    if lat is None or lon is None:
+        return jsonify({"error": "lat and lon required"}), 400
+
+    Drone = _models["Drone"]
+    ApiKey = _models["ApiKey"]
+    Telemetry = _models["Telemetry"]
+
+    key_hash = _hash_key(api_key)
+    with _db_session_maker() as db:
+        key_row = db.query(ApiKey).filter_by(key_hash=key_hash, revoked_at=None).first()
+        if not key_row:
+            return jsonify({"error": "invalid or revoked API key"}), 403
+
+        drone = db.query(Drone).filter_by(id=key_row.drone_id).first()
+        if not drone:
+            return jsonify({"error": "drone not found"}), 404
+
+        # Update drone snapshot
+        drone.last_lat = float(lat)
+        drone.last_lon = float(lon)
+        drone.last_heading_deg = msg.get("heading_deg")
+        drone.fire_detected = bool(msg.get("fire_detected", False))
+        drone.last_seen = datetime.now(timezone.utc)
+
+        # Insert telemetry row
+        db.add(Telemetry(
+            drone_id=drone.id,
+            lat=float(lat), lon=float(lon),
+            alt_m=msg.get("alt_m"),
+            heading_deg=msg.get("heading_deg"),
+            fire_detected=bool(msg.get("fire_detected", False)),
+            sats=msg.get("sats"),
+            hdop=msg.get("hdop"),
+        ))
+        db.commit()
+
+        # Mirror into in-memory state so the live map sees it
+        drone_id_str = str(drone.id)
+        with _lock:
+            _drones[drone_id_str] = {
+                "lat": float(lat),
+                "lon": float(lon),
+                "alt_m": msg.get("alt_m"),
+                "heading_deg": msg.get("heading_deg"),
+                "fire_detected": bool(msg.get("fire_detected", False)),
+                "sats": msg.get("sats"),
+                "hdop": msg.get("hdop"),
+                "ts": time.time(),
+                "name": drone.name,
+            }
+            _maybe_triangulate()
+
+    return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  User dashboard (JWT auth — manage drones + API keys)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/dashboard")
+@require_jwt
+def dashboard_page():
+    return render_template("dashboard.html",
+                           supabase_url=SUPABASE_URL,
+                           supabase_key=SUPABASE_PUBLISHABLE_KEY)
+
+
+@app.get("/api/dashboard/drones")
+@require_jwt
+def list_drones():
+    if not _db_session_maker:
+        return jsonify({"drones": []})
+    Drone = _models["Drone"]
+    with _db_session_maker() as db:
+        drones = db.query(Drone).filter_by(user_id=request.user_id).all()
+        return jsonify({"drones": [{
+            "id": str(d.id),
+            "name": d.name,
+            "last_seen": d.last_seen.isoformat() if d.last_seen else None,
+            "last_lat": d.last_lat,
+            "last_lon": d.last_lon,
+            "fire_detected": d.fire_detected,
+        } for d in drones]})
+
+
+@app.post("/api/dashboard/drones")
+@require_jwt
+def create_drone():
+    """Register a new drone, return a fresh API key (shown ONCE)."""
+    if not _db_session_maker:
+        return jsonify({"error": "database not configured"}), 503
+
+    data = request.get_json(force=True, silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name required"}), 400
+
+    Drone = _models["Drone"]
+    ApiKey = _models["ApiKey"]
+
+    raw_key = secrets.token_urlsafe(48)  # ~64 char URL-safe key
+
+    with _db_session_maker() as db:
+        drone = Drone(user_id=request.user_id, name=name)
+        db.add(drone)
+        db.flush()  # populate drone.id
+
+        db.add(ApiKey(drone_id=drone.id, key_hash=_hash_key(raw_key)))
+        db.commit()
+
+        return jsonify({
+            "id": str(drone.id),
+            "name": drone.name,
+            "api_key": raw_key,  # the only time the raw key is ever returned
+        })
+
+
+@app.delete("/api/dashboard/drones/<drone_id>")
+@require_jwt
+def delete_drone(drone_id):
+    if not _db_session_maker:
+        return jsonify({"error": "database not configured"}), 503
+    Drone = _models["Drone"]
+    with _db_session_maker() as db:
+        drone = db.query(Drone).filter_by(id=drone_id, user_id=request.user_id).first()
+        if not drone:
+            return jsonify({"error": "not found"}), 404
+        db.delete(drone)
+        db.commit()
+    return jsonify({"ok": True})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Existing routes — unchanged behavior (work with or without DB)
+# ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/state")
 def get_state():

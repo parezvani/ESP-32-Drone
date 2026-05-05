@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FireFly — Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    body { background: #0c0c0e; display: flex; align-items: center;
+           justify-content: center; min-height: 100vh; margin: 0;
+           color: #f5f5f5; font-family: system-ui, sans-serif; }
+    .card { background: rgba(18, 18, 20, 0.95); padding: 32px;
+            border-radius: 10px; width: 360px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+    h1 { color: #ff7a3a; margin: 0 0 24px; font-size: 20px; letter-spacing: 0.5px; }
+    label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px;
+            text-transform: uppercase; letter-spacing: 1px; }
+    input { width: 100%; padding: 10px 12px; margin-bottom: 16px;
+            background: #1d1d20; border: 1px solid #2a2a2e; border-radius: 6px;
+            color: #f5f5f5; font-size: 14px; box-sizing: border-box; }
+    input:focus { outline: none; border-color: #ff7a3a; }
+    button { width: 100%; padding: 10px; background: #ff7a3a; color: #111;
+             border: 0; border-radius: 6px; font-weight: 600; cursor: pointer;
+             font-size: 14px; }
+    button:hover { background: #ff8f5a; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .toggle { margin-top: 16px; text-align: center; font-size: 13px; color: #aaa; }
+    .toggle a { color: #ff7a3a; cursor: pointer; text-decoration: none; }
+    .error { color: #ff4a1c; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>FireFly</h1>
+    <div id="error" class="error"></div>
+
+    <label>Email</label>
+    <input id="email" type="email" autocomplete="email" />
+    <label>Password</label>
+    <input id="password" type="password" autocomplete="current-password" />
+
+    <button id="submit">Sign In</button>
+
+    <div class="toggle">
+      <span id="mode-label">No account?</span>
+      <a id="toggle">Create one</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "{{ supabase_url }}";
+    const SUPABASE_KEY = "{{ supabase_key }}";
+
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      document.getElementById("error").textContent =
+        "Server is missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY env vars.";
+    }
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let mode = "signin";  // or "signup"
+
+    const $ = (id) => document.getElementById(id);
+
+    $("toggle").addEventListener("click", () => {
+      mode = mode === "signin" ? "signup" : "signin";
+      $("submit").textContent = mode === "signin" ? "Sign In" : "Create Account";
+      $("mode-label").textContent = mode === "signin" ? "No account?" : "Have an account?";
+      $("toggle").textContent = mode === "signin" ? "Create one" : "Sign in";
+      $("error").textContent = "";
+    });
+
+    $("submit").addEventListener("click", async () => {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+      if (!email || !password) {
+        $("error").textContent = "Email and password required.";
+        return;
+      }
+      $("submit").disabled = true;
+      $("error").textContent = "";
+      try {
+        const fn = mode === "signin"
+          ? supabase.auth.signInWithPassword({ email, password })
+          : supabase.auth.signUp({ email, password });
+        const { data, error } = await fn;
+        if (error) { throw error; }
+
+        const token = data.session?.access_token;
+        if (!token) {
+          $("error").textContent = "Account created. Check your email to confirm, then sign in.";
+          $("submit").disabled = false;
+          return;
+        }
+
+        // Hand the token to Flask so it can verify and set a session cookie
+        const r = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        if (!r.ok) {
+          const j = await r.json();
+          throw new Error(j.error || "server rejected token");
+        }
+        location.href = "/";
+      } catch (e) {
+        $("error").textContent = e.message || String(e);
+        $("submit").disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

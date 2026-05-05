@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FireFly — Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+    body { background: #0c0c0e; color: #f5f5f5; margin: 0; padding: 24px;
+           font-family: system-ui, sans-serif; min-height: 100vh; box-sizing: border-box; }
+    .container { max-width: 720px; margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between;
+             padding-bottom: 16px; border-bottom: 1px solid #2a2a2e; margin-bottom: 24px; }
+    h1 { color: #ff7a3a; margin: 0; font-size: 22px; }
+    nav a { color: #f5f5f5; text-decoration: none; margin-left: 16px; font-size: 13px; }
+    nav a:hover { color: #ff7a3a; }
+    .section { background: rgba(18, 18, 20, 0.95); padding: 20px;
+               border-radius: 10px; margin-bottom: 16px; }
+    .section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
+                  color: #aaa; margin: 0 0 12px; }
+    .add-form { display: flex; gap: 8px; }
+    .add-form input { flex: 1; padding: 8px 12px; background: #0c0c0e;
+                      border: 1px solid #2a2a2e; border-radius: 6px;
+                      color: #f5f5f5; font-size: 14px; }
+    .add-form button { padding: 8px 16px; background: #ff7a3a; color: #111;
+                       border: 0; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    .drone-row { background: #1d1d20; padding: 12px 14px; border-radius: 6px;
+                 margin-bottom: 8px; display: flex; justify-content: space-between;
+                 align-items: center; }
+    .drone-row .name { font-weight: 600; }
+    .drone-row .meta { font-size: 11px; color: #888; font-family: ui-monospace, monospace; }
+    .drone-row button { background: transparent; border: 1px solid #553a3a;
+                        color: #c97070; padding: 4px 10px; border-radius: 4px;
+                        cursor: pointer; font-size: 12px; }
+    .drone-row button:hover { background: #2a1a1a; }
+    .empty { color: #666; font-style: italic; font-size: 13px; }
+    .key-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+                 display: none; align-items: center; justify-content: center; }
+    .key-modal.show { display: flex; }
+    .key-card { background: #1d1d20; padding: 24px; border-radius: 10px;
+                width: 480px; max-width: 90vw; }
+    .key-card h3 { color: #ff7a3a; margin: 0 0 12px; }
+    .key-card .warn { color: #ff7a3a; font-size: 12px; margin-bottom: 12px; }
+    .key-card code { display: block; padding: 12px; background: #0c0c0e;
+                     border-radius: 6px; word-break: break-all; font-size: 12px;
+                     margin-bottom: 12px; user-select: all; }
+    .key-card .actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .key-card .actions button { padding: 8px 16px; border-radius: 6px; border: 0;
+                                font-weight: 600; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>FireFly Dashboard</h1>
+      <nav>
+        <a href="/">Map</a>
+        <a href="/logout">Logout</a>
+      </nav>
+    </header>
+
+    <div class="section">
+      <h2>Add Drone</h2>
+      <div class="add-form">
+        <input id="new-drone-name" placeholder="e.g. drone_1" />
+        <button id="add-btn">Register</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>My Drones</h2>
+      <div id="drone-list"><div class="empty">loading…</div></div>
+    </div>
+  </div>
+
+  <div id="key-modal" class="key-modal">
+    <div class="key-card">
+      <h3>API Key Created</h3>
+      <div class="warn">Copy this key NOW. It won't be shown again.</div>
+      <code id="key-display"></code>
+      <div class="actions">
+        <button id="close-modal" style="background: #ff7a3a; color: #111;">I copied it</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "{{ supabase_url }}";
+    const SUPABASE_KEY = "{{ supabase_key }}";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function getAuthHeader() {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
+    }
+
+    async function loadDrones() {
+      const r = await fetch("/api/dashboard/drones", { headers: await getAuthHeader() });
+      if (r.status === 401) { location.href = "/login"; return; }
+      const { drones } = await r.json();
+      const list = document.getElementById("drone-list");
+      if (!drones.length) {
+        list.innerHTML = '<div class="empty">No drones yet. Add one above.</div>';
+        return;
+      }
+      list.innerHTML = drones.map(d => `
+        <div class="drone-row" data-id="${d.id}">
+          <div>
+            <div class="name">${d.name}</div>
+            <div class="meta">
+              ${d.last_seen ? `Last seen: ${new Date(d.last_seen).toLocaleString()}` : 'never connected'}
+              ${d.last_lat ? ` · ${d.last_lat.toFixed(5)}, ${d.last_lon.toFixed(5)}` : ''}
+            </div>
+          </div>
+          <button data-revoke="${d.id}">Delete</button>
+        </div>
+      `).join("");
+      list.querySelectorAll("[data-revoke]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (!confirm(`Delete drone "${btn.closest('.drone-row').querySelector('.name').textContent}"?`)) return;
+          await fetch(`/api/dashboard/drones/${btn.dataset.revoke}`, {
+            method: "DELETE", headers: await getAuthHeader(),
+          });
+          loadDrones();
+        });
+      });
+    }
+
+    document.getElementById("add-btn").addEventListener("click", async () => {
+      const name = document.getElementById("new-drone-name").value.trim();
+      if (!name) return;
+      const r = await fetch("/api/dashboard/drones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
+        body: JSON.stringify({ name }),
+      });
+      if (!r.ok) {
+        alert("Failed to create drone: " + (await r.text()));
+        return;
+      }
+      const { api_key } = await r.json();
+      document.getElementById("key-display").textContent = api_key;
+      document.getElementById("key-modal").classList.add("show");
+      document.getElementById("new-drone-name").value = "";
+      loadDrones();
+    });
+
+    document.getElementById("close-modal").addEventListener("click", () => {
+      document.getElementById("key-modal").classList.remove("show");
+    });
+
+    loadDrones();
+  </script>
+</body>
+</html>
