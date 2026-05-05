@@ -90,13 +90,50 @@ def _hash_key(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
+_jwks_cache = None
+_jwks_cache_ts = 0.0
+
+
+def _get_jwks():
+    """Fetch and cache the Supabase JWKS (public keys for ES256 verification)."""
+    global _jwks_cache, _jwks_cache_ts
+    if not SUPABASE_URL:
+        return None
+    if _jwks_cache and (time.time() - _jwks_cache_ts) < 3600:
+        return _jwks_cache
+    try:
+        import requests as _rq
+        r = _rq.get(f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json", timeout=5)
+        r.raise_for_status()
+        _jwks_cache = r.json()
+        _jwks_cache_ts = time.time()
+        return _jwks_cache
+    except Exception as e:
+        print(f"[auth] failed to fetch JWKS: {e}")
+        return None
+
+
 def _verify_jwt(token: str):
-    """Decode and verify a Supabase JWT. Returns the claims dict or None if invalid."""
-    if not JWT_SECRET:
+    """Decode and verify a Supabase JWT. Handles both HS256 (legacy) and ES256/RS256."""
+    if not token:
         return None
     try:
         from jose import jwt
-        return jwt.decode(token, JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg", "HS256")
+
+        if alg == "HS256":
+            if not JWT_SECRET:
+                print("[auth] HS256 token received but SUPABASE_JWT_SECRET not set")
+                return None
+            return jwt.decode(token, JWT_SECRET, algorithms=["HS256"], audience="authenticated")
+
+        # ES256 / RS256 — fetch the JWKS from Supabase
+        jwks = _get_jwks()
+        if not jwks:
+            print(f"[auth] {alg} token received but JWKS unavailable")
+            return None
+        return jwt.decode(token, jwks, algorithms=[alg], audience="authenticated")
     except Exception as e:
         print(f"[auth] JWT decode failed: {e}")
         return None

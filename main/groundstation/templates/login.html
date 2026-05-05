@@ -10,35 +10,53 @@
            justify-content: center; min-height: 100vh; margin: 0;
            color: #f5f5f5; font-family: system-ui, sans-serif; }
     .card { background: rgba(18, 18, 20, 0.95); padding: 32px;
-            border-radius: 10px; width: 360px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
-    h1 { color: #ff7a3a; margin: 0 0 24px; font-size: 20px; letter-spacing: 0.5px; }
-    label { display: block; font-size: 12px; color: #aaa; margin-bottom: 4px;
+            border-radius: 10px; width: 380px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+    h1 { color: #ff7a3a; margin: 0 0 4px; font-size: 22px; letter-spacing: 0.5px; }
+    .sub { color: #888; font-size: 13px; margin-bottom: 24px; }
+    label { display: block; font-size: 11px; color: #aaa; margin-bottom: 4px;
             text-transform: uppercase; letter-spacing: 1px; }
-    input { width: 100%; padding: 10px 12px; margin-bottom: 16px;
+    input { width: 100%; padding: 10px 12px; margin-bottom: 14px;
             background: #1d1d20; border: 1px solid #2a2a2e; border-radius: 6px;
             color: #f5f5f5; font-size: 14px; box-sizing: border-box; }
     input:focus { outline: none; border-color: #ff7a3a; }
-    button { width: 100%; padding: 10px; background: #ff7a3a; color: #111;
+    button { width: 100%; padding: 11px; background: #ff7a3a; color: #111;
              border: 0; border-radius: 6px; font-weight: 600; cursor: pointer;
-             font-size: 14px; }
+             font-size: 14px; margin-top: 4px; }
     button:hover { background: #ff8f5a; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .toggle { margin-top: 16px; text-align: center; font-size: 13px; color: #aaa; }
+    .toggle { margin-top: 18px; text-align: center; font-size: 13px; color: #aaa; }
     .toggle a { color: #ff7a3a; cursor: pointer; text-decoration: none;
-                user-select: none; }
+                user-select: none; font-weight: 600; }
     .toggle a:hover { text-decoration: underline; }
-    .error { color: #ff4a1c; font-size: 13px; margin-bottom: 12px; min-height: 18px; }
+    .msg { font-size: 13px; margin-bottom: 12px; min-height: 18px; line-height: 1.4; }
+    .msg.error { color: #ff4a1c; }
+    .msg.info { color: #4aa3ff; }
+    .signup-only { display: none; }
+    body.signup-mode .signup-only { display: block; }
+    body.signin-mode .signin-only { display: block; }
   </style>
 </head>
-<body>
+<body class="signin-mode">
   <div class="card">
     <h1>FireFly</h1>
-    <div id="error" class="error"></div>
+    <div class="sub" id="subtitle">Sign in to your account</div>
+    <div id="msg" class="msg"></div>
+
+    <div class="signup-only">
+      <label>Name</label>
+      <input id="name" type="text" autocomplete="name" />
+    </div>
 
     <label>Email</label>
     <input id="email" type="email" autocomplete="email" />
+
     <label>Password</label>
     <input id="password" type="password" autocomplete="current-password" />
+
+    <div class="signup-only">
+      <label>Confirm Password</label>
+      <input id="password2" type="password" autocomplete="new-password" />
+    </div>
 
     <button id="submit">Sign In</button>
 
@@ -56,78 +74,97 @@
     let mode = "signin";
     let sb = null;
 
-    // ── attach UI handlers FIRST so the toggle works regardless of Supabase init ──
-    $("toggle").addEventListener("click", () => {
-      mode = mode === "signin" ? "signup" : "signin";
+    function setMode(newMode) {
+      mode = newMode;
+      document.body.className = mode === "signin" ? "signin-mode" : "signup-mode";
       $("submit").textContent = mode === "signin" ? "Sign In" : "Create Account";
+      $("subtitle").textContent = mode === "signin" ? "Sign in to your account" : "Create a new account";
       $("mode-label").textContent = mode === "signin" ? "No account?" : "Have an account?";
       $("toggle").textContent = mode === "signin" ? "Create one" : "Sign in";
-      $("error").textContent = "";
-    });
-
-    $("submit").addEventListener("click", doAuth);
-    $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth(); });
-
-    // ── now try to initialize Supabase ──
-    function showFatal(msg) {
-      $("error").textContent = msg;
-      $("submit").disabled = true;
-      console.error("[firefly login]", msg);
+      $("password").autocomplete = mode === "signin" ? "current-password" : "new-password";
+      clearMsg();
     }
 
+    function showMsg(text, kind = "error") {
+      const el = $("msg");
+      el.textContent = text;
+      el.className = "msg " + kind;
+    }
+    function clearMsg() { $("msg").textContent = ""; $("msg").className = "msg"; }
+
+    $("toggle").addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
+
+    $("submit").addEventListener("click", doAuth);
+    document.querySelectorAll("input").forEach(el => {
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth(); });
+    });
+
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      showFatal("Server missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY env vars.");
+      showMsg("Server missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY env vars.");
+      $("submit").disabled = true;
     } else if (typeof window.supabase === "undefined" || !window.supabase.createClient) {
-      showFatal("Supabase SDK failed to load (network/CDN issue?). Reload the page.");
+      showMsg("Supabase SDK failed to load (network/CDN issue?). Reload the page.");
+      $("submit").disabled = true;
     } else {
       try {
         sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log("[firefly login] Supabase client ready");
       } catch (e) {
-        showFatal("Supabase init failed: " + e.message);
+        showMsg("Supabase init failed: " + e.message);
+        $("submit").disabled = true;
       }
     }
 
     async function doAuth() {
+      if (!sb) return;
       const email = $("email").value.trim();
       const password = $("password").value;
+
       if (!email || !password) {
-        $("error").textContent = "Email and password required.";
-        return;
-      }
-      if (!sb) {
-        $("error").textContent = "Auth not available. Check console.";
+        showMsg("Email and password required.");
         return;
       }
 
+      if (mode === "signup") {
+        const name = $("name").value.trim();
+        const password2 = $("password2").value;
+        if (!name) { showMsg("Name is required."); return; }
+        if (password.length < 6) { showMsg("Password must be at least 6 characters."); return; }
+        if (password !== password2) { showMsg("Passwords don't match."); return; }
+      }
+
       $("submit").disabled = true;
-      $("error").textContent = "";
+      clearMsg();
+
       try {
         const { data, error } = mode === "signin"
           ? await sb.auth.signInWithPassword({ email, password })
-          : await sb.auth.signUp({ email, password });
+          : await sb.auth.signUp({
+              email, password,
+              options: { data: { full_name: $("name").value.trim() } }
+            });
         if (error) throw error;
 
         const token = data.session?.access_token;
         if (!token) {
-          $("error").textContent = "Account created. If email confirmation is enabled, check your inbox; otherwise sign in.";
+          showMsg("Account created. Check your email to confirm, then sign in.", "info");
+          setMode("signin");
           $("submit").disabled = false;
           return;
         }
 
-        // Hand the token to Flask so it can verify and set a session cookie
         const r = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token }),
         });
         if (!r.ok) {
-          const j = await r.json();
-          throw new Error(j.error || "server rejected token (HTTP " + r.status + ")");
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.error || "Server rejected token (HTTP " + r.status + ")");
         }
         location.href = "/";
       } catch (e) {
-        $("error").textContent = e.message || String(e);
+        showMsg(e.message || String(e));
         $("submit").disabled = false;
         console.error("[firefly login] auth error:", e);
       }
