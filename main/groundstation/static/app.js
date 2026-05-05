@@ -280,7 +280,7 @@ function applyCamSrc() {
     img.removeAttribute("src");
     img.classList.remove("live");
     ph.classList.remove("hidden");
-    foot.textContent = currentCamUrl || "no stream URL configured — POST one to /api/camera";
+    foot.textContent = currentCamUrl || "no stream URL configured — authorized POST required";
   }
 }
 

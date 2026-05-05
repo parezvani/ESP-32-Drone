@@ -6,10 +6,12 @@ Usage:
     python run.py --no-yolo             # camera in UI but no fire detection
     FIREFLY_CAM_URL=http://X:81/stream python run.py    # skip scan, use explicit URL
 
+The launcher sets a per-run FIREFLY_CAMERA_TOKEN for camera registration.
 Ctrl+C kills everything.
 """
 import argparse
 import os
+import secrets
 import signal
 import socket
 import subprocess
@@ -22,6 +24,7 @@ import requests
 
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 SERVER = "http://127.0.0.1:5050"
+CAMERA_API_TOKEN = os.environ.get("FIREFLY_CAMERA_TOKEN") or secrets.token_urlsafe(32)
 
 processes: list[tuple[str, subprocess.Popen]] = []
 
@@ -98,7 +101,8 @@ def discover_cam() -> str | None:
 
 def register_cam(url: str) -> bool:
     try:
-        r = requests.post(f"{SERVER}/api/camera", json={"url": url}, timeout=2)
+        headers = {"X-Camera-Token": CAMERA_API_TOKEN}
+        r = requests.post(f"{SERVER}/api/camera", json={"url": url}, headers=headers, timeout=2)
         if r.ok:
             print(f"[run] registered camera: {url}")
             return True
@@ -138,7 +142,8 @@ def main():
 
     start("server",
           [sys.executable, "server.py"],
-          cwd=os.path.join(REPO_ROOT, "main", "groundstation"))
+          cwd=os.path.join(REPO_ROOT, "main", "groundstation"),
+          env_extra={"FIREFLY_CAMERA_TOKEN": CAMERA_API_TOKEN})
 
     if not wait_for_server():
         print("[run] server failed to start within 10s")

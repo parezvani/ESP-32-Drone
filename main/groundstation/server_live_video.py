@@ -1,12 +1,20 @@
 import json
+import os
+import secrets
 import socket
 import threading
 import time
+from functools import wraps
+from urllib.parse import urlparse
+
 from flask import Flask, jsonify, render_template, request
 
 from triangulator import triangulate
 
 app = Flask(__name__)
+
+CAMERA_API_TOKEN = os.environ.get("FIREFLY_CAMERA_TOKEN", "").strip()
+MAX_CAMERA_URL_LEN = 2048
 
 GPS_UDP_PORT = 4210
 TRIANGULATE_COOLDOWN_S = 5.0
@@ -28,6 +36,49 @@ try:
 except Exception as e:
     _HAS_INGEST = False
     print(f"[warn] mjpeg_ingest failed to load: {type(e).__name__}: {e}")
+
+
+def _camera_token_from_request() -> str:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip()
+    return request.headers.get("X-Camera-Token", "").strip()
+
+
+def require_camera_token(f):
+    """Require the shared camera-control token before accepting stream changes."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not CAMERA_API_TOKEN:
+            return jsonify({
+                "error": "camera API token not configured",
+                "hint": "set FIREFLY_CAMERA_TOKEN on the server",
+            }), 503
+
+        token = _camera_token_from_request()
+        if not token or not secrets.compare_digest(token, CAMERA_API_TOKEN):
+            return jsonify({"error": "camera auth required"}), 401
+
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def _validate_camera_url(url):
+    if url is None:
+        return None, None
+    if not isinstance(url, str):
+        return None, "url must be a string or null"
+
+    url = url.strip()
+    if not url:
+        return None, None
+    if len(url) > MAX_CAMERA_URL_LEN:
+        return None, "url is too long"
+
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None, "url must be an http(s) URL"
+    return url, None
 
 
 def _maybe_triangulate() -> None:
@@ -178,6 +229,7 @@ def post_fire():
 
 
 @app.post("/api/camera")
+@require_camera_token
 def set_camera():
     """Set (or clear) the camera URL.
 
@@ -190,13 +242,12 @@ def set_camera():
     """
     global _camera_url
     data = request.get_json(force=True, silent=True) or {}
-    url = data.get("url")
-
-    if url is not None and not isinstance(url, str):
-        return jsonify({"error": "url must be a string or null"}), 400
+    url, error = _validate_camera_url(data.get("url"))
+    if error:
+        return jsonify({"error": error}), 400
 
     with _lock:
-        _camera_url = url or None
+        _camera_url = url
 
     # ── Ingest lifecycle ──────────────────────────────────────────────────────
     if _HAS_INGEST:
@@ -223,6 +274,7 @@ def set_camera():
 
 
 @app.post("/api/camera/ingest/stop")
+@require_camera_token
 def stop_ingest():
     """Stop the MJPEG ingest worker without clearing the URL."""
     if not _HAS_INGEST:
@@ -232,6 +284,7 @@ def stop_ingest():
 
 
 @app.post("/api/camera/ingest/start")
+@require_camera_token
 def start_ingest():
     """(Re)start ingest using the currently stored camera URL."""
     if not _HAS_INGEST:
@@ -285,5 +338,8 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5050, debug=False, threaded=True)
 
 
-#Add camera ip via terminal using this format
-#curl -s -X POST http://localhost:5050/api/camera      -H "Content-Type: application/json"      -d '{"url": "http://10.0.0.232:8080/video", "drone_id": "drone_1"}' | python -m json.tool
+# Add camera ip via terminal using this format:
+# curl -s -X POST http://localhost:5050/api/camera \
+#   -H "Content-Type: application/json" \
+#   -H "X-Camera-Token: $FIREFLY_CAMERA_TOKEN" \
+#   -d '{"url": "http://10.0.0.232:8080/video", "drone_id": "drone_1"}' | python -m json.tool

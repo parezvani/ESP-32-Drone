@@ -9,6 +9,7 @@ Run this on the machine with the camera:
 Then POST the URL to the map server:
     curl -X POST http://localhost:5050/api/camera \
          -H 'Content-Type: application/json' \
+         -H "X-Camera-Token: $FIREFLY_CAMERA_TOKEN" \
          -d '{"url": "http://<THIS-MACHINE-LAN-IP>:8080/video"}'
 
 The stream is reachable at:
@@ -41,7 +42,7 @@ _INDEX_HTML = """<!doctype html>
 </head>
 <body>
   <img src="/video" alt="live feed">
-  <p>POST <code>http://{{ lan_ip }}:{{ port }}/video</code>
+  <p>Authorized POST <code>http://{{ lan_ip }}:{{ port }}/video</code>
      to <code>/api/camera</code> on the FireFly server.</p>
 </body>
 </html>"""
@@ -150,6 +151,7 @@ def main() -> None:
     print(f"\n  POST this to /api/camera on FireFly server:")
     print(f'  curl -X POST http://FIREFLY-SERVER:5050/api/camera \\')
     print(f'       -H "Content-Type: application/json" \\')
+    print(f'       -H "X-Camera-Token: $FIREFLY_CAMERA_TOKEN" \\')
     print(f'       -d \'{{"url": "http://{lan_ip}:{_args.port}/video"}}\'')
     print(f"{'─'*55}\n")
 

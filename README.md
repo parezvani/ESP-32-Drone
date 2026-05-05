@@ -111,6 +111,16 @@ FIREFLY_CAM_URL=http://10.0.0.137:81/stream python run.py
 $env:FIREFLY_CAM_URL="http://10.0.0.137:81/stream"; python run.py
 ```
 
+`run.py` generates a local camera token automatically. If you start the Flask server manually or configure the Render service, set a long `FIREFLY_CAMERA_TOKEN` and include it when changing the camera URL:
+
+```bash
+export FIREFLY_CAMERA_TOKEN="replace-with-a-long-random-secret"
+curl -X POST http://localhost:5050/api/camera \
+  -H "Content-Type: application/json" \
+  -H "X-Camera-Token: $FIREFLY_CAMERA_TOKEN" \
+  -d '{"url": "http://10.0.0.137:81/stream"}'
+```
+
 ---
 
 ## Optional: run the real fire detector with a fire video

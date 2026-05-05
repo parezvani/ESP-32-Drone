@@ -7,6 +7,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from functools import wraps
+from urllib.parse import urlparse
 
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
@@ -17,6 +18,8 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
+CAMERA_API_TOKEN = os.environ.get("FIREFLY_CAMERA_TOKEN", "").strip()
+MAX_CAMERA_URL_LEN = 2048
 
 _db_engine = None
 _db_session_maker = None
@@ -164,6 +167,49 @@ def require_jwt(f):
         request.user_id = claims.get("sub")
         return f(*args, **kwargs)
     return wrapper
+
+
+def _camera_token_from_request() -> str:
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:].strip()
+    return request.headers.get("X-Camera-Token", "").strip()
+
+
+def require_camera_token(f):
+    """Require the shared camera-control token before accepting stream changes."""
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not CAMERA_API_TOKEN:
+            return jsonify({
+                "error": "camera API token not configured",
+                "hint": "set FIREFLY_CAMERA_TOKEN on the server",
+            }), 503
+
+        token = _camera_token_from_request()
+        if not token or not secrets.compare_digest(token, CAMERA_API_TOKEN):
+            return jsonify({"error": "camera auth required"}), 401
+
+        return f(*args, **kwargs)
+    return wrapper
+
+
+def _validate_camera_url(url):
+    if url is None:
+        return None, None
+    if not isinstance(url, str):
+        return None, "url must be a string or null"
+
+    url = url.strip()
+    if not url:
+        return None, None
+    if len(url) > MAX_CAMERA_URL_LEN:
+        return None, "url is too long"
+
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None, "url must be an http(s) URL"
+    return url, None
 
 
 app = Flask(__name__)
@@ -511,14 +557,15 @@ def post_fire():
 
 
 @app.post("/api/camera")
+@require_camera_token
 def set_camera():
     global _camera_url
     data = request.get_json(force=True, silent=True) or {}
-    url = data.get("url")
-    if url is not None and not isinstance(url, str):
-        return jsonify({"error": "url must be a string or null"}), 400
+    url, error = _validate_camera_url(data.get("url"))
+    if error:
+        return jsonify({"error": error}), 400
     with _lock:
-        _camera_url = url or None
+        _camera_url = url
         return jsonify({"camera_url": _camera_url})
 
 
