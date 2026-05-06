@@ -31,6 +31,15 @@ let primaryDroneId = null;
 
 const $ = (id) => document.getElementById(id);
 
+async function getAuthHeader() {
+  // Reuse the Supabase client if available, otherwise fall back to nothing
+  if (typeof window.supabase !== 'undefined' && window._sb) {
+    const { data: { session } } = await window._sb.auth.getSession();
+    return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
+  }
+  return {};
+}
+
 function fmtCoords(lat, lon) {
   if (lat == null || lon == null) return "—";
   return `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
@@ -179,7 +188,7 @@ function updateAlert(anyFireSeen, droneCount) {
 
 async function poll() {
   try {
-    const r = await fetch("/api/state");
+    const r = await fetch("/api/state", { headers: await getAuthHeader() });
     if (!r.ok) return;
     const s = await r.json();
     const now = s.server_ts;
