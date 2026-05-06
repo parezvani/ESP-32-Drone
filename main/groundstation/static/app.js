@@ -5,10 +5,29 @@ const FRESH_FIRE_S = 30;
 
 const map = L.map("map", { zoomControl: true }).setView([36.995578, -122.058878], 16);
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 19,
-  attribution: "© OpenStreetMap",
-}).addTo(map);
+const BASEMAPS = {
+  dark: L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png", {
+    maxZoom: 19, attribution: "© OpenStreetMap, © CARTO",
+  }),
+  light: L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19, attribution: "© OpenStreetMap",
+  }),
+  satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 19, attribution: "Tiles © Esri",
+  }),
+};
+let currentBasemap = "dark";
+BASEMAPS.dark.addTo(map);
+
+function setBasemap(name) {
+  if (!BASEMAPS[name] || name === currentBasemap) return;
+  map.removeLayer(BASEMAPS[currentBasemap]);
+  BASEMAPS[name].addTo(map);
+  currentBasemap = name;
+  document.querySelectorAll("[data-basemap]").forEach(b => {
+    b.classList.toggle("active", b.dataset.basemap === name);
+  });
+}
 
 const droneIcon = L.divIcon({
   className: "drone-icon",
@@ -87,6 +106,8 @@ function renderDroneList(drones, now, anyFireSeen) {
   const list = $("drone-list");
   const ids = Object.keys(drones);
   $("drone-count").textContent = ids.length;
+  const chipDrones = $("chip-drones");
+  if (chipDrones) chipDrones.textContent = ids.length;
 
   if (ids.length === 0) {
     list.innerHTML = '<div class="empty">waiting for telemetry…</div>';
@@ -134,6 +155,8 @@ function renderDroneList(drones, now, anyFireSeen) {
 function renderFireList(fires, now, anyFireSeen) {
   const list = $("fire-list");
   $("fire-count").textContent = fires.length;
+  const chipFires = $("chip-fires");
+  if (chipFires) chipFires.textContent = fires.length;
 
   if (fires.length === 0) {
     list.innerHTML = '<div class="empty">none yet</div>';
@@ -172,17 +195,27 @@ function renderFireList(fires, now, anyFireSeen) {
   }
 }
 
-function updateAlert(anyFireSeen, droneCount) {
+function updateAlert(anyFireSeen, droneCount, fires, now) {
   const el = $("alert-banner");
   const txt = $("alert-text");
+  const sub = $("alert-sub");
   if (anyFireSeen) {
     el.classList.remove("idle");
     el.classList.add("active");
     txt.textContent = "Fire detected — drones converging";
+    if (sub && fires && fires.length) {
+      const latest = fires[fires.length - 1];
+      const conf = latest.confidence != null ? `${(latest.confidence * 100).toFixed(0)}% confidence` : null;
+      const age = `${Math.max(0, Math.round(now - latest.ts))}s ago`;
+      sub.textContent = [conf, age].filter(Boolean).join(" · ");
+    } else if (sub) {
+      sub.textContent = "";
+    }
   } else {
     el.classList.remove("active");
     el.classList.add("idle");
     txt.textContent = droneCount > 0 ? "No fire detected" : "No drones connected";
+    if (sub) sub.textContent = "";
   }
 }
 
@@ -261,7 +294,7 @@ async function poll() {
 
     renderDroneList(s.drones, now, anyFireSeen);
     renderFireList(s.fires, now, anyFireSeen);
-    updateAlert(anyFireSeen, Object.keys(s.drones).length);
+    updateAlert(anyFireSeen, Object.keys(s.drones).length, s.fires, now);
 
     $("server-time").textContent = fmtTime(now);
 
@@ -346,6 +379,13 @@ $("reset-btn").addEventListener("click", async () => {
   }
   firstDroneFix = true;
 });
+
+document.querySelectorAll("[data-basemap]").forEach(b => {
+  b.addEventListener("click", () => setBasemap(b.dataset.basemap));
+});
+
+document.getElementById("zoom-in")?.addEventListener("click", () => map.zoomIn());
+document.getElementById("zoom-out")?.addEventListener("click", () => map.zoomOut());
 
 setInterval(poll, POLL_MS);
 poll();

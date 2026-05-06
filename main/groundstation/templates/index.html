@@ -1,36 +1,49 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <style>
-  #signout-btn {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 600;
-    padding: 8px 16px;
-    background: rgba(18, 18, 20, 0.92);
-    color: #f5f5f5;
-    border: 1px solid #2a2a2e;
-    border-radius: 6px;
-    font: 600 12px system-ui, sans-serif;
-    cursor: pointer;
-    text-decoration: none;
-    backdrop-filter: blur(8px);
-    transition: border-color 0.2s, color 0.2s;
-  }
-  #signout-btn:hover {
-    border-color: #c97070;
-    color: #c97070;
-  }
-</style>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FireFly Ground Station</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='colors_and_type.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <style>
+  /* Top-right chrome — glassy chips matching the new panel language */
+  #signout-btn, #dash-link {
+    position: fixed;
+    top: 16px;
+    z-index: 600;
+    padding: 8px 14px;
+    background: rgba(15, 17, 21, 0.72);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    color: #e7e9ec;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 999px;
+    font: 600 12px 'Inter', system-ui, sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  #signout-btn { right: 16px; }
+  #dash-link   { right: 116px; }
+  #signout-btn:hover {
+    border-color: rgba(201,112,112,0.6);
+    color: #ff7a7a;
+    background: rgba(42,26,26,0.6);
+  }
+  #dash-link:hover {
+    border-color: rgba(255,122,58,0.6);
+    color: #ff7a3a;
+    background: rgba(42,18,12,0.5);
+  }
+  </style>
 </head>
 <body>
   <div id="map"></div>
+  <a id="dash-link" href="/dashboard">Dashboard</a>
   <a id="signout-btn" href="/logout">Sign Out</a>
 
   <aside id="panel">
@@ -41,7 +54,10 @@
 
     <div id="alert-banner" class="alert idle">
       <span class="dot"></span>
-      <span id="alert-text">No fire detected</span>
+      <div class="alert-body">
+        <div id="alert-text" class="alert-text">No fire detected</div>
+        <div id="alert-sub" class="alert-sub"></div>
+      </div>
     </div>
 
     <section class="panel-section">
@@ -74,6 +90,32 @@
       <button id="reset-btn" class="btn danger" type="button">Reset all state</button>
     </section>
   </aside>
+
+  <!-- Top-right cluster: live count + legend -->
+  <div id="topright">
+    <div id="count-chip" class="chip">
+      <span class="led"></span>
+      <span><span id="chip-drones">0</span> drones · <span id="chip-fires">0</span> fires</span>
+    </div>
+    <div id="legend">
+      <div class="legend-title">Legend</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#60a5fa"></span>Drone (live)</div>
+      <div class="legend-row"><span class="legend-dot" style="background:#ff4a1c"></span>Drone (fire detected)</div>
+      <div class="legend-row"><span class="legend-dot fire-pin"></span>Confirmed fire</div>
+    </div>
+  </div>
+
+  <!-- Custom vertical zoom (bottom-right) -->
+  <div id="zoom-vert">
+    <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+    <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+  </div>
+
+  <div id="basemap-switcher">
+    <button data-basemap="dark" class="active">Dark</button>
+    <button data-basemap="light">Light</button>
+    <button data-basemap="satellite">Satellite</button>
+  </div>
 
   <div id="cam-panel" class="hidden">
     <div class="cam-header">
