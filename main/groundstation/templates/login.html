@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
   <title>FireFly — Login</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <style>
@@ -34,9 +35,24 @@
     .signup-only { display: none; }
     body.signup-mode .signup-only { display: block; }
     body.signin-mode .signin-only { display: block; }
+    .home-logo {
+      position: fixed;
+      top: 24px;
+      left: 32px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 28px
+      font-weight: 700;
+      letter-spacing: 5px;
+      color: #ff7a3a;
+      text-decoration: none;
+      z-index: 100;
+      transition: opacity 0.2s;
+    }
+    .home-logo:hover { opacity: 0.75; }
   </style>
 </head>
 <body class="signin-mode">
+  <a href="/" class="home-logo">FIREFLY</a>
   <div class="card">
     <h1>FireFly</h1>
     <div class="sub" id="subtitle">Sign in to your account</div>
