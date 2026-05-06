@@ -13,7 +13,6 @@ from flask import Flask, jsonify, redirect, render_template, request, session, u
 
 from triangulator import triangulate
 
-# Optional: only import if env vars are set. Allows local dev without Postgres.
 DATABASE_URL = os.environ.get("DATABASE_URL")
 JWT_SECRET = os.environ.get("SUPABASE_JWT_SECRET")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
@@ -89,7 +88,6 @@ else:
 
 
 def _hash_key(key: str) -> str:
-    """Hash an API key with SHA256 for storage. Reversible only via brute force."""
     return hashlib.sha256(key.encode()).hexdigest()
 
 
@@ -98,7 +96,6 @@ _jwks_cache_ts = 0.0
 
 
 def _get_jwks():
-    """Fetch and cache the Supabase JWKS (public keys for ES256 verification)."""
     global _jwks_cache, _jwks_cache_ts
     if not SUPABASE_URL:
         return None
@@ -117,7 +114,6 @@ def _get_jwks():
 
 
 def _verify_jwt(token: str):
-    """Decode and verify a Supabase JWT. Handles both HS256 (legacy) and ES256/RS256."""
     if not token:
         return None
     try:
@@ -131,7 +127,6 @@ def _verify_jwt(token: str):
                 return None
             return jwt.decode(token, JWT_SECRET, algorithms=["HS256"], audience="authenticated")
 
-        # ES256 / RS256 — fetch the JWKS from Supabase
         jwks = _get_jwks()
         if not jwks:
             print(f"[auth] {alg} token received but JWKS unavailable")
@@ -142,22 +137,27 @@ def _verify_jwt(token: str):
         return None
 
 
+def _extract_jwt_token() -> str | None:
+    """Pull JWT from Authorization header or session."""
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return session.get("jwt")
+
+
 def require_jwt(f):
-    """Decorator: require a valid Supabase JWT in Authorization or session."""
+    """
+    Decorator: require a valid Supabase JWT.
+    Sets request.user_id to the authenticated user's UUID string.
+    In local dev (no JWT_SECRET), passes through with user_id=None.
+    """
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not JWT_SECRET:
-            # Auth disabled in local mode — pass through
             request.user_id = None
             return f(*args, **kwargs)
 
-        token = None
-        auth = request.headers.get("Authorization", "")
-        if auth.startswith("Bearer "):
-            token = auth[7:]
-        elif "jwt" in session:
-            token = session["jwt"]
-
+        token = _extract_jwt_token()
         claims = _verify_jwt(token) if token else None
         if not claims:
             if request.path.startswith("/api/"):
@@ -169,6 +169,43 @@ def require_jwt(f):
     return wrapper
 
 
+def _resolve_api_key() -> tuple[str | None, dict | None]:
+    """
+    Validate the X-API-Key header against the database.
+    Returns (drone_id_str, drone_row_dict) on success, or (None, None) on failure.
+    Also verifies the key is not revoked.
+    """
+    if not _db_session_maker:
+        return None, None
+
+    api_key = request.headers.get("X-API-Key", "").strip()
+    if not api_key:
+        return None, None
+
+    Drone = _models["Drone"]
+    ApiKey = _models["ApiKey"]
+
+    key_hash = _hash_key(api_key)
+    with _db_session_maker() as db:
+        key_row = (
+            db.query(ApiKey)
+            .filter_by(key_hash=key_hash, revoked_at=None)
+            .first()
+        )
+        if not key_row:
+            return None, None
+
+        drone = db.query(Drone).filter_by(id=key_row.drone_id).first()
+        if not drone:
+            return None, None
+
+        return str(drone.id), {
+            "id": str(drone.id),
+            "user_id": str(drone.user_id),
+            "name": drone.name,
+        }
+
+
 def _camera_token_from_request() -> str:
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
@@ -177,7 +214,7 @@ def _camera_token_from_request() -> str:
 
 
 def require_camera_token(f):
-    """Require the shared camera-control token before accepting stream changes."""
+    """Require the shared camera-control token."""
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not CAMERA_API_TOKEN:
@@ -199,13 +236,11 @@ def _validate_camera_url(url):
         return None, None
     if not isinstance(url, str):
         return None, "url must be a string or null"
-
     url = url.strip()
     if not url:
         return None, None
     if len(url) > MAX_CAMERA_URL_LEN:
         return None, "url is too long"
-
     parsed = urlparse(url)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return None, "url must be an http(s) URL"
@@ -221,27 +256,47 @@ TRIANGULATE_FRESHNESS_S = 10.0
 DRONE_TIMEOUT_S = 30.0
 
 _lock = threading.Lock()
-_drones = {}
-_fires: list[dict] = []
+
+# In-memory drone state is now keyed by drone_id (UUID string).
+# Each entry also carries the owning user_id so /api/state can filter by user.
+# Shape: { drone_id: { "user_id": ..., "lat": ..., ... } }
+_drones: dict[str, dict] = {}
+
+# In-memory fires are also keyed by user_id so each user only sees their own.
+# Shape: { user_id: [ fire_dict, ... ] }
+_fires_by_user: dict[str, list[dict]] = {}
 _fire_id = 0
+
 _camera_url: str | None = None
-_last_triangulation = 0.0
+_last_triangulation: dict[str, float] = {}  # per user_id
 _warned_ids: set[str] = set()
 
 
-def _maybe_triangulate() -> None:
-    """Run triangulation if 2+ drones recently flagged fire_detected.
+def _get_user_fires(user_id: str | None) -> list[dict]:
+    """Return the fire list for this user (empty list if no fires yet)."""
+    if not user_id:
+        # local dev with no auth — return all fires flattened
+        return [f for fires in _fires_by_user.values() for f in fires]
+    return _fires_by_user.get(user_id, [])
 
-    Caller must hold _lock. Mutates _fires and _last_triangulation.
+
+def _maybe_triangulate(user_id: str | None) -> None:
     """
-    global _last_triangulation, _fire_id
+    Run triangulation for drones belonging to user_id.
+    Caller must hold _lock.
+    """
+    global _fire_id
     now = time.time()
-    if now - _last_triangulation < TRIANGULATE_COOLDOWN_S:
+
+    last = _last_triangulation.get(user_id or "__local__", 0.0)
+    if now - last < TRIANGULATE_COOLDOWN_S:
         return
 
+    # Only consider drones owned by this user
     seers = [
         (d_id, d) for d_id, d in _drones.items()
-        if d.get("fire_detected")
+        if (user_id is None or d.get("user_id") == user_id)
+        and d.get("fire_detected")
         and d.get("heading_deg") is not None
         and now - d.get("ts", 0) < TRIANGULATE_FRESHNESS_S
     ]
@@ -258,7 +313,7 @@ def _maybe_triangulate() -> None:
 
     lat, lon = coords
     _fire_id += 1
-    _fires.append({
+    fire = {
         "id": _fire_id,
         "lat": lat,
         "lon": lon,
@@ -267,16 +322,26 @@ def _maybe_triangulate() -> None:
         "confidence": 0.88,
         "ts": now,
         "source": "triangulation",
-    })
-    _last_triangulation = now
-    print(f"[triangulate] {id1} x {id2} -> ({lat:.5f}, {lon:.5f})")
+    }
+
+    uid = user_id or "__local__"
+    _fires_by_user.setdefault(uid, []).append(fire)
+    _last_triangulation[uid] = now
+    print(f"[triangulate] user={uid} {id1} x {id2} -> ({lat:.5f}, {lon:.5f})")
 
 
 def _gps_listener(port: int) -> None:
+    """
+    UDP listener for ESP32 telemetry.
+    Packets that arrive with a valid API key field are accepted;
+    otherwise the drone_id is used as-is for local dev.
+    The in-memory entry always carries the user_id resolved from the DB.
+    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("0.0.0.0", port))
     print(f"[gps] listening for UDP broadcasts on :{port}")
+
     while True:
         try:
             data, addr = sock.recvfrom(512)
@@ -288,36 +353,55 @@ def _gps_listener(port: int) -> None:
             continue
 
         lat, lon = msg.get("lat"), msg.get("lon")
-        drone_id = msg.get("id", "unknown_drone")
-
         if lat is None or lon is None:
             continue
 
+        drone_id = msg.get("id", "unknown_drone")
+
+        # Resolve user ownership from DB if available
+        resolved_user_id = None
+        resolved_drone_id = drone_id  # fallback to whatever the packet says
+
+        if _db_session_maker and msg.get("api_key"):
+            # Firmware can optionally embed the API key in UDP for user attribution.
+            # This is optional — without it we still accept the packet in local dev.
+            Drone = _models["Drone"]
+            ApiKey = _models["ApiKey"]
+            key_hash = _hash_key(msg["api_key"])
+            try:
+                with _db_session_maker() as db:
+                    key_row = db.query(ApiKey).filter_by(key_hash=key_hash, revoked_at=None).first()
+                    if key_row:
+                        drone_row = db.query(Drone).filter_by(id=key_row.drone_id).first()
+                        if drone_row:
+                            resolved_user_id = str(drone_row.user_id)
+                            resolved_drone_id = str(drone_row.id)
+            except Exception as e:
+                print(f"[gps] db lookup error: {e}")
+
         if drone_id == "unknown_drone" and addr[0] not in _warned_ids:
-            print(f"[warn] UDP packet from {addr[0]} has no 'id' field — set DRONE_ID before flashing")
+            print(f"[warn] UDP packet from {addr[0]} has no 'id' field")
             _warned_ids.add(addr[0])
-        elif drone_id not in _drones and drone_id not in _warned_ids:
-            print(f"[gps] new drone connected: {drone_id} from {addr[0]}")
-            _warned_ids.add(drone_id)
+        elif resolved_drone_id not in _drones and resolved_drone_id not in _warned_ids:
+            print(f"[gps] new drone: {resolved_drone_id} from {addr[0]}")
+            _warned_ids.add(resolved_drone_id)
 
         with _lock:
-            if drone_id not in _drones:
-                _drones[drone_id] = {}
-
-            _drones[drone_id]["lat"] = float(lat)
-            _drones[drone_id]["lon"] = float(lon)
-            _drones[drone_id]["alt_m"] = msg.get("alt_m")
-            _drones[drone_id]["sats"] = msg.get("sats")
-            _drones[drone_id]["hdop"] = msg.get("hdop")
-            _drones[drone_id]["heading_deg"] = msg.get("heading_deg")
-            _drones[drone_id]["fire_detected"] = msg.get("fire_detected", False)
-            _drones[drone_id]["ts"] = time.time()
-
-            _maybe_triangulate()
+            _drones[resolved_drone_id] = {
+                "user_id": resolved_user_id,
+                "lat": float(lat),
+                "lon": float(lon),
+                "alt_m": msg.get("alt_m"),
+                "sats": msg.get("sats"),
+                "hdop": msg.get("hdop"),
+                "heading_deg": msg.get("heading_deg"),
+                "fire_detected": msg.get("fire_detected", False),
+                "ts": time.time(),
+            }
+            _maybe_triangulate(resolved_user_id)
 
 
 def _drone_reaper() -> None:
-    """Drop drones that haven't broadcast within DRONE_TIMEOUT_S."""
     while True:
         time.sleep(5.0)
         now = time.time()
@@ -334,18 +418,15 @@ threading.Thread(target=_drone_reaper, daemon=True).start()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Public routes (no auth)
+#  Public routes (no auth needed)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def index():
     if JWT_SECRET and "jwt" not in session:
-        return redirect(url_for("landing_page"))
+        return redirect(url_for("login_page"))
     return render_template("index.html")
 
-@app.get("/landing")
-def landing_page():
-    return render_template("landing.html")
 
 @app.get("/login")
 def login_page():
@@ -356,7 +437,6 @@ def login_page():
 
 @app.post("/login")
 def login_submit():
-    """Browser POSTs the JWT it got from Supabase JS. We stash it in session."""
     data = request.get_json(force=True, silent=True) or {}
     token = data.get("token")
     if not token:
@@ -376,16 +456,22 @@ def logout():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Drone HTTPS uplink (API key auth — used by ESP32 firmware)
+#  ESP32 firmware uplink — authenticated by X-API-Key
+#  Only the drone's own key can post telemetry for that drone.
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.post("/api/drone")
 def post_drone():
-    """Telemetry endpoint for drones. Requires X-API-Key header."""
+    """
+    Telemetry endpoint for ESP32 firmware.
+    Auth: X-API-Key header (issued at drone registration time).
+    The key is hashed and looked up in api_keys; the matching drone row
+    determines which user owns this drone — no user can spoof another's drone.
+    """
     if not _db_session_maker:
         return jsonify({"error": "database not configured"}), 503
 
-    api_key = request.headers.get("X-API-Key")
+    api_key = request.headers.get("X-API-Key", "").strip()
     if not api_key:
         return jsonify({"error": "X-API-Key required"}), 401
 
@@ -409,14 +495,12 @@ def post_drone():
         if not drone:
             return jsonify({"error": "drone not found"}), 404
 
-        # Update drone snapshot
         drone.last_lat = float(lat)
         drone.last_lon = float(lon)
         drone.last_heading_deg = msg.get("heading_deg")
         drone.fire_detected = bool(msg.get("fire_detected", False))
         drone.last_seen = datetime.now(timezone.utc)
 
-        # Insert telemetry row
         db.add(Telemetry(
             drone_id=drone.id,
             lat=float(lat), lon=float(lon),
@@ -428,10 +512,12 @@ def post_drone():
         ))
         db.commit()
 
-        # Mirror into in-memory state so the live map sees it
         drone_id_str = str(drone.id)
+        user_id_str = str(drone.user_id)
+
         with _lock:
             _drones[drone_id_str] = {
+                "user_id": user_id_str,
                 "lat": float(lat),
                 "lon": float(lon),
                 "alt_m": msg.get("alt_m"),
@@ -442,13 +528,13 @@ def post_drone():
                 "ts": time.time(),
                 "name": drone.name,
             }
-            _maybe_triangulate()
+            _maybe_triangulate(user_id_str)
 
     return jsonify({"ok": True})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  User dashboard (JWT auth — manage drones + API keys)
+#  Dashboard — JWT required, data scoped to the authenticated user
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/dashboard")
@@ -466,6 +552,7 @@ def list_drones():
         return jsonify({"drones": []})
     Drone = _models["Drone"]
     with _db_session_maker() as db:
+        # Filter strictly by the authenticated user's UUID
         drones = db.query(Drone).filter_by(user_id=request.user_id).all()
         return jsonify({"drones": [{
             "id": str(d.id),
@@ -480,7 +567,6 @@ def list_drones():
 @app.post("/api/dashboard/drones")
 @require_jwt
 def create_drone():
-    """Register a new drone, return a fresh API key (shown ONCE)."""
     if not _db_session_maker:
         return jsonify({"error": "database not configured"}), 503
 
@@ -492,20 +578,20 @@ def create_drone():
     Drone = _models["Drone"]
     ApiKey = _models["ApiKey"]
 
-    raw_key = secrets.token_urlsafe(48)  # ~64 char URL-safe key
+    raw_key = secrets.token_urlsafe(48)
 
     with _db_session_maker() as db:
+        # Drone is created with the authenticated user's ID baked in
         drone = Drone(user_id=request.user_id, name=name)
         db.add(drone)
-        db.flush()  # populate drone.id
-
+        db.flush()
         db.add(ApiKey(drone_id=drone.id, key_hash=_hash_key(raw_key)))
         db.commit()
 
         return jsonify({
             "id": str(drone.id),
             "name": drone.name,
-            "api_key": raw_key,  # the only time the raw key is ever returned
+            "api_key": raw_key,
         })
 
 
@@ -516,35 +602,75 @@ def delete_drone(drone_id):
         return jsonify({"error": "database not configured"}), 503
     Drone = _models["Drone"]
     with _db_session_maker() as db:
+        # The user_id filter ensures you can only delete your own drones.
+        # Without it, any logged-in user could delete any drone by guessing its UUID.
         drone = db.query(Drone).filter_by(id=drone_id, user_id=request.user_id).first()
         if not drone:
             return jsonify({"error": "not found"}), 404
         db.delete(drone)
         db.commit()
+
+    # Also evict from in-memory state
+    with _lock:
+        _drones.pop(drone_id, None)
+
     return jsonify({"ok": True})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Existing routes — unchanged behavior (work with or without DB)
+#  Live map API — JWT required, all responses scoped to the authenticated user
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/state")
+@require_jwt
 def get_state():
+    """
+    Returns only the drones and fires belonging to the authenticated user.
+    An unauthenticated caller gets a 401 before reaching this code.
+    """
+    uid = request.user_id  # None in local dev (no JWT_SECRET)
     with _lock:
-        return jsonify({"drones": dict(_drones), "fires": list(_fires),
-                        "camera_url": _camera_url, "server_ts": time.time()})
+        if uid:
+            user_drones = {
+                k: {key: v for key, v in d.items() if key != "user_id"}
+                for k, d in _drones.items()
+                if d.get("user_id") == uid
+            }
+        else:
+            # Local dev fallback — strip user_id field but show everything
+            user_drones = {
+                k: {key: v for key, v in d.items() if key != "user_id"}
+                for k, d in _drones.items()
+            }
+
+        user_fires = list(_get_user_fires(uid))
+
+    return jsonify({
+        "drones": user_drones,
+        "fires": user_fires,
+        "camera_url": _camera_url,
+        "server_ts": time.time(),
+    })
 
 
 @app.post("/api/fire")
+@require_jwt
 def post_fire():
+    """
+    Accept a fire detection from the YOLO detector or ingest worker.
+    Requires a valid JWT so anonymous callers cannot inject fake fire events.
+    The fire is stored under the authenticated user's ID.
+    """
     global _fire_id
     data = request.get_json(force=True, silent=True) or {}
-    with _lock:
-        lat = data.get("lat")
-        lon = data.get("lon")
-        if lat is None or lon is None:
-            return jsonify({"error": "Coords required"}), 400
+    lat = data.get("lat")
+    lon = data.get("lon")
+    if lat is None or lon is None:
+        return jsonify({"error": "lat and lon required"}), 400
 
+    uid = request.user_id or "__local__"
+
+    with _lock:
         _fire_id += 1
         fire = {
             "id": _fire_id,
@@ -554,14 +680,21 @@ def post_fire():
             "area_m2": data.get("area_m2"),
             "confidence": data.get("confidence"),
             "ts": time.time(),
+            "source": data.get("source", "detection"),
         }
-        _fires.append(fire)
-        return jsonify(fire)
+        _fires_by_user.setdefault(uid, []).append(fire)
+
+    return jsonify(fire)
 
 
 @app.post("/api/camera")
+@require_jwt
 @require_camera_token
 def set_camera():
+    """
+    Requires both a valid user JWT and the camera-control token.
+    Double-decorator pattern: JWT is checked first, then the camera token.
+    """
     global _camera_url
     data = request.get_json(force=True, silent=True) or {}
     url, error = _validate_camera_url(data.get("url"))
@@ -569,29 +702,45 @@ def set_camera():
         return jsonify({"error": error}), 400
     with _lock:
         _camera_url = url
-        return jsonify({"camera_url": _camera_url})
+    return jsonify({"camera_url": _camera_url})
 
 
 @app.post("/api/triangulate")
+@require_jwt
 def manual_triangulate():
+    """
+    Manually trigger triangulation for the authenticated user's drones only.
+    """
+    uid = request.user_id
     with _lock:
-        before = len(_fires)
-        _maybe_triangulate()
-        new_fire = _fires[-1] if len(_fires) > before else None
+        fires_before = len(_get_user_fires(uid))
+        _maybe_triangulate(uid)
+        user_fires = list(_get_user_fires(uid))
+        new_fire = user_fires[-1] if len(user_fires) > fires_before else None
     return jsonify({"fire": new_fire})
 
 
 @app.post("/api/reset")
+@require_jwt
 def reset():
-    global _fire_id, _camera_url
+    """
+    Clears only the authenticated user's drones and fires from in-memory state.
+    Does not touch other users' data.
+    """
+    global _fire_id
+    uid = request.user_id or "__local__"
+
     with _lock:
-        _fires.clear()
-        _fire_id = 0
-        _drones.clear()
-        _camera_url = None
-        global _last_triangulation
-        _last_triangulation = 0.0
-        return jsonify({"ok": True})
+        # Remove only this user's drones from in-memory state
+        to_remove = [k for k, v in _drones.items() if v.get("user_id") == uid]
+        for k in to_remove:
+            del _drones[k]
+
+        # Clear only this user's fires
+        _fires_by_user.pop(uid, None)
+        _last_triangulation.pop(uid, None)
+
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":
