@@ -292,22 +292,28 @@ def _maybe_triangulate(user_id: str | None) -> None:
     if now - last < TRIANGULATE_COOLDOWN_S:
         return
 
-    # Only consider drones owned by this user
-    seers = [
-        (d_id, d) for d_id, d in _drones.items()
-        if (user_id is None or d.get("user_id") == user_id)
-        and d.get("fire_detected")
-        and d.get("heading_deg") is not None
-        and now - d.get("ts", 0) < TRIANGULATE_FRESHNESS_S
-    ]
+    # Look for drones that have a valid "fire_memory" snapshot
+    seers = []
+    for d_id, d in _drones.items():
+        if user_id is None or d.get("user_id") == user_id:
+            mem = d.get("fire_memory")
+            if mem and mem.get("heading_deg") is not None and (now - mem["ts"] < TRIANGULATE_FRESHNESS_S):
+                seers.append((d_id, mem))
+
     if len(seers) < 2:
         return
 
-    (id1, d1), (id2, d2) = seers[:2]
-    coords = triangulate(
-        d1["lat"], d1["lon"], d1["heading_deg"],
-        d2["lat"], d2["lon"], d2["heading_deg"],
-    )
+    (id1, mem1), (id2, mem2) = seers[:2]
+    
+    try:
+        coords = triangulate(
+            mem1["lat"], mem1["lon"], mem1["heading_deg"],
+            mem2["lat"], mem2["lon"], mem2["heading_deg"],
+        )
+    except Exception as e:
+        print(f"[triangulate] Math error: {e}")
+        return
+
     if coords is None:
         return
 
@@ -331,12 +337,6 @@ def _maybe_triangulate(user_id: str | None) -> None:
 
 
 def _gps_listener(port: int) -> None:
-    """
-    UDP listener for ESP32 telemetry.
-    Packets that arrive with a valid API key field are accepted;
-    otherwise the drone_id is used as-is for local dev.
-    The in-memory entry always carries the user_id resolved from the DB.
-    """
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("0.0.0.0", port))
@@ -358,13 +358,10 @@ def _gps_listener(port: int) -> None:
 
         drone_id = msg.get("id", "unknown_drone")
 
-        # Resolve user ownership from DB if available
         resolved_user_id = None
-        resolved_drone_id = drone_id  # fallback to whatever the packet says
+        resolved_drone_id = drone_id
 
         if _db_session_maker and msg.get("api_key"):
-            # Firmware can optionally embed the API key in UDP for user attribution.
-            # This is optional — without it we still accept the packet in local dev.
             Drone = _models["Drone"]
             ApiKey = _models["ApiKey"]
             key_hash = _hash_key(msg["api_key"])
@@ -387,6 +384,24 @@ def _gps_listener(port: int) -> None:
             _warned_ids.add(resolved_drone_id)
 
         with _lock:
+            existing = _drones.get(resolved_drone_id, {})
+            current_fire = msg.get("fire_detected", False)
+            heading = msg.get("heading_deg")
+            
+            # --- THE MEMORY BANK ---
+            if current_fire and heading is not None:
+                memory = {
+                    "lat": float(lat),
+                    "lon": float(lon),
+                    "heading_deg": heading,
+                    "ts": time.time()
+                }
+            else:
+                memory = existing.get("fire_memory")
+                if memory and (time.time() - memory["ts"] > 10.0):
+                    memory = None
+            # -----------------------
+
             _drones[resolved_drone_id] = {
                 "user_id": resolved_user_id,
                 "lat": float(lat),
@@ -394,8 +409,9 @@ def _gps_listener(port: int) -> None:
                 "alt_m": msg.get("alt_m"),
                 "sats": msg.get("sats"),
                 "hdop": msg.get("hdop"),
-                "heading_deg": msg.get("heading_deg"),
-                "fire_detected": msg.get("fire_detected", False),
+                "heading_deg": heading,
+                "fire_detected": current_fire,
+                "fire_memory": memory,
                 "ts": time.time(),
             }
             _maybe_triangulate(resolved_user_id)
