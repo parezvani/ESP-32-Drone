@@ -231,6 +231,21 @@ def require_camera_token(f):
     return wrapper
 
 
+def _validate_coords(lat, lon):
+    """Return (lat_float, lon_float, error_msg). Reject NaN/infinite/out-of-range."""
+    try:
+        lat_f = float(lat)
+        lon_f = float(lon)
+    except (TypeError, ValueError):
+        return None, None, "lat and lon must be numeric"
+    import math
+    if not (math.isfinite(lat_f) and math.isfinite(lon_f)):
+        return None, None, "lat and lon must be finite"
+    if not (-90.0 <= lat_f <= 90.0 and -180.0 <= lon_f <= 180.0):
+        return None, None, "lat must be in [-90,90], lon in [-180,180]"
+    return lat_f, lon_f, None
+
+
 def _validate_camera_url(url):
     if url is None:
         return None, None
@@ -249,6 +264,46 @@ def _validate_camera_url(url):
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", secrets.token_hex(32))
+
+# Security hardening
+IS_PRODUCTION = os.environ.get("RENDER", "") != "" or os.environ.get("FLASK_ENV") == "production"
+app.config.update(
+    # Cookie flags — Render terminates HTTPS at the edge, so Secure works there.
+    SESSION_COOKIE_SECURE=IS_PRODUCTION,
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    # Reject any POST body larger than 64 KB — telemetry packets are <1 KB,
+    # camera URLs <500 B; nobody legitimate sends megabytes.
+    MAX_CONTENT_LENGTH=64 * 1024,
+)
+# Honor Render's X-Forwarded-Proto so `request.is_secure` is correct
+# (without this, Secure cookies wouldn't be sent because Flask would think
+# the connection is plain HTTP).
+try:
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_for=1)
+except ImportError:
+    pass
+
+# Production sanity warning — if JWT_SECRET is missing, every JWT-gated
+# endpoint becomes a no-op pass-through. Loudly refuse to start.
+if IS_PRODUCTION and not JWT_SECRET:
+    raise RuntimeError(
+        "Refusing to start in production without SUPABASE_JWT_SECRET set. "
+        "Auth would be bypassed."
+    )
+
+
+@app.after_request
+def _security_headers(resp):
+    # No caching of authenticated API responses
+    if request.path.startswith("/api/"):
+        resp.headers["Cache-Control"] = "no-store"
+    # Defense-in-depth headers for every response
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return resp
 
 GPS_UDP_PORT = 4210
 TRIANGULATE_COOLDOWN_S = 5.0
@@ -455,7 +510,7 @@ def login_submit():
 @app.get("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login_page"))
+    return redirect(url_for("landing_page"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -479,10 +534,9 @@ def post_drone():
         return jsonify({"error": "X-API-Key required"}), 401
 
     msg = request.get_json(force=True, silent=True) or {}
-    lat = msg.get("lat")
-    lon = msg.get("lon")
-    if lat is None or lon is None:
-        return jsonify({"error": "lat and lon required"}), 400
+    lat, lon, err = _validate_coords(msg.get("lat"), msg.get("lon"))
+    if err:
+        return jsonify({"error": err}), 400
 
     Drone = _models["Drone"]
     ApiKey = _models["ApiKey"]
@@ -498,15 +552,15 @@ def post_drone():
         if not drone:
             return jsonify({"error": "drone not found"}), 404
 
-        drone.last_lat = float(lat)
-        drone.last_lon = float(lon)
+        drone.last_lat = lat
+        drone.last_lon = lon
         drone.last_heading_deg = msg.get("heading_deg")
         drone.fire_detected = bool(msg.get("fire_detected", False))
         drone.last_seen = datetime.now(timezone.utc)
 
         db.add(Telemetry(
             drone_id=drone.id,
-            lat=float(lat), lon=float(lon),
+            lat=lat, lon=lon,
             alt_m=msg.get("alt_m"),
             heading_deg=msg.get("heading_deg"),
             fire_detected=bool(msg.get("fire_detected", False)),
@@ -521,8 +575,8 @@ def post_drone():
         with _lock:
             _drones[drone_id_str] = {
                 "user_id": user_id_str,
-                "lat": float(lat),
-                "lon": float(lon),
+                "lat": lat,
+                "lon": lon,
                 "alt_m": msg.get("alt_m"),
                 "heading_deg": msg.get("heading_deg"),
                 "fire_detected": bool(msg.get("fire_detected", False)),
@@ -577,6 +631,8 @@ def create_drone():
     name = (data.get("name") or "").strip()
     if not name:
         return jsonify({"error": "name required"}), 400
+    if len(name) > 64:
+        return jsonify({"error": "name must be 64 characters or fewer"}), 400
 
     Drone = _models["Drone"]
     ApiKey = _models["ApiKey"]
@@ -666,10 +722,9 @@ def post_fire():
     """
     global _fire_id
     data = request.get_json(force=True, silent=True) or {}
-    lat = data.get("lat")
-    lon = data.get("lon")
-    if lat is None or lon is None:
-        return jsonify({"error": "lat and lon required"}), 400
+    lat, lon, err = _validate_coords(data.get("lat"), data.get("lon"))
+    if err:
+        return jsonify({"error": err}), 400
 
     uid = request.user_id or "__local__"
 
@@ -677,8 +732,8 @@ def post_fire():
         _fire_id += 1
         fire = {
             "id": _fire_id,
-            "lat": float(lat),
-            "lon": float(lon),
+            "lat": lat,
+            "lon": lon,
             "size_m": data.get("size_m"),
             "area_m2": data.get("area_m2"),
             "confidence": data.get("confidence"),
