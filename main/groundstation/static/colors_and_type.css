@@ -1,0 +1,190 @@
+/* ─────────────────────────────────────────────────────────────────
+   FireFly Design System — Colors & Type
+   Source: parezvani/FireFly@main · main/groundstation/templates/landing.html
+   and main/groundstation/static/style.css
+   ───────────────────────────────────────────────────────────────── */
+
+/* Webfonts: Bebas Neue (display) + DM Sans (body).
+   Hosted via Google Fonts in production. Local @font-face fallbacks
+   live in fonts/ — see README. */
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap');
+
+:root {
+  /* ─── BRAND ────────────────────────────────────────────────── */
+  --ff-fire:    #ff4a1c;   /* primary — alert / fire pin / CTA fill          */
+  --ff-ember:   #ff7a3a;   /* secondary — wordmark, hover lift, accents      */
+  --ff-amber:   #ff8f5a;   /* hover state for ember CTA                      */
+  --ff-warning: #ffeb3b;   /* fire-marker outline ring (used sparingly)      */
+
+  /* ─── NEUTRALS (dark, the only mode the product ships) ─────── */
+  --ff-night:   #07070a;   /* page background                                */
+  --ff-panel:   #111116;   /* cards, raised step blocks                      */
+  --ff-surface: #18181f;   /* sectioned bands, inputs (slight lift)          */
+  --ff-surface-2: #1d1d20; /* nested cards in app (drone-card etc.)          */
+  --ff-border:  #25252f;   /* hairline dividers everywhere                   */
+  --ff-border-2:#2a2a2e;   /* slightly stronger divider in app chrome        */
+  --ff-border-3:#3a3a3e;   /* button border / lifted controls                */
+
+  /* ─── TEXT ─────────────────────────────────────────────────── */
+  --ff-text:     #f0f0f5;  /* primary foreground (landing)                   */
+  --ff-text-app: #f5f5f5;  /* primary foreground (app chrome)                */
+  --ff-smoke:    #b0b0b8;  /* secondary text — body copy on dark             */
+  --ff-muted:    #888897;  /* tertiary text — labels, eyebrows, captions     */
+  --ff-muted-2:  #666;     /* lowest priority — empty states, deep meta      */
+
+  /* ─── SEMANTIC (state) ─────────────────────────────────────── */
+  --ff-fg-1:        var(--ff-text);
+  --ff-fg-2:        var(--ff-smoke);
+  --ff-fg-3:        var(--ff-muted);
+  --ff-bg:          var(--ff-night);
+  --ff-bg-raised:   var(--ff-panel);
+  --ff-bg-sunken:   var(--ff-surface);
+  --ff-accent:      var(--ff-fire);
+  --ff-accent-soft: var(--ff-ember);
+
+  --ff-danger:      #c97070;  /* "Delete drone" / destructive button text   */
+  --ff-danger-bg:   #2a1a1a;  /* hover bg for destructive ghost button      */
+  --ff-danger-bd:   #553a3a;  /* destructive ghost border                   */
+  --ff-success:     #2d6a3e;  /* drone "live" badge bg                      */
+  --ff-success-fg:  #b6e2c4;  /* drone "live" badge text                    */
+  --ff-info:        #4aa3ff;  /* drone trail line, "info" toast text        */
+
+  /* Translucent overlays */
+  --ff-fire-tint:   rgba(255, 74, 28, 0.15);  /* alert bg                  */
+  --ff-fire-glow:   rgba(255, 74, 28, 0.18);  /* hero radial glow         */
+  --ff-fire-line:   rgba(255, 74, 28, 0.05);  /* hero animated grid lines */
+  --ff-night-glass: rgba(7, 7, 10, 0.85);     /* nav backdrop             */
+  --ff-panel-glass: rgba(18, 18, 20, 0.92);   /* floating panel           */
+
+  /* ─── TYPE FAMILIES ────────────────────────────────────────── */
+  --ff-font-display: 'Bebas Neue', 'Oswald', 'Impact', sans-serif;
+  --ff-font-body:    'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ff-font-app:     system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --ff-font-mono:    ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ─── TYPE SCALE (landing / marketing) ─────────────────────── */
+  --ff-fs-hero:      clamp(72px, 12vw, 160px);  /* big display "FIREFLY"  */
+  --ff-fs-h1:        clamp(48px, 7vw, 96px);    /* CTA title              */
+  --ff-fs-h2:        clamp(36px, 5vw, 64px);    /* section title          */
+  --ff-fs-h3:        26px;                      /* step title             */
+  --ff-fs-stat:      52px;                      /* stat number            */
+  --ff-fs-body:      16px;                      /* body copy              */
+  --ff-fs-body-lg:   18px;                      /* hero subhead           */
+  --ff-fs-body-sm:   14px;                      /* button / list item     */
+  --ff-fs-caption:   13px;                      /* footer, small meta     */
+  --ff-fs-eyebrow:   12px;                      /* eyebrow, hero-badge    */
+  --ff-fs-label:     11px;                      /* section labels         */
+  --ff-fs-app:       13px;                      /* app body default       */
+  --ff-fs-app-meta:  11px;                      /* monospace meta in app  */
+
+  /* ─── SPACING ─────────────────────────────────────────────── */
+  --ff-space-1:  4px;
+  --ff-space-2:  8px;
+  --ff-space-3:  12px;
+  --ff-space-4:  16px;
+  --ff-space-5:  24px;
+  --ff-space-6:  32px;
+  --ff-space-7:  48px;
+  --ff-space-8:  72px;
+  --ff-space-9:  120px;   /* section vertical padding on landing          */
+
+  /* ─── RADII ───────────────────────────────────────────────── */
+  --ff-r-1:   4px;     /* steps, badges                                  */
+  --ff-r-2:   6px;     /* buttons, inputs, drone-cards                   */
+  --ff-r-3:   8px;     /* about-image, team cards                        */
+  --ff-r-4:   10px;    /* floating panel, login card, dashboard sections */
+  --ff-r-pill: 40px;   /* tech chips                                     */
+
+  /* ─── ELEVATION ───────────────────────────────────────────── */
+  --ff-shadow-panel: 0 6px 24px rgba(0, 0, 0, 0.4);   /* floating UI panels */
+  --ff-shadow-modal: 0 6px 24px rgba(0, 0, 0, 0.5);   /* modal cards        */
+  --ff-shadow-cta:   0 6px 24px rgba(255, 74, 28, 0.35); /* hover lift CTA  */
+
+  /* ─── MOTION ──────────────────────────────────────────────── */
+  --ff-ease:        ease;            /* default — kept simple              */
+  --ff-dur-fast:    0.2s;            /* hover / focus                      */
+  --ff-dur-med:     0.3s;            /* map pan, panel reveal              */
+  --ff-dur-slow:    0.7s;            /* scroll-reveal                      */
+  --ff-dur-hero:    0.8s;            /* hero fade-up                       */
+  --ff-dur-loop:    30s;             /* hero grid pan loop                 */
+  --ff-dur-pulse:   1.5s;            /* alert dot pulse                    */
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SEMANTIC ELEMENT STYLES
+   Drop-in defaults so authoring HTML inside this DS gets the look.
+   ───────────────────────────────────────────────────────────────── */
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ff-bg);
+  color: var(--ff-fg-1);
+  font-family: var(--ff-font-body);
+  font-size: var(--ff-fs-body);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Display headings — Bebas Neue, wide-tracked, tight line-height */
+.ff-display,
+.ff-hero-title {
+  font-family: var(--ff-font-display);
+  font-size: var(--ff-fs-hero);
+  letter-spacing: 6px;
+  line-height: 0.9;
+  margin: 0;
+}
+h1, .ff-h1 {
+  font-family: var(--ff-font-display);
+  font-size: var(--ff-fs-h1);
+  letter-spacing: 4px;
+  line-height: 1;
+  margin: 0;
+}
+h2, .ff-h2 {
+  font-family: var(--ff-font-display);
+  font-size: var(--ff-fs-h2);
+  letter-spacing: 3px;
+  line-height: 1;
+  margin: 0;
+}
+h3, .ff-h3 {
+  font-family: var(--ff-font-display);
+  font-size: var(--ff-fs-h3);
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+/* Eyebrow / section label — small caps, ember accent */
+.ff-eyebrow,
+.ff-section-label {
+  font-family: var(--ff-font-body);
+  font-size: var(--ff-fs-label);
+  font-weight: 600;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--ff-fire);
+}
+
+/* Body copy on dark surfaces */
+.ff-body {
+  font-size: var(--ff-fs-body);
+  font-weight: 300;
+  color: var(--ff-smoke);
+  line-height: 1.6;
+}
+
+/* Mono — coordinates, telemetry, codes */
+code, pre, .ff-mono {
+  font-family: var(--ff-font-mono);
+  font-size: var(--ff-fs-app-meta);
+  color: var(--ff-fg-2);
+}
+
+/* Wordmark — used for logos / brand prints */
+.ff-wordmark {
+  font-family: var(--ff-font-display);
+  letter-spacing: 5px;
+  color: var(--ff-ember);
+}

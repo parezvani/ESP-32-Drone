@@ -3,82 +3,235 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
   <title>FireFly — Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='colors_and_type.css') }}" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <style>
-    body { background: #0c0c0e; display: flex; align-items: center;
-           justify-content: center; min-height: 100vh; margin: 0;
-           color: #f5f5f5; font-family: system-ui, sans-serif; }
-    .card { background: rgba(18, 18, 20, 0.95); padding: 32px;
-            border-radius: 10px; width: 380px; box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
-    h1 { color: #ff7a3a; margin: 0 0 4px; font-size: 22px; letter-spacing: 0.5px; }
-    .sub { color: #888; font-size: 13px; margin-bottom: 24px; }
-    label { display: block; font-size: 11px; color: #aaa; margin-bottom: 4px;
-            text-transform: uppercase; letter-spacing: 1px; }
-    input { width: 100%; padding: 10px 12px; margin-bottom: 14px;
-            background: #1d1d20; border: 1px solid #2a2a2e; border-radius: 6px;
-            color: #f5f5f5; font-size: 14px; box-sizing: border-box; }
-    input:focus { outline: none; border-color: #ff7a3a; }
-    button { width: 100%; padding: 11px; background: #ff7a3a; color: #111;
-             border: 0; border-radius: 6px; font-weight: 600; cursor: pointer;
-             font-size: 14px; margin-top: 4px; }
-    button:hover { background: #ff8f5a; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .toggle { margin-top: 18px; text-align: center; font-size: 13px; color: #aaa; }
-    .toggle a { color: #ff7a3a; cursor: pointer; text-decoration: none;
-                user-select: none; font-weight: 600; }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; background: #0c0c0e;
+                 color: #f5f5f5;
+                 font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+                 overflow-x: hidden; }
+
+    .login-screen { display: grid; grid-template-columns: 1.05fr 1fr;
+                    min-height: 100vh; }
+    @media (max-width: 880px) {
+      .login-screen { grid-template-columns: 1fr; }
+      .login-hero { display: none !important; }
+    }
+
+    /* ── Left hero panel ── */
+    .login-hero {
+      position: relative; overflow: hidden;
+      padding: 56px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      background: linear-gradient(140deg, #0c0c0e 0%, #1a0a08 60%, #2a0e08 100%);
+    }
+    .login-hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 45% at 30% 90%,
+                  rgba(255,74,28,0.45) 0%, rgba(255,122,58,0.12) 40%, transparent 75%);
+      pointer-events: none;
+    }
+    .login-hero::after {
+      content: ''; position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,74,28,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,74,28,0.05) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 90% 90% at 30% 50%, black, transparent 75%);
+      pointer-events: none;
+    }
+    .login-hero > * { position: relative; z-index: 1; }
+
+    .login-brand { display: flex; align-items: center; gap: 12px; }
+    .login-brand .mark {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: #ff4a1c;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 0 24px rgba(255,74,28,0.5);
+    }
+    .login-brand .name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 26px; letter-spacing: 4px; color: #f5f5f5;
+    }
+
+    .login-tagline h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 56px; letter-spacing: 3px; line-height: 1;
+      color: #f5f5f5; margin: 0 0 18px;
+    }
+    .login-tagline h2 span { color: #ff7a3a; }
+    .login-tagline p {
+      font-size: 16px; color: #b0b0b8; line-height: 1.6;
+      max-width: 420px; margin: 0;
+    }
+    .login-features {
+      display: flex; flex-direction: column; gap: 10px; margin-top: 28px;
+    }
+    .login-feature {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 14px; color: #d0d0d8;
+    }
+    .login-feature .check {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(255,74,28,0.15);
+      border: 1px solid rgba(255,74,28,0.4);
+      color: #ff7a3a;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0;
+    }
+
+    .login-quote {
+      padding: 18px 20px;
+      background: rgba(18,18,20,0.65);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-left: 2px solid #ff4a1c;
+      border-radius: 8px;
+      max-width: 440px;
+    }
+    .login-quote p {
+      font-size: 14px; color: #d0d0d8;
+      font-style: italic; line-height: 1.6;
+      margin: 0 0 10px;
+    }
+    .login-quote .who { font-size: 12px; color: #888; }
+    .login-quote .who b { color: #f5f5f5; font-weight: 600; font-style: normal; }
+
+    /* ── Right form panel ── */
+    .login-form-wrap {
+      display: flex; align-items: center; justify-content: center;
+      padding: 56px 32px;
+    }
+    .auth-card { width: 100%; max-width: 400px; }
+    .auth-card h1 {
+      color: #f5f5f5; margin: 0 0 6px;
+      font-size: 28px; font-weight: 600; letter-spacing: -0.3px;
+    }
+    .auth-card .sub { color: #888; font-size: 14px; margin-bottom: 32px; }
+
+    .auth-card .field { margin-bottom: 16px; }
+    .auth-card .field-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .auth-card label {
+      display: block; font-size: 13px; color: #d0d0d8;
+      font-weight: 500; letter-spacing: 0; text-transform: none;
+    }
+    .auth-card input {
+      width: 100%; padding: 12px 14px;
+      background: #131316; border: 1px solid #2a2a2e; border-radius: 8px;
+      color: #f5f5f5; font-size: 14px; font-family: inherit;
+      box-sizing: border-box;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .auth-card input::placeholder { color: #555; }
+    .auth-card input:focus {
+      outline: none; border-color: #ff7a3a;
+      box-shadow: 0 0 0 3px rgba(255,122,58,0.12);
+    }
+
+    .auth-card button#auth-submit {
+      width: 100%; padding: 12px;
+      background: #ff4a1c; color: #fff;
+      border: 0; border-radius: 8px;
+      font-weight: 600; cursor: pointer; font-size: 14px; font-family: inherit;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      margin-top: 6px;
+    }
+    .auth-card button#auth-submit:hover:not(:disabled) {
+      background: #ff5d33;
+      box-shadow: 0 8px 24px rgba(255,74,28,0.35);
+      transform: translateY(-1px);
+    }
+    .auth-card button#auth-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toggle { margin-top: 24px; text-align: center; font-size: 13px; color: #888; }
+    .toggle a {
+      color: #ff7a3a; cursor: pointer; text-decoration: none;
+      font-weight: 600; margin-left: 4px; user-select: none;
+    }
     .toggle a:hover { text-decoration: underline; }
+
+    .auth-foot {
+      margin-top: 32px; font-size: 11px; color: #555;
+      text-align: center; line-height: 1.5;
+    }
+
     .msg { font-size: 13px; margin-bottom: 12px; min-height: 18px; line-height: 1.4; }
     .msg.error { color: #ff4a1c; }
     .msg.info { color: #4aa3ff; }
+
     .signup-only { display: none; }
     body.signup-mode .signup-only { display: block; }
-    body.signin-mode .signin-only { display: block; }
-    .home-logo {
-      position: fixed;
-      top: 24px;
-      left: 32px;
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 28px
-      font-weight: 700;
-      letter-spacing: 5px;
-      color: #ff7a3a;
-      text-decoration: none;
-      z-index: 100;
-      transition: opacity 0.2s;
-    }
-    .home-logo:hover { opacity: 0.75; }
   </style>
 </head>
 <body class="signin-mode">
-  <a href="/" class="home-logo">FIREFLY</a>
-  <div class="card">
-    <h1>FireFly</h1>
-    <div class="sub" id="subtitle">Sign in to your account</div>
-    <div id="msg" class="msg"></div>
+  <div class="login-screen">
 
-    <div class="signup-only">
-      <label>Name</label>
-      <input id="name" type="text" autocomplete="name" />
-    </div>
+    <aside class="login-hero">
+      <a href="/" style="text-decoration:none">
+        <div class="login-brand">
+          <div class="mark">🔥</div>
+          <div class="name">FIREFLY</div>
+        </div>
+      </a>
 
-    <label>Email</label>
-    <input id="email" type="email" autocomplete="email" />
+      <div class="login-tagline">
+        <h2>Locate fires.<br/><span>See the data.</span></h2>
+        <p>The operator console for FireFly's drone fleet. Live GPS telemetry, on-stream fire detection, and multi-drone triangulation — all on one map.</p>
+        <div class="login-features">
+          <div class="login-feature"><span class="check">✓</span> Live drone telemetry</div>
+          <div class="login-feature"><span class="check">✓</span> Multi-drone GPS triangulation</div>
+          <div class="login-feature"><span class="check">✓</span> On-stream fire detection</div>
+        </div>
+      </div>
 
-    <label>Password</label>
-    <input id="password" type="password" autocomplete="current-password" />
+      <div class="login-quote">
+        <p>"Two drones, two bearing rays, one coordinate. That's the whole idea."</p>
+        <div class="who"><b>FireFly</b> · UCSC Baskin Engineering Team 6</div>
+      </div>
+    </aside>
 
-    <div class="signup-only">
-      <label>Confirm Password</label>
-      <input id="password2" type="password" autocomplete="new-password" />
-    </div>
+    <div class="login-form-wrap">
+      <div class="auth-card">
+        <h1 id="auth-h1">Welcome back</h1>
+        <div class="sub" id="auth-sub">Sign in to your operator console.</div>
 
-    <button id="submit">Sign In</button>
+        <div id="msg" class="msg"></div>
 
-    <div class="toggle">
-      <span id="mode-label">No account?</span>
-      <a id="toggle" role="button" tabindex="0">Create one</a>
+        <div id="auth-name-row" class="field signup-only">
+          <div class="field-row"><label>Full name</label></div>
+          <input id="name" type="text" autocomplete="name" placeholder="Jane Operator" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label>Email</label></div>
+          <input id="email" type="email" autocomplete="email" placeholder="you@agency.gov" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label>Password</label></div>
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
+
+        <div id="auth-pw2-row" class="field signup-only">
+          <div class="field-row"><label>Confirm Password</label></div>
+          <input id="password2" type="password" autocomplete="new-password" placeholder="••••••••" />
+        </div>
+
+        <button id="auth-submit">Sign in</button>
+
+        <div class="toggle">
+          <span id="mode-label">New to FireFly?</span>
+          <a id="toggle" role="button" tabindex="0">Create an account</a>
+        </div>
+
+        <div class="auth-foot">By continuing you agree to FireFly's Terms and acknowledge the Privacy Policy.</div>
+      </div>
     </div>
   </div>
 
@@ -93,10 +246,13 @@
     function setMode(newMode) {
       mode = newMode;
       document.body.className = mode === "signin" ? "signin-mode" : "signup-mode";
-      $("submit").textContent = mode === "signin" ? "Sign In" : "Create Account";
-      $("subtitle").textContent = mode === "signin" ? "Sign in to your account" : "Create a new account";
-      $("mode-label").textContent = mode === "signin" ? "No account?" : "Have an account?";
-      $("toggle").textContent = mode === "signin" ? "Create one" : "Sign in";
+      $("auth-h1").textContent = mode === "signin" ? "Welcome back" : "Create your account";
+      $("auth-sub").textContent = mode === "signin"
+        ? "Sign in to your operator console."
+        : "Get up and running in under a minute.";
+      $("auth-submit").textContent = mode === "signin" ? "Sign in" : "Create account";
+      $("mode-label").textContent = mode === "signin" ? "New to FireFly?" : "Already have an account?";
+      $("toggle").textContent = mode === "signin" ? "Create an account" : "Sign in";
       $("password").autocomplete = mode === "signin" ? "current-password" : "new-password";
       clearMsg();
     }
@@ -110,24 +266,24 @@
 
     $("toggle").addEventListener("click", () => setMode(mode === "signin" ? "signup" : "signin"));
 
-    $("submit").addEventListener("click", doAuth);
+    $("auth-submit").addEventListener("click", doAuth);
     document.querySelectorAll("input").forEach(el => {
       el.addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth(); });
     });
 
     if (!SUPABASE_URL || !SUPABASE_KEY) {
       showMsg("Server missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY env vars.");
-      $("submit").disabled = true;
+      $("auth-submit").disabled = true;
     } else if (typeof window.supabase === "undefined" || !window.supabase.createClient) {
       showMsg("Supabase SDK failed to load (network/CDN issue?). Reload the page.");
-      $("submit").disabled = true;
+      $("auth-submit").disabled = true;
     } else {
       try {
         sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         console.log("[firefly login] Supabase client ready");
       } catch (e) {
         showMsg("Supabase init failed: " + e.message);
-        $("submit").disabled = true;
+        $("auth-submit").disabled = true;
       }
     }
 
@@ -149,7 +305,7 @@
         if (password !== password2) { showMsg("Passwords don't match."); return; }
       }
 
-      $("submit").disabled = true;
+      $("auth-submit").disabled = true;
       clearMsg();
 
       try {
@@ -165,7 +321,7 @@
         if (!token) {
           showMsg("Account created. Check your email to confirm, then sign in.", "info");
           setMode("signin");
-          $("submit").disabled = false;
+          $("auth-submit").disabled = false;
           return;
         }
 
@@ -181,7 +337,7 @@
         location.href = "/";
       } catch (e) {
         showMsg(e.message || String(e));
-        $("submit").disabled = false;
+        $("auth-submit").disabled = false;
         console.error("[firefly login] auth error:", e);
       }
     }
