@@ -340,9 +340,12 @@ threading.Thread(target=_drone_reaper, daemon=True).start()
 @app.get("/")
 def index():
     if JWT_SECRET and "jwt" not in session:
-        return redirect(url_for("login_page"))
+        return redirect(url_for("landing_page"))
     return render_template("index.html")
 
+@app.get("/landing")
+def landing_page():
+    return render_template("landing.html")
 
 @app.get("/login")
 def login_page():
