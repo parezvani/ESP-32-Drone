@@ -308,7 +308,7 @@ def _security_headers(resp):
 GPS_UDP_PORT = 4210
 TRIANGULATE_COOLDOWN_S = 5.0
 TRIANGULATE_FRESHNESS_S = 10.0
-DRONE_TIMEOUT_S = 30.0
+DRONE_TIMEOUT_S = 600.0  # 10 minutes — keep drones visible as "offline" before dropping
 
 _lock = threading.Lock()
 

@@ -1,5 +1,6 @@
 const POLL_MS = 500;
-const STALE_DRONE_S = 5;
+const STALE_DRONE_S = 5;     // visual dimming + "stale" badge
+const OFFLINE_DRONE_S = 30;  // show as OFFLINE (assume the drone disconnected)
 const STALE_FIRE_S = 60;
 const FRESH_FIRE_S = 30;
 
@@ -117,17 +118,22 @@ function renderDroneList(drones, now, anyFireSeen) {
   list.innerHTML = ids.map((id) => {
     const d = drones[id];
     const age = now - (d.ts || 0);
-    const isStale = age > STALE_DRONE_S;
-    const sees = !!d.fire_detected && !isStale;
+    const isOffline = age > OFFLINE_DRONE_S;
+    const isStale = !isOffline && age > STALE_DRONE_S;
+    const sees = !!d.fire_detected && !isStale && !isOffline;
+
     const cls = ["drone-card"];
-    if (isStale) cls.push("stale");
+    if (isOffline) cls.push("offline");
+    else if (isStale) cls.push("stale");
     if (sees) cls.push("fire");
 
-    const badge = sees
-      ? '<span class="badge fire">FIRE</span>'
-      : isStale
-        ? '<span class="badge">stale</span>'
-        : '<span class="badge live">live</span>';
+    const badge = isOffline
+      ? '<span class="badge offline">offline</span>'
+      : sees
+        ? '<span class="badge fire">FIRE</span>'
+        : isStale
+          ? '<span class="badge">stale</span>'
+          : '<span class="badge live">live</span>';
 
     const lat = d.lat != null ? d.lat.toFixed(5) : "—";
     const lon = d.lon != null ? d.lon.toFixed(5) : "—";
@@ -136,9 +142,14 @@ function renderDroneList(drones, now, anyFireSeen) {
     const sats = d.sats != null ? d.sats : "—";
     const hdop = d.hdop != null ? d.hdop.toFixed(1) : "—";
 
+    const lastSeen = isOffline
+      ? `<div class="drone-lastseen">Last seen ${fmtAge(d.ts || 0, now)}</div>`
+      : "";
+
     return `
       <div class="${cls.join(" ")}">
         <div class="drone-id"><span>${id}</span>${badge}</div>
+        ${lastSeen}
         <div class="stats">
           <span class="label">lat</span><span>${lat}</span>
           <span class="label">lon</span><span>${lon}</span>
@@ -195,10 +206,20 @@ function renderFireList(fires, now, anyFireSeen) {
   }
 }
 
-function updateAlert(anyFireSeen, droneCount, fires, now) {
+function updateAlert(anyFireSeen, droneCount, fires, now, drones) {
   const el = $("alert-banner");
   const txt = $("alert-text");
   const sub = $("alert-sub");
+
+  // Compute connectivity state across all drones
+  let liveCount = 0, offlineCount = 0;
+  if (drones) {
+    for (const d of Object.values(drones)) {
+      const age = now - (d.ts || 0);
+      if (age > OFFLINE_DRONE_S) offlineCount++; else liveCount++;
+    }
+  }
+
   if (anyFireSeen) {
     el.classList.remove("idle");
     el.classList.add("active");
@@ -211,11 +232,22 @@ function updateAlert(anyFireSeen, droneCount, fires, now) {
     } else if (sub) {
       sub.textContent = "";
     }
+  } else if (droneCount > 0 && liveCount === 0) {
+    // All registered drones are timed out
+    el.classList.remove("active");
+    el.classList.add("idle");
+    txt.textContent = `${offlineCount === 1 ? "Drone offline" : "All drones offline"}`;
+    if (sub) sub.textContent = "No telemetry received in the last 30 seconds";
   } else {
     el.classList.remove("active");
     el.classList.add("idle");
-    txt.textContent = droneCount > 0 ? "No fire detected" : "No drones connected";
-    if (sub) sub.textContent = "";
+    if (offlineCount > 0 && liveCount > 0) {
+      txt.textContent = "No fire detected";
+      if (sub) sub.textContent = `${offlineCount} drone${offlineCount === 1 ? "" : "s"} offline`;
+    } else {
+      txt.textContent = droneCount > 0 ? "No fire detected" : "No drones connected";
+      if (sub) sub.textContent = "";
+    }
   }
 }
 
@@ -238,21 +270,30 @@ async function poll() {
 
       if (!primaryDroneId) primaryDroneId = id;
 
+      const isOffline = droneAge > OFFLINE_DRONE_S;
+
       if (!droneMarkers[id]) {
         droneMarkers[id] = L.marker(latlng, { icon: droneIcon })
           .addTo(map)
           .bindPopup(`<b>${id}</b>`);
         trailPoints[id] = [];
         trails[id] = L.polyline([], { color: "#4aa3ff", weight: 2, opacity: 0.7 }).addTo(map);
-      } else {
+      } else if (!isOffline) {
         droneMarkers[id].setLatLng(latlng);
       }
 
-      trailPoints[id].push(latlng);
-      if (trailPoints[id].length > MAX_TRAIL) trailPoints[id].shift();
-      trails[id].setLatLngs(trailPoints[id]);
+      // Visually mark offline markers as ghosted (CSS class on the icon DOM)
+      const iconEl = droneMarkers[id].getElement();
+      if (iconEl) iconEl.classList.toggle("offline", isOffline);
 
-      if (d.fire_detected && d.heading_deg != null && droneAge < STALE_DRONE_S) {
+      // Don't extend the trail when the drone is offline (no new data)
+      if (!isOffline) {
+        trailPoints[id].push(latlng);
+        if (trailPoints[id].length > MAX_TRAIL) trailPoints[id].shift();
+        trails[id].setLatLngs(trailPoints[id]);
+      }
+
+      if (d.fire_detected && d.heading_deg != null && !isOffline && droneAge < STALE_DRONE_S) {
         const distDeg = 0.003;  // ~300m projection in lat-degree units
         const rad = d.heading_deg * (Math.PI / 180);
         const endLat = d.lat + Math.cos(rad) * distDeg;
@@ -294,7 +335,7 @@ async function poll() {
 
     renderDroneList(s.drones, now, anyFireSeen);
     renderFireList(s.fires, now, anyFireSeen);
-    updateAlert(anyFireSeen, Object.keys(s.drones).length, s.fires, now);
+    updateAlert(anyFireSeen, Object.keys(s.drones).length, s.fires, now, s.drones);
 
     $("server-time").textContent = fmtTime(now);
 

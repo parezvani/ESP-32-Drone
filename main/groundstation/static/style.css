@@ -188,6 +188,17 @@ body { background: var(--bg); color: var(--ink); }
   background: rgba(255,74,28,0.06);
 }
 .drone-card.stale { opacity: 0.5; }
+.drone-card.offline {
+  border-color: rgba(201,112,112,0.4);
+  background: rgba(201,112,112,0.06);
+  opacity: 0.85;
+}
+.drone-card .drone-lastseen {
+  font: 500 11px 'JetBrains Mono', monospace;
+  color: #c97070;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
 
 .drone-card .drone-id {
   display: flex;
@@ -220,6 +231,15 @@ body { background: var(--bg); color: var(--ink); }
   background: var(--ink-3);
   box-shadow: none;
 }
+.drone-card.offline .drone-id > span:first-child::before {
+  background: #c97070;
+  box-shadow: 0 0 6px rgba(201,112,112,0.5);
+  animation: offlineBlink 2s infinite;
+}
+@keyframes offlineBlink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
 
 .drone-card .badge {
   font: 600 9px 'Inter', sans-serif;
@@ -241,7 +261,12 @@ body { background: var(--bg); color: var(--ink); }
   color: var(--warn);
   border-color: rgba(255,74,28,0.3);
 }
-.drone-card .badge:not(.live):not(.fire) {
+.drone-card .badge.offline {
+  background: rgba(201,112,112,0.14);
+  color: #ff9999;
+  border-color: rgba(201,112,112,0.45);
+}
+.drone-card .badge:not(.live):not(.fire):not(.offline) {
   background: rgba(255,255,255,0.05);
   color: var(--ink-3);
   border-color: var(--line);
@@ -415,6 +440,12 @@ body { background: var(--bg); color: var(--ink); }
   text-align: center;
   line-height: 1;
   text-shadow: 0 0 8px rgba(0,0,0,0.8), 0 0 4px rgba(255,255,255,0.2);
+  transition: filter 0.2s, opacity 0.2s;
+}
+.drone-icon.offline,
+.leaflet-marker-icon.offline {
+  filter: grayscale(1);
+  opacity: 0.45;
 }
 
 .fire-marker {
