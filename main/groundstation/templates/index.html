@@ -1,6 +1,28 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <style>
+  #signout-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    z-index: 600;
+    padding: 8px 16px;
+    background: rgba(18, 18, 20, 0.92);
+    color: #f5f5f5;
+    border: 1px solid #2a2a2e;
+    border-radius: 6px;
+    font: 600 12px system-ui, sans-serif;
+    cursor: pointer;
+    text-decoration: none;
+    backdrop-filter: blur(8px);
+    transition: border-color 0.2s, color 0.2s;
+  }
+  #signout-btn:hover {
+    border-color: #c97070;
+    color: #c97070;
+  }
+</style>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FireFly Ground Station</title>
@@ -9,6 +31,7 @@
 </head>
 <body>
   <div id="map"></div>
+  <a id="signout-btn" href="/logout">Sign Out</a>
 
   <aside id="panel">
     <header class="panel-head">
