@@ -3,6 +3,7 @@
 FireFly is a student-built drone + ground-station project for early wildfire detection. Two ESP32-based drones with cameras and GPS observe the same fire from different angles. The base station triangulates the bearings to compute the fire's GPS coordinates and shows the result on a live map.
 
 The demo focuses on the **geolocation pipeline**, not flight control — drones are de-prioritized per the project's scope.
+[FireFly Website](https://firefly-j68i.onrender.com/)
 
 ## Quick Start (no hardware required)
 
