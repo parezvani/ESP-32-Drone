@@ -5,12 +5,13 @@
 
 #if CONFIG_GPS_CLOUD_ENABLED
 #include "esp_http_client.h"
-#include "esp_crt_bundle.h"
 #endif
 
 static const char *TAG = "cloud";
 
 #if CONFIG_GPS_CLOUD_ENABLED
+extern const char render_roots_pem_start[] asm("_binary_render_roots_pem_start");
+
 static esp_http_client_handle_t s_client = NULL;
 
 static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
@@ -40,7 +41,7 @@ void cloud_uplink_init(void)
         .url = CONFIG_GPS_CLOUD_URL,
         .method = HTTP_METHOD_POST,
         .event_handler = _http_event_handler,
-        .crt_bundle_attach = esp_crt_bundle_attach,
+        .cert_pem = render_roots_pem_start,
         .timeout_ms = 5000,
         .keep_alive_enable = true,
     };
