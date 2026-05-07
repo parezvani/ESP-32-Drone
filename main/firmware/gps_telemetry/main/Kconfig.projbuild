@@ -1,5 +1,14 @@
 menu "FireFly GPS Broadcaster"
 
+    config GPS_DRONE_ID
+        string "Drone ID"
+        default "drone_1"
+        help
+            Unique identifier for this drone. Sent in the "id" field of
+            every UDP broadcast and cloud POST. Must match the drone
+            entry registered on the dashboard. Change before flashing
+            each board (e.g. "drone_1", "kenny_drone").
+
     config GPS_WIFI_SSID
         string "WiFi SSID"
         default "myssid"

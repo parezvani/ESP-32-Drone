@@ -105,7 +105,7 @@ static double nmea_to_deg(const char *nmea, const char *hemi)
     return deg;
 }
 
-#define DRONE_ID "drone_1"  // unique per drone — change before flashing each board
+#define DRONE_ID CONFIG_GPS_DRONE_ID
 
 #define HEADING_MIN_MOVEMENT_M 1.0  // ignore GPS jitter when stationary
 
