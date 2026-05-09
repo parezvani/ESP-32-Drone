@@ -337,5 +337,32 @@
   const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }), { threshold: 0.12 });
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 </script>
+<script>
+  (async function handleOAuthLanding() {
+    const hash = window.location.hash.substring(1);
+    if (!hash.includes("access_token=")) return;
+
+    const params = Object.fromEntries(new URLSearchParams(hash));
+    const token = params.access_token;
+    if (!token) return;
+
+    history.replaceState(null, "", window.location.pathname);
+
+    try {
+      const r = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      if (r.ok) {
+        location.href = "/";
+      } else {
+        location.href = "/login";
+      }
+    } catch (e) {
+      location.href = "/login";
+    }
+  })();
+</script>
 </body>
 </html>
