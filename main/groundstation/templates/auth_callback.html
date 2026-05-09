@@ -4,40 +4,81 @@
   <meta charset="utf-8" />
   <title>FireFly — Signing in…</title>
   <style>
-    body { background: #0c0c0e; color: #f5f5f5; font-family: system-ui, sans-serif;
-           display: flex; align-items: center; justify-content: center;
-           min-height: 100vh; margin: 0; flex-direction: column; gap: 16px; }
-    .spinner { width: 32px; height: 32px; border: 3px solid #2a2a2e;
-               border-top-color: #ff7a3a; border-radius: 50%;
-               animation: spin 0.7s linear infinite; }
+    body {
+      background: #0c0c0e; color: #f5f5f5;
+      font-family: system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; margin: 0; flex-direction: column; gap: 16px;
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid #2a2a2e; border-top-color: #ff7a3a;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
     p { color: #888; font-size: 14px; margin: 0; }
+    .err { color: #ff4a1c; font-size: 13px; max-width: 360px; text-align: center; }
   </style>
 </head>
 <body>
   <div class="spinner"></div>
-  <p>Completing sign-in…</p>
+  <p id="status">Completing sign-in…</p>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const sb = window.supabase.createClient("{{ supabase_url }}", "{{ supabase_key }}");
+    const SUPABASE_URL = "{{ supabase_url }}";
+    const SUPABASE_KEY = "{{ supabase_key }}";
 
-    sb.auth.onAuthStateChange(async (event, session) => {
-      if (session?.access_token) {
-        // Hand the token to our Flask session
+    async function finish() {
+      // Parse the hash fragment that Supabase appends: #access_token=...&...
+      const hash = window.location.hash.substring(1);
+      const params = Object.fromEntries(new URLSearchParams(hash));
+
+      const token = params.access_token;
+      const error = params.error_description || params.error;
+
+      if (error) {
+        document.getElementById("status").textContent = "";
+        const el = document.createElement("p");
+        el.className = "err";
+        el.textContent = "Sign-in failed: " + decodeURIComponent(error.replace(/\+/g, " "));
+        document.body.appendChild(el);
+        const back = document.createElement("a");
+        back.href = "/login";
+        back.style.cssText = "color:#ff7a3a;font-size:13px;margin-top:8px;";
+        back.textContent = "← Back to login";
+        document.body.appendChild(back);
+        return;
+      }
+
+      if (!token) {
+        // No hash at all — maybe they landed here directly. Send them to login.
+        location.href = "/login";
+        return;
+      }
+
+      // Hand the token to Flask so it creates a server-side session
+      try {
         const r = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: session.access_token }),
+          body: JSON.stringify({ token }),
         });
-        location.href = r.ok ? "/" : "/login";
-      } else if (event === "SIGNED_OUT" || event === "TOKEN_REFRESHED") {
-        location.href = "/login";
-      }
-    });
 
-    // Fallback: if no auth state change fires within 4s, go back to login
-    setTimeout(() => { location.href = "/login"; }, 4000);
+        if (r.ok) {
+          // Clear the hash (contains the raw token) before navigating away
+          history.replaceState(null, "", window.location.pathname);
+          location.href = "/";
+        } else {
+          const j = await r.json().catch(() => ({}));
+          throw new Error(j.error || "Server rejected token (HTTP " + r.status + ")");
+        }
+      } catch (e) {
+        document.getElementById("status").textContent = "Error: " + e.message;
+      }
+    }
+
+    finish();
   </script>
 </body>
 </html>
