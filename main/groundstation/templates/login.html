@@ -298,11 +298,11 @@
     async function signInWithProvider(provider) {
       if (!sb) return;
       clearMsg();
-      // Works on both localhost and Render without hardcoding
-      const redirectTo = window.location.origin + "/auth/callback";
       const { error } = await sb.auth.signInWithOAuth({
         provider,
-        options: { redirectTo },
+        options: {
+          redirectTo: "https://qgvlhplbeisltvmasqdd.supabase.co/auth/v1/callback",
+        },
       });
       if (error) showMsg(error.message);
     }
