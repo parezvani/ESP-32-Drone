@@ -7,7 +7,7 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{wrapfig}
-\usepackage{url}
+\usepackage{comment}
 
 \titleformat{\section}
     {\normalfont\bfseries}
@@ -56,7 +56,7 @@
 \vspace{1in}
 
 \begin{abstract}
-This document presents the design and proof-of-concept for FireFly, a rapidly deployable multi-drone wildfire monitoring system for infrastructure-free terrain. The full design targets autonomous aerial sensing, resilient multi-hop communications, fire localization, and perimeter mapping. The current repository implements the proof-of-concept geolocation pipeline: ESP32 GPS telemetry, a Flask and Leaflet ground station, simulated multi-drone triangulation, YOLOv8 fire detection from video, live MJPEG camera ingest, CAD frame design, bill of materials, and bench-tested ESP-NOW motor and sensor communication.
+This document presents the design and proof-of-concept for FireFly, a rapidly deployable environmental monitoring drone for wildfire detection in infrastructure-free terrain.
 \end{abstract}
 
 \newpage
@@ -66,23 +66,31 @@ This document presents the design and proof-of-concept for FireFly, a rapidly de
 \addcontentsline{toc}{section}{Executive Summary}
 % ============================================================
 
-FireFly is designed as a rapidly deployable aerial monitoring system for high wildfire-risk areas where fixed sensors, camera towers, or reliable communications infrastructure are unavailable. The long-term system concept uses a fleet of drones to collect visual, GPS, and environmental observations, relay them through a resilient network, and provide responders with fire alerts, location estimates, and evolving perimeter intelligence.
+FireFly is a rapidly deployable quadcopter designed for first-response
+environmental monitoring in high wildfire-risk areas with no existing sensor
+infrastructure. The system collects real-time temperature, humidity, and smoke
+data and transmits live readings to a ground station, triggering alerts when
+fire risk thresholds are crossed.
 
 \vspace{0.5em}
 
-The current implementation is a proof-of-concept for the most important data product: geolocating a fire from drone observations. The repository contains a runnable Python stack that launches a Flask server, displays drones and fires on a Leaflet map, accepts ESP32 GPS telemetry over UDP, simulates a two-drone fleet, and posts fire detections from a YOLOv8 video detector. This demonstrates the ground-station, detection, and triangulation pipeline even though autonomous flight control and full mesh networking are not yet implemented.
+The system is designed to support real-time wildfire monitoring and situational awareness for emergency response teams through an aerial sensing network. It combines real time imaging with analysis to detect fire and smoke signatures, localize ignition points, and generate geospatial maps of affected regions. The system continuously tracks fire perimeter evolution to estimate spread direction, growth rate, and emerging risk zones.
 
 \vspace{0.5em}
 
-In the aspirational system, each drone contributes synchronized observations including GPS position, altitude, heading, camera detections, temperature, humidity, smoke or particulate readings, and battery/link health. Multiple drones observing the same ignition point allow the ground station to intersect bearing rays, reject false positives, and estimate a fire location more robustly than a single aircraft.
+Upon detection of a potential fire event, FireFly performs multi-drone data fusion to improve localization accuracy and robustness. Each drone contributes synchronized environmental and visual sensor data, including temperature, humidity, CO2 concentration, optical density, and UV/IR-based flame signatures. Data is synchronized across the network to support consistent spatial reconstruction and triangulation of fire sources.
 
 \vspace{0.5em}
 
-The communication architecture is planned as a split-link system. Low-bandwidth telemetry and alerts use robust packet delivery, while high-bandwidth visual data is prioritized when link quality allows. The current prototype uses Wi-Fi UDP broadcast and optional HTTPS upload for GPS telemetry. MANET, LoRa, and COFDM are design targets for the mature platform rather than demonstrated capabilities in the current repository.
+The system is designed with redundancy and resilience in mind, allowing continued operation under partial network loss or individual drone failure. Environmental measurements and visual observations are distributed across multiple agents to ensure coverage persistence even under degraded conditions.
 
 \vspace{0.5em}
 
-Validation is organized in stages. The current evidence includes bench-level ESP-NOW communication and motor/sensor experiments, GPS telemetry firmware, YOLOv8 fire detection scripts, live camera ingest, map visualization, and geometry tests already present in the repo. Future validation will add tethered flight, open-field range testing, calibrated sensor testing, and multi-drone flight trials once the airframe and flight stack are fully integrated.
+Multiple drones operate together in a coordinated formation, enabling adaptive area coverage, improved triangulation accuracy, and high resolution mapping of fire boundaries. Drone positioning is continuously adjusted based on detected fire intensity and spread patterns to optimize sensing in high-risk regions. Processed telemetry and summarized fire intelligence are transmitted to ground infrastructure for operational decision support, while raw or high-bandwidth data streams are selectively prioritized based on link availability.
+
+\vspace{0.5em}
+
+Validation is conducted through a staged testing process beginning with bench-level verification of core subsystems, including power delivery, propulsion, sensing, and communications. This is followed by controlled flight tests to evaluate flight stability, data link reliability, and real-time environmental sensing performance under operational conditions. Final open-field testing assesses behavior in realistic environments, including detection of smoke and temperature thresholds as well as consistency of data transmission. The objective is to validate FireFly as a functional proof-of-concept for autonomous, infrastructure-independent wildfire monitoring and data collection.
 
 \clearpage
 
@@ -90,12 +98,12 @@ Validation is organized in stages. The current evidence includes bench-level ESP
 \section{Introduction}
 % ============================================================
 
-\subsection{Problem Context}
+\subsection{Format later}
 Detecting wildfires in vast, dense forests presents a critical challenge for emergency responders, as early detection is the only way to prevent a small brush fire from becoming an uncontrollable catastrophe. In these environments, a single drone is severely limited by its flight time, battery capacity, and sensor range; it simply cannot scan thousands of acres quickly enough to find a pinpoint heat source before it spreads. Furthermore, a lone drone can only provide a single "line of sight" to a fire, which makes it nearly impossible to determine the exact GPS coordinates or the actual size of the blaze from a distance. Relying on one unit creates a single point of failure where a mechanical issue or a loss of signal in a remote valley results in a total loss of monitoring capability.
 
 To solve this, a mesh network of drones acts as a distributed "eye in the sky," turning a group of individual robots into a cohesive, intelligent sensing platform. By using multiple drones, the search area can be subdivided into a grid, allowing the team to cover a massive forest in a fraction of the time it would take a single unit. When a fire is spotted, the mesh allows multiple drones to converge and view the fire from different angles simultaneously. This multi-perspective data is sent back through the chain of drones—using each other as relays—to the ground station in the city. The central station then uses these intersecting vectors to triangulate the fire's precise location and calculate its growth rate with high accuracy, ensuring that firefighting resources are deployed exactly where they are needed most.
 
-\subsection{Scout Relay Concept}
+\subsection{scout relay}
 
 The primary obstacle in long-distance drone operations is the "line-of-sight" limitation of high-frequency radio signals. In a heavily forested or mountainous environment, physical obstacles like ridges, thick timber, and even the curvature of the Earth act as barriers that swallow data signals. If a single scout drone flies deep into a valley to investigate a heat signature, the terrain will likely sever its direct link to a distant city-based ground station. By strategically positioning relay drones between the scout and the base, the system creates a "daisy chain" that carries the signal over and around these obstacles, ensuring that the scout remains connected no matter how rugged the landscape becomes.
 
@@ -105,9 +113,9 @@ Beyond just signal strength, the relay drones provide a critical layer of operat
 
 \subsection{MANET}
 
-The planned Mobile Ad-hoc Network (MANET) is the "nervous system" that would transform a group of independent drones into a synchronized sensing fleet. Unlike traditional networks that rely on a fixed router or central tower, a MANET allows each drone to act as both receiver and transmitter. In the unpredictable environment of a forest fire, drones are constantly moving, banking, and changing altitudes to get a better view or to avoid smoke. The MANET layer is intended to manage these shifting positions in real time, automatically calculating the most efficient path for data to travel from the scout to the ground station through available relays.
+The integration of a Mobile Ad-hoc Network (MANET) is the "nervous system" that transforms a group of independent drones into a synchronized, intelligent swarm. Unlike traditional networks that rely on a fixed router or a central tower, a MANET allows each drone to act as both a receiver and a transmitter. In the unpredictable environment of a forest fire, drones are constantly moving, banking, and changing altitudes to get a better view or to avoid smoke. The MANET protocol manages these shifting positions in real-time, automatically calculating the most efficient path for data to travel from the scout to the ground station through whatever relays are currently available.
 
-The most important target characteristic of a MANET in this scenario is self-healing. In a wildfire mission, the risk of losing a drone to technical failure, low battery, or extreme environmental conditions is high. In a rigid network, the loss of a single relay drone can break the communication chain. A decentralized mesh should let the remaining drones reroute data through other nearby units as long as a physical path to the base remains.
+The most vital characteristic of a MANET in this scenario is its "self-healing" capability. In a wildfire mission, the risk of losing a drone to technical failure or extreme environmental conditions is high. In a rigid, pre-programmed network, the loss of a single relay drone would break the entire communication chain, leaving the scouts stranded and the city blind. However, because a MANET is decentralized, the remaining drones can immediately detect the gap and "heal" the network by rerouting data through other nearby units. This ensures that as long as there is a physical path of drones back to the base, the mission remains operational.
 
 Furthermore, MANET technology allows for dynamic scalability, which is essential when the scale of a fire grows unexpectedly. If a fire spreads and more drones are deployed from the city to assist, they can join the MANET instantaneously without needing a manual configuration or a reboot of the system. The network simply expands to include the new "nodes," automatically incorporating them into the relay chain or the search grid. This "plug-and-play" nature of ad-hoc networking allows emergency responders to scale their surveillance efforts in real-time as the situation on the ground evolves.
 
@@ -121,22 +129,22 @@ However, the physical laws of radio frequency dictate a strict trade-off between
 
 This limitation creates a significant hurdle for remote sensing: a mission that only provides coordinates without visual confirmation lacks the context needed for high-level decision-making. Investors must recognize that relying on a single radio protocol in a vast forest creates a bottleneck that renders advanced AI software useless. To bridge the gap between "long range" and "high quality," a more sophisticated, multi-layered approach is required to meet the demands of professional firefighting agencies.
 
-This motivates the planned Split-Link Architecture. This design philosophy separates communication into two distinct "pipes" operating simultaneously. Rather than forcing a single radio to compromise on both speed and distance, the mature system would use specialized hardware for low-bandwidth telemetry and higher-bandwidth video. This dual-path strategy keeps the "nervous system" of the fleet--telemetry, GPS, bearing, and alert data--independent from the "eyes" of the fleet--the video feed.
+This is why we have implemented a Split-Link Architecture. This design philosophy separates communication into two distinct "pipes" operating simultaneously. Rather than forcing a single radio to compromise on both speed and distance, we utilize two specialized hardware sets on every aircraft. This dual-path strategy ensures that the "nervous system" of the fleet—the telemetry and triangulation data—remains active on one frequency while the "eyes" of the fleet—the video feed—occupy another.
 
-For the future high-bandwidth path, the system evaluates COFDM (Coded Orthogonal Frequency Division Multiplexing) because OFDM-style links can tolerate multipath better than simple single-carrier video links. In a forest, radio signals are reflected off trees and terrain, which can fragment video. A COFDM video path is therefore treated as a planned hardware upgrade for non-line-of-sight video, not as a capability demonstrated by the current repository.
+To handle the heavy lifting of video transmission, the system utilizes COFDM (Coded Orthogonal Frequency Division Multiplexing). This is a military-grade transmission standard that excels in "non-line-of-sight" environments. In a forest, radio signals are constantly reflected off trees and terrain, which typically causes digital video to fragment and fail. COFDM solves this by splitting the data across thousands of sub-carriers, allowing the receiver to reconstruct a perfect 1080p image even if parts of the signal are blocked or distorted.
 
-In the current prototype, the video path is implemented with recorded fire videos, ESP32-CAM or MJPEG stream URLs, OpenCV frame capture, and YOLOv8 inference running on the ground-station computer. The proof-of-concept therefore validates detection and map posting, while future RF hardware must still be selected and tested for real outdoor range, bandwidth, latency, and multipath performance.
+By integrating COFDM, the system provides the ground-based AI with the high-fidelity visual data it needs to perform sub-meter fire analysis and growth prediction. This ensures that the intelligence gathered by the drones is not just theoretical data, but actionable, high-definition evidence that can be reviewed in real-time by commanders in a city-based operations center. This level of clarity is non-negotiable when directing ground crews and expensive aerial tankers.
 
-The Split-Link Architecture is intended to solve range and video quality as separate engineering problems. If the high-bandwidth video link degrades, the lower-bandwidth telemetry path should continue to carry GPS, heading, battery state, and fire-alert packets. This supports a "fail-functional" mission mode in which the operator may lose video detail but still retains the data required to track drone position and estimate fire location.
+The Split-Link Architecture effectively solves the range and quality problems simultaneously. While the COFDM radio provides the rich visual "muscle," the LoRa link serves as a redundant fail-safe. If environmental conditions become so severe that the high-bandwidth video stutters, the LoRa link continues to provide the essential triangulation vectors and GPS data. This ensures the mission remains "fail-functional," meaning we never lose the ability to track the fire’s location, even in the most challenging atmospheric conditions.
 
-Ultimately, dual-protocol hardware is a future design direction for operational resilience. The implemented repository currently uses Wi-Fi UDP telemetry and HTTP APIs, while the MANET, LoRa, and COFDM portions remain requirements for the next hardware iteration.
+Ultimately, this investment in dual-protocol hardware delivers a level of operational resilience that single-radio systems cannot match. By leveraging the mesh capabilities of the MANET to carry both LoRa and COFDM signals across a chain of relay drones, we have built a data pipeline that is as robust as it is intelligent. This architecture guarantees that life-saving information travels from the heart of the forest to the decision-makers in the city with the speed, clarity, and reliability that a critical emergency response demands.
 
-\subsection{Automation Concept}
-To maximize operational efficiency and ensure rapid response, the full FireFly concept uses a dynamic automation workflow that transitions through three distinct phases: the Lawnmower Search, the Relay Chain, and the Orbital Ring. This tiered approach is a design target for future autonomous flight software. The current repository simulates drone movement and validates how the ground station reacts to detection and telemetry data.
+\subsection{automation}
+To maximize operational efficiency and ensure rapid response, our system utilizes a dynamic automation workflow that transitions through three distinct phases: the Lawnmower Search, the Relay Chain, and the Orbital Ring. This tiered approach ensures that no part of the forest is left unmonitored while guaranteeing that once a fire is found, the data gathered is of the highest possible geometric precision for the ground station.
 
 In the initial "Search Phase," the fleet executes a Lawnmower pattern, which is the industry standard for 100 percent visual coverage. The mission area is divided into precise parallel "lanes," and each drone is autonomously assigned a specific path. This systematic grid ensures that we are not just flying aimlessly, but are instead "scanning" the forest floor with mathematical certainty. By subdividing the area among multiple drones, we can search thousands of acres in minutes—a task that would take hours for a single aircraft or ground crew.
 
-As the search expands farther from the ground station, the future system would transition into the Relay Chain configuration. Not all drones are sent to the front line; instead, automation software would position selected units as high-altitude signal repeaters. This creates a resilient data bridge for future video and telemetry links. This self-positioning relay logic is not currently implemented in the repository.
+As the search expands further away from the city, the system automatically transitions into the Relay Chain configuration. Not all drones are sent to the "front lines"; instead, the automation software intelligently positions specific units at intermediate points to act as high-altitude signal repeaters. This creates a resilient "data bridge" that carries the high-bandwidth COFDM video and LoRa telemetry back to the base. This "self-positioning" relay logic ensures that even as the scouts push deeper into rugged valleys, they never lose the critical connection to the ground station.
 
 The moment a scout drone’s onboard AI detects a fire, the fleet enters the Orbital Ring phase. Rather than staying in a fixed grid, nearby drones are "called" to the detection site to surround the fire from multiple cardinal directions. This orbital formation is crucial for the triangulation math performed at the ground station. By viewing the heat source from three or four different angles simultaneously, the system can intersect those vectors to pinpoint the fire’s GPS coordinates and estimate its total acreage with far greater accuracy than a single observation ever could.
 
@@ -161,7 +169,7 @@ FireFly is our mobile drone early fire detection system. It is designed to suppo
 
 \vspace{1em}
 
-FireFly addresses the shortcomings of fixed monitoring infrastructure by enabling mobile aerial tracking of early stage fire events. In the intended operational configuration, a fleet of three or more drones collaborates to localize fire sources through multi-point observation and triangulation. Each drone contributes synchronized visual data and localized environmental measurements. The current prototype demonstrates this concept with two simulated drones, ESP32 GPS telemetry, a server-side triangulation module, and a map dashboard that plots fire estimates.
+FireFly addresses the shortcomings of the  by enabling continuous aerial tracking of early stage fire events. In its operational configuration, a fleet of three drones collaborates to localize fire sources through multi-point observation and triangulation. Each drone contributes synchronized visual data and localized environmental measurements, including temperature, humidity, CO2 concentration, and smoke density estimation. An onboard microcontroller based subsystem is responsible for environmental sensing and communication, relaying telemetry data to a ground station for aggregation and analysis.
 
 \vspace{1em}
 
@@ -229,11 +237,20 @@ Individuals with experience levels ranging from novice to expert in fire monitor
 \underline{\textit{Expectations:}} A working prototype that proves the core concept: zero-infrastructure deployment, live sensor transmission, and threshold-based alerting, with documentation clear enough for field personnel to operate without engineering support.
 
 \subsection{Existing Research}
-Current wildfire detection relies on satellite imagery, fixed camera networks, manned aircraft, and ground reports. NASA FIRMS distributes MODIS and VIIRS active-fire products; MODIS fire pixels are approximately 1 km at nadir, while the VIIRS I-band product provides nominal 375 m active-fire pixels and improved mapping of smaller fires. These systems are valuable for regional awareness, but satellite overpass timing, pixel size, clouds, smoke, and canopy obstruction can limit early ignition confirmation. Fixed camera networks such as ALERTCalifornia provide real-time visual monitoring at large scale, but each camera remains constrained by tower placement, terrain, weather, and line of sight.
+Current wildfire detection relies on satellite imagery, fixed camera networks,
+and manned aircraft. Satellites cannot reliably detect fires smaller than
+approximately 18 square kilometers. Fixed towers like AlertCalifornia's
+camera network are constrained by line of sight, leaving roadless terrain
+uncovered. UAV-based systems have shown promise, with UAV--IoT networks
+detecting fires as small as 2.5 square kilometers at over 99 percent accuracy,
+but most depend on pre-deployed ground sensors or persistent network
+infrastructure that does not exist in remote areas.
 
 \vspace{0.5em}
 
-FireFly addresses this gap by providing a self-contained, rapidly deployable aerial sensing platform. The full system is intended to supplement satellites and fixed towers with lower-altitude, taskable observations in infrastructure-free terrain. The current prototype demonstrates the software pipeline needed to turn drone telemetry and visual detections into map-based fire coordinates.
+FireFly addresses this gap by providing a self-contained, rapidly deployable
+platform that requires no pre-existing infrastructure to deliver real-time
+environmental data and threshold-based fire risk alerts.
 
 \subsection{Sustainability Statement}
 
@@ -270,26 +287,28 @@ FireFly is designed to perform in three main scenarios to assist first responder
 \vspace{1em}
 
 \textbf{Active Fire Detection:}
-FireFly is intended to serve as a mobile monitoring node in blind spot regions where satellites or fixed towers are delayed or blocked by topography. The current prototype uses YOLOv8 image recognition on recorded video or live MJPEG streams to detect fire and smoke, then posts detections to the map for operator review.
+FireFly will serve as a primary monitoring node in blind spot regions. These regions are areas where satellites and tower coverage is blocked due to topography. By monitoring real time feed from the camera, FireFly uses image recognition models to detect fire and smoke at a high accuracy. FireFly can verify ignition and smoke for early detection.
 
 \vspace{1em}
 
 \textbf{Fire Propagation and Heading Analysis:}
-In the full system, repeated geolocated observations, calibrated camera data, and environmental gradients would support estimates of direction, speed, and intensity change. The repository currently supports heading-based fire localization and stores fire markers over time; propagation modeling remains future work.
+By utilizing real time calibrated camera data, FireFly can track the movement of a fire. By comparing sensor data such as increasing temperature gradients and changing smoke concentrations alongside the GPS, the system can determine the direction and speed at which a fire is heading as well as changes in intensity.
 
 \vspace{1em}
 
 \textbf{Perimeter Mapping and Size Assessment:}
-In the full system, multiple drones can be deployed around the boundary of a detected fire to generate a geofenced perimeter and area estimate. The current proof-of-concept estimates fire points from bearing intersections and bounding-box size approximations; accurate perimeter mapping requires additional flight, camera, and calibration validation.
+FireFly can be deployed in multiple locations at the boundary of a detected fire. By triangulating the area of the fire, the ground station can plot a geofenced perimeter. This provides responders with an accurate estimate of total area affected in the terrain.
 
 % ============================================================
 \section{Design}
 % ============================================================
-
+\begin{comment}
 \subsection{Design Objectives}
-The objective of FireFly is to develop a robust aerial monitoring platform capable of rapid deployment in remote, high fire-risk environments. The full system is designed around five engineering goals: maintain useful coverage without fixed infrastructure, detect fire and smoke signatures from aerial imagery, localize ignition points using multiple drone observations, transmit low-latency telemetry to a ground station, and give operators a clear map-based view of drones, detections, and fire estimates. The current repository proves the geolocation and ground-station portions of this design, while full autonomous flight, outdoor relay networking, calibrated environmental alerting, and live multi-drone perimeter tracking remain next-iteration work.
+The objective of this project is to develop a robust aerial monitoring platform capable of reliable operation in remote environments with a high fire risk. To achieve this, the system requires a long-range communication link and high-speed data transmission to ensure low-latency control and real-time environmental telemetry. Furthermore, the power architecture must be optimized to sustain extended monitoring missions. The system will be able to detect fire location, intensity, and direction of travel, allowing responders to properly handle and mitigate damages.
 
 \subsection{System Requirements and Acceptance Criteria}
+
+\textit{Template: convert the need statement into measurable engineering requirements. Replace bracketed values with finalized targets and use the status column during verification.}
 
 \begin{table}[H]
     \centering
@@ -298,37 +317,37 @@ The objective of FireFly is to develop a robust aerial monitoring platform capab
         \hline
         \textbf{ID} & \textbf{Requirement} & \textbf{Target} & \textbf{Verification Method} & \textbf{Status} \\
         \hline
-        REQ-01 & Mission endurance / usable flight time & 5--8 min for Option A hardware estimate & eCalc estimate, then tethered and field flight timing & Estimated \\
+        REQ-01 & Mission endurance / usable flight time & [fill in] & [simulation, bench, flight] & [ ] \\
         \hline
-        REQ-02 & Telemetry range & Local Wi-Fi for prototype; multi-hop relay for final system & UDP packet range test and mesh relay field test & Prototype only \\
+        REQ-02 & Telemetry range (line of sight) & [fill in] & [range test] & [ ] \\
         \hline
-        REQ-03 & Telemetry update interval & 1 Hz GPS in fleet simulator; firmware sends every valid GPS fix & Server logs, sequence numbers, and packet-drop script & Implemented \\
+        REQ-03 & Telemetry latency / update interval & [fill in] & [timing log] & [ ] \\
         \hline
-        REQ-04 & Sensor readout accuracy / stability & Temperature and humidity values readable over I2C; calibration required before field use & SHTC3 serial output and reference-instrument comparison & Bench tested \\
+        REQ-04 & Sensor readout accuracy / stability & [fill in] & [calibration comparison] & [ ] \\
         \hline
-        REQ-05 & Alert generation delay from visual fire detection & 3 s sustained fire in recorded-video detector; 2 s sustained fire in MJPEG ingest & Controlled video or injected stream detection & Implemented in software \\
+        REQ-05 & Alert generation delay from threshold crossing & [fill in] & [injected test event] & [ ] \\
         \hline
-        REQ-06 & Deployment and setup time & One-command local demo after dependencies are installed & Run launcher with server, simulator, and optional camera discovery & Implemented for demo \\
+        REQ-06 & Deployment and setup time & [fill in] & [field procedure timing] & [ ] \\
         \hline
-        REQ-07 & Maximum takeoff mass / payload margin & Option A baseline approximately 190--230 g, payload comfort 0--75 g & Mass scale and thrust model comparison & Estimated \\
+        REQ-07 & Maximum takeoff mass / payload margin & [fill in] & [mass measurement] & [ ] \\
         \hline
     \end{tabular}
-    \caption{System requirements and acceptance criteria.}
+    \caption{System requirements and acceptance criteria template.}
     \label{tab:requirements_template}
 \end{table}
 
 \subsection{System Architecture Overview}
 
-FireFly is organized as a sensing fleet, communications layer, and ground-station intelligence layer. In the full system, each drone carries flight-control hardware, GPS, camera, environmental sensors, and communications hardware. The ground station receives telemetry and detections, fuses multi-drone observations, and presents fire intelligence to the operator. The current repository implements a proof-of-concept version of this architecture using ESP32 GPS telemetry firmware, Python simulation, Flask APIs, Leaflet map visualization, OpenCV video ingest, and YOLOv8 fire detection.
+\textit{Template: summarize the baseline system architecture in one paragraph and keep future-work modules clearly separated from the prototype baseline.}
 
 \subsubsection*{Subsystem Inventory}
 \begin{itemize}
-    \item Airframe / mechanical structure: 3D-printed X-frame concept with v5 CAD iteration, motor pods, battery strap slots, and serviceable central bay.
-    \item Propulsion stack: SunnySky R1106-class motors, tri-blade propellers, 3S LiPo battery, and 4-in-1 ESC selected for the intended flight build; bench testing used an H-bridge and brushed DC motor while waiting for final propulsion hardware.
-    \item Flight stabilization stack: planned flight-controller integration; not demonstrated by the current geolocation-focused repository.
-    \item Environmental sensing stack: SHTC3 temperature/humidity firmware path is implemented; smoke/gas, CO2, UV/IR, and particulate sensing are design targets requiring final sensor selection and calibration.
-    \item Wireless telemetry link: current GPS telemetry uses Wi-Fi UDP broadcast on port 4210 and optional HTTPS upload; ESP-NOW is bench-tested for controller-to-drone communication; ESP-MESH, LoRa, and COFDM are future architecture elements.
-    \item Ground station: Flask backend, Leaflet map, JavaScript dashboard, Supabase-compatible drone registration path, camera URL registration, YOLOv8 video detector, MJPEG ingest, and triangulation module.
+    \item Airframe / mechanical structure: [frame geometry, material, manufacturing process]
+    \item Propulsion stack: [motors, propellers, ESC, battery, power distribution]
+    \item Flight stabilization stack: [flight controller / control method / current status]
+    \item Environmental sensing stack: [temperature, humidity, smoke, and any optional future sensors]
+    \item Wireless telemetry link: [protocol, frequency band, packet format, update rate]
+    \item Ground station: [receiver hardware, host machine, server/dashboard software, fire image recognition]
 \end{itemize}
 
 \subsubsection*{End-to-End Data Path}
@@ -339,22 +358,22 @@ FireFly is organized as a sensing fleet, communications layer, and ground-statio
         \hline
         \textbf{Stage} & \textbf{Source} & \textbf{Destination} & \textbf{Format / Protocol} & \textbf{Notes} \\
         \hline
-        1 & GPS receiver & ESP32 GPS firmware & UART, NMEA GGA & Parses latitude, longitude, altitude, satellites, and HDOP \\
+        1 & [sensor] & [onboard processor] & [I2C / SPI / ADC] & [sampling rate] \\
         \hline
-        2 & ESP32 firmware & Ground station LAN & UDP JSON broadcast, port 4210 & Fields include id, seq, lat, lon, alt\_m, heading\_deg, fire\_detected, sats, hdop, ts\_ms \\
+        2 & [onboard processor] & [wireless link] & [packet structure] & [fields included] \\
         \hline
-        3 & Flask GPS listener & In-memory drone state and optional database & Python dictionary / SQLAlchemy models & Drops stale drones after 30 s \\
+        3 & [ground receiver] & [host computer] & [USB serial / UART] & [baud rate / framing] \\
         \hline
-        4 & Flask server & Browser dashboard & HTTP JSON via \verb|/api/state| & JavaScript polls every 500 ms and updates the map \\
-        \hline
-        5 & YOLO detector or triangulator & Ground station fire list & HTTP JSON via \verb|/api/fire| & Fire marker includes coordinates, confidence, area, and source when available \\
+        4 & [host software] & [dashboard / operator] & [HTTP / file log / UI] & [refresh interval] \\
         \hline
     \end{tabular}
-    \caption{Current proof-of-concept data path.}
+    \caption{System architecture and data-path template.}
     \label{tab:architecture_template}
 \end{table}
 
 \subsection{Mass Budget}
+
+\textit{Template: list both measured and estimated masses, then compare to the allowable all-up weight and payload margin derived from simulation or testing.}
 
 \begin{table}[H]
     \centering
@@ -363,39 +382,40 @@ FireFly is organized as a sensing fleet, communications layer, and ground-statio
         \hline
         \textbf{Component} & \textbf{Qty.} & \textbf{Mass Each} & \textbf{Total Mass} & \textbf{Measured / Estimated} \\
         \hline
-        Frame & 1 & 30 g & 30 g & Estimated from design notes \\
+        Frame & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        SunnySky R1106 motors & 4 & 7.5 g & 30 g & Vendor/design estimate \\
+        Motors and propellers & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Propeller set & 1 & 5 g & 5 g & Estimated from design notes \\
+        ESC / power hardware & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Battery, 850 mAh 3S LiPo & 1 & 69 g & 69 g & Estimated from design notes \\
+        Battery & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        ESP32 controller & 1 & 9 g & 9 g & Estimated from design notes \\
+        Flight controller / onboard MCU & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        ESC, wiring, sensors, mounts & 1 lot & Not isolated & 47--87 g & Budgeted to reach 190--230 g AUW \\
+        Sensor payload & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Optional payload margin & 1 lot & 0--75 g & 0--75 g & Option A payload comfort estimate \\
+        Wiring / mounting / overhead & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Total all-up weight & & & 190--230 g & Estimated; needs scale measurement \\
+        Total all-up weight & & & [ ] & [compare to thrust model] \\
         \hline
     \end{tabular}
-    \caption{Prototype mass budget from repo design notes.}
+    \caption{Mass budget template.}
     \label{tab:mass_budget_template}
 \end{table}
 
 \subsection{Sensor and Alert Logic}
 
+\textit{Template: document the exact sensing baseline of the prototype, any optional future sensors, and the logic used to generate alerts at the ground station.}
+
 \subsubsection*{Sensor Baseline}
 \begin{itemize}
-    \item Current implemented sensors/data sources: GPS over UART, SHTC3 temperature/humidity over I2C in the motor receiver prototype, potentiometer command input for motor bench testing, recorded or live MJPEG video for YOLO fire detection.
-    \item Current software-only inputs: simulated drone positions, headings, and fire visibility from \verb|simulate_fleet.py|.
-    \item Future-work sensors: smoke/gas detector, CO2 sensor, particulate sensor, UV/IR flame sensor, LiDAR/range sensor, battery monitor, and calibrated thermal imaging.
-    \item Sampling/update rates: simulated fleet broadcasts at 1 Hz; GPS firmware broadcasts each valid GGA fix; motor command prototype sends every 50 ms; SHTC3 telemetry is sent every 2 s; dashboard polling is 500 ms.
-    \item Expected operating range: environmental sensor limits and calibration targets must be finalized from selected datasheets before field deployment.
+    \item Baseline prototype sensors: [list sensors included in the current build only]
+    \item Deferred / future-work sensors: [camera, GPS, CO2, LiDAR, etc. only if not part of the baseline]
+    \item Sampling rate per sensor: [fill in]
+    \item Expected operating range per sensor: [fill in]
 \end{itemize}
 
-\subsubsection*{Alert Thresholds and Current Logic}
+\subsubsection*{Alert Threshold Template}
 \begin{table}[H]
     \centering
     \small
@@ -403,32 +423,32 @@ FireFly is organized as a sensing fleet, communications layer, and ground-statio
         \hline
         \textbf{Signal} & \textbf{Condition} & \textbf{Threshold} & \textbf{Filtering / Time Window} & \textbf{Alert Output} \\
         \hline
-        Temperature & Absolute temperature or rapid rise & To be calibrated for final sensor & Moving average and rate-of-change planned & Risk score and operator warning \\
+        Temperature & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Humidity & Low relative humidity combined with heat & To be calibrated for final sensor & Combined with temperature and smoke & Risk score modifier \\
+        Humidity & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Smoke / particulate / gas & Elevated smoke or gas reading & Sensor-specific threshold required & Debounce window planned & Fire-risk alert \\
+        Smoke / particulate / gas & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        YOLO fire class & Fire object detected in video & Confidence 0.4 in recorded-video script & Fire must persist for 3 s & POST to \verb|/api/fire| \\
-        \hline
-        MJPEG fire/smoke class & Fire or smoke in live stream & Confidence 0.25 in ingest worker & Fire/smoke must persist for 2 s; 5 s cooldown & POST to \verb|/api/fire| \\
+        Combined risk score & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Alert logic for current software and planned environmental sensing.}
+    \caption{Alert-threshold template.}
     \label{tab:alert_threshold_template}
 \end{table}
 
 \subsubsection*{Calibration and Environmental Limits}
 \begin{itemize}
-    \item Calibration reference used: no completed calibration log is present in the repo; final temperature, humidity, smoke, and gas thresholds must be validated against reference instruments.
-    \item Pre-flight sensor validation procedure: confirm GPS fix, verify nonzero telemetry updates, check camera stream availability, verify environmental sensor readings against ambient conditions, and confirm dashboard receipt before launch.
-    \item Known limitations: GPS jitter affects heading when nearly stationary, smoke may dilute in wind, heat soak may bias onboard temperature sensors, and video detections depend on lighting, viewing angle, model confidence, and camera calibration.
-    \item False-positive and false-negative mitigation: require sustained visual detections, combine environmental signals with image confidence, use multi-drone bearing agreement, and allow operator confirmation through the map and camera feed.
+    \item Calibration reference used: [fill in]
+    \item Pre-flight sensor validation procedure: [fill in]
+    \item Known limitations (wind, heat soak, smoke dilution, drift): [fill in]
+    \item False-positive and false-negative mitigation strategy: [fill in]
 \end{itemize}
 
 \subsection{Safety, Reliability, and Operational Constraints}
 
-\subsubsection*{Risk Register}
+\textit{Template: keep this section grounded in prototype reality. Record what the system does today on link loss, low battery, bad sensor data, and structural damage.}
+
+\subsubsection*{Risk Register Template}
 \begin{table}[H]
     \centering
     \small
@@ -436,31 +456,30 @@ FireFly is organized as a sensing fleet, communications layer, and ground-statio
         \hline
         \textbf{Failure / Hazard} & \textbf{Cause} & \textbf{Impact} & \textbf{Mitigation / Failsafe} & \textbf{Residual Risk} \\
         \hline
-        Link loss & Wi-Fi range, terrain, packet loss, stale stream & Ground station loses drone position or camera feed & Dashboard drops stale drones after 30 s; future mesh/relay link required & Medium \\
+        Link loss & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Low battery / brownout & LiPo discharge under propulsion load & Loss of control or telemetry reset & Future battery monitor, return-to-home threshold, and preflight voltage check & High until flight stack is integrated \\
+        Low battery / brownout & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Sensor fault / drift & GPS jitter, I2C read failure, heat soak, camera calibration error & Wrong heading, poor fire localization, false alert & CRC checks where available, calibration, sustained detection windows, multi-drone confirmation & Medium \\
+        Sensor fault / drift & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Propulsion failure & Motor, ESC, wiring, propeller, or frame damage & Crash or uncontrolled landing & Bench motor tests, tethered flight before open field, inspection checklist & High until flight testing is complete \\
+        Propulsion failure & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Structural damage / crash & Hard landing, arm fracture, motor pod mismatch & Loss of airframe or payload & One-piece reprintable frame, visual inspection, conservative test envelope & Medium \\
-        \hline
-        Unauthorized command injection & Unauthenticated ESP-NOW command packets & Motor command spoofing in bench prototype & Validate peer MAC, clamp PWM values, enable encryption or authenticated protocol before flight & High until remediated \\
+        Structural damage / crash & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Risk and reliability register.}
+    \caption{Risk and reliability template.}
     \label{tab:risk_template}
 \end{table}
 
 \subsubsection*{Operational Constraints}
 \begin{itemize}
-    \item Environmental limits: prototype testing should use calm wind, clear visibility, open terrain, and conservative altitude until flight stability and telemetry range are measured.
-    \item Regulatory constraints: outdoor flight must comply with FAA small UAS rules, including visual line of sight, operating altitude, airspace authorization, and pilot responsibilities.
-    \item Field safety procedures: use a defined exclusion radius, propeller-off bench tests, tethered first flights, LiPo-safe charging and storage, preflight communications checks, and documented recovery procedures.
+    \item Environmental limits: [wind, ambient temperature, visibility, terrain constraints]
+    \item Regulatory constraints: [airspace rules, operator requirements, test-site limitations]
+    \item Field safety procedures: [arming/disarming, exclusion radius, battery handling, recovery procedure]
 \end{itemize}
 
 \newpage
+\end{comment}
 
 \subsection{Aesthetic Prototype}
 
@@ -528,6 +547,8 @@ Maintenance access is provided by the open top cavity, side-wall windows, and po
 
 \subsection{Interface Definitions}
 
+\textit{Template: define the electrical and software interfaces between subsystems so assembly and debugging are reproducible.}
+
 \begin{table}[H]
     \centering
     \scriptsize
@@ -535,34 +556,30 @@ Maintenance access is provided by the open top cavity, side-wall windows, and po
         \hline
         \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
         \hline
-        GPS UART & GPS module & ESP32 GPS firmware & UART 9600 baud & 3.3 V logic expected & Each valid GGA sentence & RX GPIO 4, TX GPIO 5 in firmware \\
+        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
         \hline
-        SHTC3 sensor bus & SHTC3 & ESP32 motor receiver & I2C 100 kHz & 3.3 V & 2 s & SDA GPIO 10, SCL GPIO 8 in prototype \\
+        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
         \hline
-        Telemetry link & ESP32 GPS firmware & Flask ground station & Wi-Fi UDP JSON & RF link & Per GPS fix & Broadcast port 4210 \\
+        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
         \hline
-        Cloud uplink & ESP32 GPS firmware & Hosted Flask server & HTTPS POST JSON & Wi-Fi & Per GPS fix when enabled & Uses \verb|X-API-Key| header \\
+        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
         \hline
-        Camera stream & ESP32-CAM, phone, or webcam & Ground station / YOLO process & HTTP MJPEG & Network & Stream dependent & Registered through \verb|/api/camera| \\
-        \hline
-        Bench motor control & ESP32 receiver & H-bridge / motor driver & GPIO direction plus LEDC PWM & Driver dependent & 50 ms command loop & Stand-in for final ESC integration \\
+        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Electrical and software interface definitions.}
+    \caption{Interface-definition template.}
     \label{tab:interface_template}
 \end{table}
 
+\begin{comment}
 \subsection{Technology (Languages, Hardware, etc.)}
 
-FireFly combines embedded C/C++ firmware, Python backend services, computer vision, browser-based mapping, and 3D-printed mechanical design. The current embedded work targets ESP32-class microcontrollers using ESP-IDF. Implemented firmware includes UART GPS parsing, Wi-Fi station connection, UDP broadcast telemetry, optional HTTPS cloud upload, ESP-NOW command exchange, SHTC3 I2C temperature/humidity readout, and LEDC PWM motor-control bench tests.
+The FireFly system utilizes a custom-integrated hardware architecture designed for high-reliability telemetry in extreme environments. Rather than utilizing external third-party modules, the drone features a custom-designed Flight Control and Sensing PCB. This board integrates a high-performance 32-bit microcontroller with a dedicated RF front-end optimized for the 2.4GHz spectrum. The onboard sensor suite is deeply integrated into the hardware logic, utilizing an I2C-based sensor bus to interface custom environmental monitoring circuits—specifically high-precision thermistor arrays and particulate matter sensors—directly with the primary processing unit.
 
 \vspace{0.5em}
 
-The ground station is written in Python using Flask. It stores live drone state in memory for local demonstrations and can optionally use SQLAlchemy/PostgreSQL with Supabase-style JWT authentication for registered drones and API keys. The browser UI uses Leaflet, JavaScript, and OpenStreetMap tiles to show drone markers, trails, bearing lines, fire markers, camera stream status, and active/stale alerts. The fire detection stack uses OpenCV and Ultralytics YOLOv8 weights trained for smoke and fire classes. The repository also contains a one-command launcher that starts the server, optional simulator, camera registration, and YOLO detector for local demonstrations.
-
-\vspace{0.5em}
-
-The long-term communications plan includes ESP-MESH or another MANET layer for self-organizing relay behavior, plus separate low-bandwidth and high-bandwidth links for telemetry and video. These links are design targets; the implemented prototype currently relies on local Wi-Fi UDP, HTTP APIs, ESP-NOW bench communication, and simulated drone motion.
+The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
+\end{comment}
 
 \subsection{Simulations}
 
@@ -573,65 +590,80 @@ Before building and flying, we used simulation tools to verify that the FireFly 
 A simplified quadcopter dynamics model was used to tune attitude and altitude control parameters, verifying that the platform can hold a stable position over a monitoring area, a prerequisite for consistent sensor sampling. Research on quadcopter modeling confirms that such simulations can predict controller behavior and reduce the number of risky test flights needed to achieve stable flight. Together, these simulations provide evidence that FireFly can meet its need statement requirements: reaching areas with zero sensor infrastructure and sustaining flight long enough to collect and transmit temperature, humidity, and smoke data before committing to full implementation and field testing.
 
 
-\subsection{Navigation and Perimeter Mapping}
-FireFly uses an aspirational patrol-and-respond workflow designed to maximize aerial coverage, maintain communications, and focus sensing resources when a fire is detected. During the initial search phase, drones follow planned coverage paths such as a circular orbit or lawnmower pattern at a constant altitude. During this phase, the mature system will sample environmental data and stream imagery for fire detection. The current repository does not implement autonomous flight control; it simulates drone movement and validates the ground-station geolocation logic that would consume flight data.
+\subsection{Onboard Systems}
+% Might need to overhall some of these later like the co2 and other sensors. This is mostly an overview now.
+FireFly utilizes an autonomous patrol and respond logic designed to maximize coverage. This ensures data can be captured upon fire detection. During the initial search phase, the drone performs a preset pattern, typically a circular orbit or in parallel lines like a lawnmower at a constant altitude. This phase provides steady environmental monitoring, where the onboard systems are continuously sampling data from GPS coordinates, barometric altitude, and inertial measurements. The camera provides a live visual feed for detection and data training. By sweeping the area under a stabilized flight path, the system provides a baseline for specific geographical areas. This allows the ground station to differentiate between normal atmospheric variations and detected sharp spikes associated with wildfires.
 
 \vspace{0.5em}
 
-When the system detects a fire through visual inference or future environmental thresholds, it records telemetry containing GPS coordinates, altitude, heading, detection status, satellite count, and HDOP. The current ground station can then add fire markers directly from YOLO detections or compute a fire estimate by intersecting two recent drone bearing rays. This supports the eventual mapping sequence while keeping the present prototype focused on detection, telemetry, and geolocation rather than autonomous vehicle control.
+When the drone detects a fire triggered by an automated visual confirmation from server side detection, the drone shifts to a search state and begins tracking. The integrated camera utilizes the pretrained detection framework to identify smoke and flame signatures in real time providing an automated verification layer. The system immediately records telemetry data and sends a packet containing the drone's precise GPS coordinates (latitude, longitude, and altitude), direction, and specific sensor values. This data is transmitted to the ground station, where it is recorded. By utilizing the camera, operators at the base station can confirm the fire's existence, cut down on false positives, and assess the intensity before the drone begins the mapping sequence. 
 
 \vspace{0.5em}
 
 \subsubsection{Autonomy and Behavior}
-The final flight logic is planned as a state machine that transitions between search, engagement, and recovery. During the search phase, the system will use a Boustrophedon, or lawnmower, path-planning pattern to ensure systematic coverage of a designated area with controlled sensor overlap. If a fire is detected, drones should maintain a safe standoff distance based on thermal intensity and operator-defined safety margins. In recovery, failsafes should handle return-to-home, signal loss, low battery, and hardware anomalies. The repository does not yet implement these flight-control states; it implements the telemetry and ground-station data products that the state machine would consume.
+% System is a state machine, path planning such as lawn mower or orbit, fail safes and obstacle avoidance
+The flight logic is controlled by a state machine that transitions between search, engagement, and recovery. During the search phase, the system will utilize a Boustrophedon path planning algorithm, a "lawnmower" pattern, to ensure systematic coverage of a designated area with a small percentage of sensor overlap. If a fire is detected, the drone dynamically adjusts its flight path to maintain a safe standoff distance based on thermal intensity. In the recovery state, built-in fail safes include an automated return to home protocol, signal loss, and hardware anomalies. These can be triggered by low battery thresholds, loss of signal exceeding five seconds, or detected malfunctions in the propulsion system.
 
 \vspace{0.5em}
 
-\textbf{Search State:} In autonomous surveillance, the search state is the foundational operating mode where the system systematically monitors the geographic area to confirm a baseline and search for anomalies. The lawnmower pattern or horizontal sweep pattern is selected because it creates predictable coverage, simpler georeferencing, and repeatable sensor overlap.
+\textbf{Search State:} In autonomous surveillance, the search state is the foundational operating mode where the system systematically monitors the geographic area to confirm a baseline and search for anomalies. The lawnmower pattern or a horizontal sweep pattern has several technical advantages essential for high reliability and wildfire detection.
 
-The search state is characterized by steady-state flight at a constant altitude and velocity. This stability supports server-side processing by providing consistent video and reducing motion blur. Track spacing can be calculated from altitude and camera field of view, with overlap used to compensate for wind drift, airframe tilt, and inference delay. The current simulator uses circular motion rather than a lawnmower planner, so this section defines intended behavior for the next flight-control iteration.
+The search state is characterized by steady state flight at a constant altitude and velocity. This stability is essential for the server side processing as it provides consistent video feed and minimizes motion blur. In this state, the drone operates on a preset navigation schedule, this means it follows a computed path until a higher priority command is received from the ground station like smoke or fire being detected. The horizontal sweep pattern ensures that every square meter of a designated area is scanned. By calculating the drone's altitude and the camera's field of view, the distance between parallel passes or "track spacing" can be set to ensure no gaps exist between each pass. For the server side architecture, sensor overlap is typically set to 20\% is used as a buffer against environmental variables. This overlap compensates for wind drift, altitude variations, and server inference time. In the case of wind drift, if a gust pushes the drone off the path, the overlap ensures the intended path is still captured. When the drone tilts to compensate for wind, the camera's ground footprint shifts, overlap covers the "blind spots" during the parallel passes. 
 
-
-Because the ground station receives video and telemetry continuously, predictable flight paths simplify georeferencing. When the server detects a flame, it can associate the detection with a known vehicle pose more reliably than it could during erratic movement. If a drone loses signal, the last known path also helps the operator estimate where to search.
-
-\vspace{0.5em}
-
-\textbf{Engagement and Mapping State:} This future phase shifts drones from broad surveillance to focused fire observation once a fire is confirmed. The primary observer continues reporting fire bearing and confidence, while secondary drones move to angular offsets around the fire to improve triangulation. The orbit or standoff path must protect the airframe from heat and updrafts and must include collision-avoidance spacing between drones.
+Since the ground station is receiving a continuous video stream for analysis, having a predictable, linear flight path simplifies the georeferencing process. When the server detects a flame, it can easily correlate a point on a straight line path than it could if the drone were to perform on erratic or curved movements. If a drone loses signal or experiences a hardware anomaly during its path, the relative position is easy to calculate. 
 
 \vspace{0.5em}
 
-\textbf{Recovery State:} The recovery state is a high-priority override mode to protect the drone and people nearby. The intended behavior is immediate hover or return-to-home on telemetry loss, low battery, or hardware fault, followed by a controlled landing if recovery is not possible. Candidate thresholds are a soft battery failsafe near 30\% capacity and a critical landing threshold near 10\%, but these values must be validated with the final battery, ESC, and flight controller.
+\textbf{Engagement and Mapping State:} This phase represents the the shift of the drone from autonomous surveillance to dynamic track once a fire is confirmed. This transition is triggered by a high priority command sent from the ground station to the drone. Upon receiving this command with the verified coordinates, the drone immediately exits the preset Boustrophedon pattern. In this state, the drone begins a standoff orbit safely circling based on real time environmental factors. This protects the airframe from extreme heat and updrafts. During this mapping phase, the primary drone coordinates its path with secondary drones via a network. The secondary drones provide a specific angular offset relative to the primary drone and maintain synchronized speed and path avoiding the risk of collision.
+
+\vspace{0.5em}
+
+\textbf{Recovery State:} The recovery state is a high priority override mode to protect the drone and prevent crashes. The transition to this state is immediate and overrides any active search or mapping behavior. The flight architecture relies heavily on ground station analysis, because of this any interruption in the high bandwidth video or telemetry data link exceeding five continuous seconds triggers an immediate hover mode. If a link is not reestablished within thirty seconds, the drone switches to the recovery state. In cases of battery fail safes, a soft fail safe is triggered at a 30\% capacity threshold, this tell the drone to stop its mission and navigate to the home point. A critical threshold at 10\% triggers a hard fail safe, this forces the drone to conduct a controlled vertical descent to protect the propulsion system from power loss. When the recovery state is engaged under normal conditions, the drone will ascend and return. It first ascends vertically to a clearance altitude absent of local terrain and forest canopy. Once the drone reaches a safe altitude, the drone will navigate a direct linear path via GPS back to the initial takeoff coordinates, it will then perform a descent and disable the motors upon touchdown.
+
+\vspace{0.5em}
 
 \subsubsection{Vision Detection}
-The implemented vision pipeline runs on the ground-station computer rather than onboard the drone. The recorded-video detector loads YOLOv8 weights from \verb|Trained-Models/last.pt|, processes frames with OpenCV, labels detections as Smoke or Fire, and draws bounding boxes for operator review. A fire alert is only posted after the Fire class is present for at least 3 seconds, reducing false positives from brief frame-level detections. The posted fire payload includes confidence, estimated size, estimated area, and geolocation when drone state and camera geometry are available.
+% Describe how the server analyzes frames to detect fire/smoke. Verification logic: explain how to avoid false positives
+% Confidence scoring of data. 
+The system's perception layer is built upon a deep learning, one stage object detection model optimized between inference speed and average precision. The architecture is adept at real time forest fire detection due to its feature extraction. This allows for high confidence identification of small scale smoke plumes and high luminosity flame signatures from high altitude aerial feeds.
+The vision pipeline is integrated into a server side flask server that manages the live video stream transmitted from the drone. Upon receiving the frames, the inference model performs classifications to distinguish between active fire and smoke particulate. To ensure reliability and moderate false positives caused by environmental factors such as lens flares, solar reflections, or thick dust the system utilizes a confidence scoring mechanism.
+A detection is only posted if the model maintains a confidence score above a calibrated threshold across a defined window of consecutive frames. This verification logic prevents the system from triggering alerts on visual noise. Once the system detects the threshold is met, it executes a warning protocol. A signal is sent to drone to transition states from search to engagement and mapping. The incident is timestamped and logged with telemetry data.
 
 \vspace{0.5em}
+\subsubsection{Triangulation}
+% math behind how the "map" is created, how drones orbit/circle fire to make points, talk about algorithms to connect coordinates into a polygon, area estimation formulas
+The system uses a geometric triangulation method to calculate the precise coordinates of a fire’s center point by intersecting bearing rays from multiple drones. This approach allows the swarm to pinpoint a fire’s location from a safe standoff distance without requiring the drone to fly directly over the thermal source. By collecting directional vectors from two or more drones, the ground station can calculate a single high fidelity GPS coordinate.
 
-The live-stream path uses MJPEG ingest. A camera URL can be registered with the ground station through \verb|/api/camera| using a camera-control token. The ingest worker reads frames from the MJPEG stream, runs the YOLO model every configured number of frames, and posts fire or smoke detections after a sustained 2 second window with a 5 second cooldown. If the selected drone has latitude, longitude, altitude, and heading, the detector estimates the fire bearing and ground intersection using a pinhole camera approximation; otherwise it reports the detection without coordinates.
+The system first transforms the spherical GPS coordinates (latitude and longitude) of each drone into a Cartesian plane (x,y) measured in meters. This top down approximation allows the software to treat the drones’ positions as origin points for directional rays. Each unit reports its current position and a calculated heading toward the perceived center of the fire based on visual and thermal sensor alignment.The intersection point is determined by solving for the crossing of these rays. The ground station computes direction vectors for each drone based on its reported heading. The intersection representing the fire’s center is found by calculating the point where the rays most closely converge. The algorithm will discard rays when they are considered parallel or near parallel, indicating insufficient angular separation for accurate calculation. The system requires a positive scalar multiplier for the intersection, verifying that the fire is located in the forward view of the sensors rather than the projected behind of the drone.
 
-\subsubsection{Multi-Drone Coordination}
-The full FireFly system uses multiple drones for coverage, redundancy, and triangulation. During search, drones divide the survey region into lanes or orbits. When one drone detects a fire, it becomes the initial observer and continues reporting its position and bearing. Nearby drones are then assigned offset viewing positions so that at least two bearing rays intersect the same suspected ignition point. This geometry improves localization accuracy and helps reject false positives caused by a single camera angle.
-
-\vspace{0.5em}
-
-The current repository implements the coordination logic at the data-fusion level rather than in flight control. \verb|simulate_fleet.py| broadcasts two drone states over UDP. Each simulated drone marks \verb|fire\_detected| true when its heading falls within a camera field-of-view window around a fixed fire coordinate. The ground station waits for at least two fresh drones with fire detections and headings, then passes their latitude, longitude, and heading values into the triangulation function.
-
-\subsubsection{Perimeter Generation and Area Calculation}
-The proof-of-concept currently estimates a fire point, not a full perimeter. The triangulation module treats the local area as a flat-earth coordinate frame around a reference latitude and longitude. Each drone observation is converted into a ray using the drone position and heading. If two rays are not parallel and the intersection lies in front of the observing drone, the ground station converts the intersection back to latitude and longitude and creates a fire marker.
+While the center can be estimated with a single pair of drones, the design supports an N-vector model where data from additional units can increase the confidence level. By utilizing multiple vectors, the server can apply a weighted average of various intersection points. This reduces the impact of individual sensor noise or atmospheric interference, such as smoke obscuring the view from a specific angle. The triangulation logic is synchronized with the drones’ telemetry data. This allows the server to correlate vectors even if the drones are moving at different velocities because the bearing rays are timestamped.
 
 \vspace{0.5em}
-
-The full perimeter-mapping design extends this point-estimation approach. As drones orbit or take offset views around the fire, the ground station will collect repeated boundary observations. Those observations can be ordered by bearing around the fire center, connected into a polygon, and converted to area using a local planar polygon-area calculation. YOLO bounding boxes and ground-sampling-distance estimates provide a first approximation of fire size in the current detector, but accurate perimeter mapping still requires calibrated camera geometry, synchronized timestamps, drone pose, and flight-test validation.
-
 \subsubsection{Telemetry and Data}
-The current telemetry packet is JSON and includes \verb|id|, \verb|seq|, \verb|lat|, \verb|lon|, \verb|alt_m|, \verb|heading_deg|, \verb|fire_detected|, \verb|sats|, \verb|hdop|, and \verb|ts_ms|. UDP broadcast uses port 4210 for local operation. Optional cloud upload posts the same JSON payload to the configured \verb|/api/drone| endpoint with an \verb|X-API-Key| header. The ground station exposes \verb|/api/state| for the dashboard, \verb|/api/fire| for fire detections, \verb|/api/camera| for camera stream registration, \verb|/api/triangulate| for manual triangulation, and \verb|/api/reset| for clearing local state.
-
+% What data is sent back and organized for ground station, spatial data: lat/long, list of coords to form ongoing perimeter, system status such as signal strength, battery. Priority Queueing of data, sending detectin alerts before raw video feed, etc.
+The communication architect of the platform is defined by a bidirectional data link between the drones and the ground station. This link allows for real time transmission of video feed, sensor collection, and system health metrics to the server, while simultaneously delivering mission commands and state transition instructions to the drone.
 \vspace{0.5em}
 
-The future data-priority policy separates critical telemetry from high-bandwidth video. GPS, heading, battery, link health, and fire alerts should be transmitted first because they are required for safety and geolocation. Video frames, raw sensor logs, and dense perimeter observations can be throttled or dropped under poor link conditions. The current repository demonstrates this principle by allowing fire coordinates and confidence values to be posted independently of the displayed camera stream.
+\textbf{Downlink: Drone to Ground Station}: The downlink is responsible for providing the ground station with the necessary environmental and operational data to execute the mission and safety protocols.
+
+\begin{itemize}
+  \item \textbf{Primary Visual Stream:} A high definition, low latency video feed is the central component of the downlink. This video stream is transmitted to the ground station to be processed by the server side vision engine. Since the detection and classification of fire and smoke occur on the server, the integrity and continuity of this feed are essential for alerting the system’s warning protocols.
+  \item \textbf{Spatial and Navigational Data:} The drone broadcasts precise GPS coordinates, barometric altitude, and inertial measurements. 
+  \item \textbf{System Health:} Real time monitoring of the various hardware and software modules including propulsion system health, power management system, and communication integrity. The propulsion system is the most critical for maintaining flight. Monitoring focuses on the physical components that generate lift. Maintaining stable power is vital for both the flight controller, motors, and communication. The signal strength is important in maintaining proper bitrate and latency of data being sent back to the ground station.
+  
+\end{itemize}
+\vspace{0.5em}
+
+\textbf{Uplink: Ground Station to Drone}: The uplink serves as the command and control channel, this allows the ground station to update the drone’s mission based on the analysis of incoming video video. The packets being sent prioritizes state transition commands, dynamic waypoint updates, and failsafe overrides. The state transition commands sent from the ground station command the drone to exit a search state and enter a mapping and triangulation procedure. The uplink allows for real time adjustment of the flight path, such as providing coordinates for the offset orbit or a new search domain. In the case of a failsafe, manual or automated recovery commands are sent to ensure the safety of the drone.
+\vspace{0.5em}
+
+\textbf{Priority Data Management}
+
+To ensure reliability in remote environments where signal bandwidth may fluctuate, the communication firmware utilizes a priority based queuing protocol. Mission critical data is categorized into levels of urgency to prevent bottlenecks. Critical alerts are prioritized first including, detection notifications, battery failsafe triggers, and manual override commands. These are low bandwidth packets and are transmitted with high redundancy to ensure delivery even under signal degradation.
+Video feed is categorized as mission critical data. The system relies on server side analysis, the video stream acts as the primary data source for detection logic and triangulation. The high bandwidth stream ensures the ground station receives the visual input required to maintain active monitoring. By pairing the stream with synchronized spatial telemetry, the design allows the server to process real time visual evidence without latency. Lastly, Navigation and Health systems cover GPS updates and hardware health metrics. They are sent at a consistent frequency to maintain operational function. 
 
 
-
+\begin{comment}
 \newpage
 
 % ============================================================
@@ -639,16 +671,14 @@ The future data-priority policy separates critical telemetry from high-bandwidth
 % ============================================================
 
 \subsection{Functional Prototype}
-The current FireFly prototype is strongest as a software and telemetry proof-of-concept. The repo can run a local ground station that displays live drone positions, trails, fire markers, bearing rays, and an optional camera panel. It accepts ESP32 GPS telemetry over UDP, supports optional authenticated cloud telemetry through \verb|/api/drone|, runs a simulated two-drone fleet, performs bearing-ray triangulation, and accepts YOLOv8 fire detections from recorded video or a live MJPEG stream.
-
-\vspace{0.5em}
-
-The hardware prototype has validated important bench-level subsystems but is not yet a fully integrated autonomous aircraft. ESP-NOW sender/receiver code demonstrates wireless command transfer, the motor receiver drives a bench motor through GPIO direction pins and LEDC PWM, and SHTC3 temperature/humidity values are read over I2C and returned to the sender. A DC brushed motor and H-bridge were used as stand-ins while waiting for final ESC and brushless motor integration. The CAD frame, mass estimates, BOM, and circuit diagrams define the intended airframe and electronics direction.
+As of the initial submission, FireFly's functional prototype is currently under assembly. Core components, including the onboard microcontrollers, temperature and humidity sensor, and smoke detector, have been sourced and bench-tested for communication and sensor output. A prototype circuitry system using an H-Bridge in place of the ESC and a DC brushed motor in place of the brushless motor was assembled to validate the wireless communication link between the ground-side and drone-side microcontrollers while awaiting final parts. Full integration with the flight stack and ground station dashboard is in progress. Photographs and detailed performance data will be included in the final Spring Quarter submission.
 
 \subsection{Testing}
-Testing is divided into software validation, bench validation, and future flight validation. Software validation covers the ground station, simulated fleet, YOLO detector, MJPEG ingest, and fire posting APIs. Bench validation covers ESP-NOW communication, SHTC3 readout, potentiometer command input, and PWM motor response. Future validation must measure flight endurance, outdoor telemetry range, calibrated environmental thresholds, camera geolocation accuracy, and multi-drone field behavior.
+Initial bench testing has validated point-to-point wireless communication between the drone-side and ground-side microcontrollers, confirmed sensor readout from the temperature/humidity and smoke sensors, and verified JSON telemetry forwarding over USB serial to the Flask dashboard. Full tethered and open-field flight testing with threshold-based alert verification is planned for the prototype phase. Detailed test procedures and results are documented in Appendix 3.
 
 \subsection{Measured Results Summary}
+
+\textit{Template: record only measured or directly observed values in this section. If a number is estimated or simulated, label it explicitly.}
 
 \begin{table}[H]
     \centering
@@ -657,24 +687,26 @@ Testing is divided into software validation, bench validation, and future flight
         \hline
         \textbf{Metric} & \textbf{Measured Value} & \textbf{Units} & \textbf{Test Context / Notes} \\
         \hline
-        Hover time & Not yet measured & min & Flight stack not integrated; eCalc/design estimate is 5--8 min for Option A \\
+        Hover time & [ ] & [ ] & [ ] \\
         \hline
-        Telemetry range & Not yet measured outdoors & m & Current proof-of-concept uses local Wi-Fi UDP and simulator \\
+        Telemetry range & [ ] & [ ] & [ ] \\
         \hline
-        Packet latency & Not yet characterized & ms & Dashboard polls \verb|/api/state| every 500 ms; UDP packet timing still needs logging \\
+        Packet latency & [ ] & [ ] & [ ] \\
         \hline
-        Sensor update period & 2 & s & SHTC3 bench firmware sends temperature/humidity every 2 seconds \\
+        Sensor update period & [ ] & [ ] & [ ] \\
         \hline
-        Alert trigger delay & 3 / 2 & s & Recorded-video detector uses 3 s sustained fire; MJPEG ingest uses 2 s sustained fire/smoke \\
+        Alert trigger delay & [ ] & [ ] & [ ] \\
         \hline
-        Total all-up weight & 190--230 & g & Estimated Option A baseline; scale measurement still required \\
+        Total all-up weight & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Measured and estimated prototype results.}
+    \caption{Measured-results summary template.}
     \label{tab:measured_results_template}
 \end{table}
 
 \subsection{Observed Issues and Next Iteration}
+
+\textit{Template: list concrete issues found during testing, the suspected cause, and the design action planned for the next build.}
 
 \begin{table}[H]
     \centering
@@ -683,16 +715,14 @@ Testing is divided into software validation, bench validation, and future flight
         \hline
         \textbf{Issue} & \textbf{Observed During} & \textbf{Probable Cause} & \textbf{Planned Design Change} \\
         \hline
-        Motor pod sizing mismatch & Physical prototype and received motor fit check & CAD tolerance and motor dimension assumptions & Update motor-pod dimensions and reprint fit-check section \\
+        [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Brushless motor integration blocked & Propulsion bench phase & ESC delivery/selection delay & Continue H-bridge bench tests, then integrate final 4-in-1 ESC \\
+        [ ] & [ ] & [ ] & [ ] \\
         \hline
-        ESP-NOW motor command path lacks authentication and clamping in active receiver & Source review & Prototype code prioritizes quick communication demo & Validate peer MAC, clamp duty values, and add authenticated/encrypted command path before flight \\
-        \hline
-        Autonomous flight not implemented & Repo review & Project scope shifted toward geolocation pipeline & Treat flight automation as future work and validate geolocation independently \\
+        [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Observed issues and next iteration actions.}
+    \caption{Issue-tracking template for evaluation.}
     \label{tab:issue_template}
 \end{table}
 
@@ -732,7 +762,9 @@ Testing is divided into software validation, bench validation, and future flight
     \label{tab:budget}
 \end{table}
 
-\subsection{Expanded Bill of Materials}
+\subsection{Expanded Bill of Materials Template}
+
+\textit{Template: expand the current parts list into a procurement-ready bill of materials with exact part numbers, cost, and integration status.}
 
 \begin{table}[H]
     \centering
@@ -741,38 +773,18 @@ Testing is divided into software validation, bench validation, and future flight
         \hline
         \textbf{Part / Part Number} & \textbf{Function} & \textbf{Qty.} & \textbf{Unit Cost} & \textbf{Total} & \textbf{Source / Lead Time} & \textbf{Status} \\
         \hline
-        LiPo 850 mAh 3S 25/30C & Option A battery & 1 & \$6.18 & \$6.18 & HobbyKing & Selected \\
+        [ ] & [ ] & [ ] & [ ] & [ ] & [ ] & [ordered / received / tested] \\
         \hline
-        SunnySky R1106 FPV Brushless Motor & Option A propulsion & 4 & \$11.99 & \$47.96 & Druav & Selected \\
+        [ ] & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Gemfan Hurricane 2009-3 Tri-Blade & Option A propellers & 1 set & \$4.99 & \$4.99 & Pyrodrone & Selected \\
-        \hline
-        HAKRC 20A 4-in-1 BLHeli\_32 ESC & Motor control / BEC & 1 & \$30.12 & \$30.12 & Alibaba & Delayed / integration pending \\
-        \hline
-        Perforated circuit board & Electronics mounting & 2 & \$4.95 & \$9.90 & Adafruit / BELS & Received \\
-        \hline
-        Female header pins 2x6 & Board interconnect & 4 & \$0.17 & \$0.68 & eBay / BELS & Received \\
-        \hline
-        Female header pins 2x8 & Board interconnect & 2 & \$0.09 & \$0.18 & AliExpress / BELS & Received \\
-        \hline
-        Female header pins 2x10 & Board interconnect & 2 & \$0.72 & \$1.44 & Mikroe / BELS & Received \\
-        \hline
-        CADDXFPV Ant Lite Analog Camera & Optional video payload & 1 & \$15.90 & \$15.90 & CaddxFPV & Optional / compatibility risk \\
-        \hline
-        TFMini-S Micro LiDAR Module & Optional range payload & 1 & \$72.95 & \$72.95 & SparkFun & Optional future sensor \\
-        \hline
-        3S 1000 mAh battery & Option B alternate battery & 1 & \$10.99 & \$10.99 & HobbyKing & Alternate \\
-        \hline
-        RCINPOWER GTS 1204 5000KV motor & Option B alternate motor & 4 & \$18.99 & \$75.96 & Pyrodrone & Alternate \\
-        \hline
-        HQProp T3.5x2x3 propeller & Option B alternate propellers & 1 set & \$3.99 & \$3.99 & GetFPV & Alternate \\
+        [ ] & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Expanded bill of materials from the latest repository BOM.}
+    \caption{Expanded bill-of-materials template.}
     \label{tab:bom_expanded_template}
 \end{table}
 
-\subsection{Cost Summary}
+\subsection{Cost Summary Template}
 
 \begin{table}[H]
     \centering
@@ -781,30 +793,31 @@ Testing is divided into software validation, bench validation, and future flight
         \hline
         \textbf{Category} & \textbf{Subtotal} & \textbf{Notes} \\
         \hline
-        Mechanical / printed parts & Not priced & CarbonX PLA+CF filament is listed but no unit cost is recorded in the repo BOM \\
+        Mechanical / printed parts & [ ] & [ ] \\
         \hline
-        Propulsion and power & \$89.25 & Option A battery, motors, propellers, and ESC \\
+        Propulsion and power & [ ] & [ ] \\
         \hline
-        Computing and telemetry & \$12.20 & Perforated boards and headers; ESP32 boards appear to be reused/lab inventory \\
+        Computing and telemetry & [ ] & [ ] \\
         \hline
-        Sensors and payload & \$88.85 & Optional camera and LiDAR payloads \\
+        Sensors and payload & [ ] & [ ] \\
         \hline
-        Spares / iteration cost & \$90.94 & Option B alternate propulsion set if selected \\
+        Spares / iteration cost & [ ] & [ ] \\
         \hline
-        Total prototype cost & \$190.30 & Option A plus listed optional camera/LiDAR and electronics hardware, excluding filament and reused ESP32 boards \\
+        Total prototype cost & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Prototype cost summary.}
+    \caption{Cost-summary template.}
     \label{tab:cost_summary_template}
 \end{table}
 
 \subsection{Procurement and Assembly Notes}
 \begin{itemize}
-    \item Long-lead items and alternates: the ESC was a schedule blocker; Option B propulsion parts are documented as alternates.
-    \item Components reused from lab inventory: perforated boards, female headers, H-bridge bench hardware, and ESP32 development boards were sourced from BELS or existing lab resources.
-    \item Components still unselected or unverified: final smoke/gas sensor, calibrated fire-risk thresholds, battery monitor, production camera path, and mesh/long-range radio hardware.
-    \item Assembly dependencies that affect schedule: motor pod fit, ESC integration, battery mounting, wire routing, sensor mounting, and safe tethered-flight setup.
+    \item Long-lead items and alternates: [fill in]
+    \item Components reused from lab inventory: [fill in]
+    \item Components still unselected or unverified: [fill in]
+    \item Assembly dependencies that affect schedule: [fill in]
 \end{itemize}
+\end{comment}
 
 \newpage
 
@@ -812,33 +825,36 @@ Testing is divided into software validation, bench validation, and future flight
 \section{References}
 % ============================================================
 
+\textit{Template: replace placeholder entries with the sources that support system claims, component choices, simulations, and safety/regulatory statements.}
+
 \begin{enumerate}
-    \item Espressif Systems, ``ESP-NOW,'' ESP-IDF Programming Guide. \url{https://docs.espressif.com/projects/esp-idf/en/latest/esp32c6/api-reference/network/esp_now.html}
-    \item Espressif Systems, ``ESP-WIFI-MESH,'' ESP-IDF Programming Guide. \url{https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/api-guides/esp-wifi-mesh.html}
-    \item NASA Earthdata FIRMS, ``Active Fire Data Attributes for MODIS and VIIRS.'' \url{https://www.earthdata.nasa.gov/data/tools/firms/active-fire-data-attributes-modis-viirs}
-    \item NASA Earthdata, ``VIIRS I-Band 375 m Active Fire Data.'' \url{https://www.earthdata.nasa.gov/data/instruments/viirs/viirs-i-band-375-m-active-fire-data}
-    \item ALERTCalifornia, ``About.'' \url{https://alertcalifornia.org/about/}
-    \item Federal Aviation Administration, ``Small Unmanned Aircraft Systems (UAS) Regulations (Part 107).'' \url{https://www.faa.gov/newsroom/small-unmanned-aircraft-systems-uas-regulations-part-107}
-    \item Ultralytics, ``Ultralytics YOLO Docs.'' \url{https://docs.ultralytics.com/}
-    \item Thilak R., ``Forest-fire-detection-using-YOLOv8.'' \url{https://github.com/thilak-r/Forest-fire-detection-using-YOLOv8}
-    \item eCalc, ``xcopterCalc.'' \url{https://ecalc.ch/xcoptercalc.php}
+    \item Journal article / paper on wildfire detection approaches: [citation]
+    \item Datasheet for onboard temperature/humidity sensor: [citation]
+    \item Datasheet for smoke / gas sensor used in prototype baseline: [citation]
+    \item Datasheet for motors, propellers, ESC, and battery: [citation]
+    \item Simulation / multicopter calculator source: [citation]
+    \item Safety or regulatory reference used for field testing: [citation]
 \end{enumerate}
 
+\begin{comment}
 % ============================================================
 \section{Appendix 1 - Problem Formulation}
 % ============================================================
 
 \subsection{Conceptualisations}
 
-FireFly is a lightweight multi-drone wildfire monitoring concept designed to collect and transmit useful fire intelligence in remote areas with no existing infrastructure. The system is built around four functions: aerial observation, environmental sensing, resilient telemetry, and map-based decision support.
+FireFly is a lightweight quadcopter designed to collect and transmit
+environmental sensor data in remote areas with no existing infrastructure.
+The system is built around three functions: stable flight, environmental
+sensing, and real-time data transmission.
 
 \vspace{0.5em}
 
-The intended drone carries an onboard microcontroller, GPS, camera, environmental sensors, flight controller, propulsion system, and LiPo battery. In the current repository, GPS telemetry, temperature/humidity readout, ESP-NOW communication, motor bench control, camera ingest, and ground-station mapping are implemented as separate proof-of-concept subsystems rather than a fully integrated flight vehicle.
+The drone carries an onboard microcontroller paired with a temperature and humidity sensor and a smoke detector. A flight controller manages propulsion and stabilization while the onboard microcontroller handles sensor acquisition and wireless transmission. A LiPo battery powers both propulsion and electronics for the duration of a monitoring mission.
 
 \vspace{0.5em}
 
-Data is transmitted to a Python Flask ground station. The current local path uses Wi-Fi UDP broadcast on port 4210, while the optional cloud path posts authenticated JSON telemetry to \verb|/api/drone|. The browser dashboard displays drone state, fire markers, camera stream status, and threshold or detection alerts.
+Data is transmitted wirelessly to a ground receiver microcontroller, which forwards readings over USB serial to a host machine running a Python Flask dashboard displaying live sensor data and threshold alerts.
 
 \subsection{Brainstorming}
 Several frame geometries were evaluated including X and H-style quadcopter
@@ -855,7 +871,7 @@ not exist.
 
 \vspace{0.5em}
 
-For communication, Bluetooth Low Energy, Wi-Fi, ESP-NOW, and mesh-style networking were evaluated. ESP-NOW was selected for early microcontroller-to-microcontroller bench testing because it is connectionless and low overhead. Wi-Fi UDP and HTTPS were selected for the current GPS-to-ground-station proof-of-concept because they integrate directly with the Flask dashboard. ESP-MESH, LoRa, and COFDM remain future candidates for field-ready range and relay behavior.
+For communication, Bluetooth Low Energy and Wi-Fi were both evaluated. A connectionless peer-to-peer wireless protocol was ultimately selected for its simplicity, low latency, and sufficient range for a point-to-point link between the drone and ground receiver without the overhead of a full Wi-Fi stack.
 
 \vspace{0.5em}
 
@@ -864,6 +880,7 @@ thrust-to-weight ratio, hover current, and projected flight time across
 different motor, propeller, and LiPo configurations. This guided selection
 of a 3S LiPo and motor pairing that balances flight endurance with the
 electrical load of the sensor and communication hardware.
+\end{comment}
 
 \subsection{Decision Tables}
 
@@ -959,6 +976,7 @@ The following combinations were explored for the primary subsystems:
 
 \subsection{Division of Labor}
 
+\begin{comment}
 \begin{table}[H]
     \centering
     \begin{tabular}{|l|l|}
@@ -982,7 +1000,9 @@ The following combinations were explored for the primary subsystems:
     \end{tabular}
     \caption{Division of Labor during Prototyping}
 \end{table}
+\end{comment}
 
+\begin{comment}
 \subsection{Collaboration}
 \begin{itemize}
     \item \textbf{Github:} CI/CD Tool
@@ -990,9 +1010,11 @@ The following combinations were explored for the primary subsystems:
     \item \textbf{Notion:} Gantt Chart
     \item \textbf{Trello:} Kanban board for task tracking
 \end{itemize}
+\end{comment}
 
 \newpage
 
+\begin{comment}
 % ============================================================
 \section{Appendix 3 - Test Plan \& Results}
 % ============================================================
@@ -1012,7 +1034,7 @@ The test plan consists of three phases:
     We will test the drone in an open field to evaluate durability, structural integrity, and real-world sensor performance. Outdoor conditions including wind and heat will allow us to assess how environmental factors affect flight stability and sensor accuracy, providing direct feedback on both the mechanical design and the telemetry pipeline under realistic deployment conditions.
 \end{enumerate}
 
-\subsection{Bench Test Log}
+\subsection{Bench Test Log Template}
 
 \begin{table}[H]
     \centering
@@ -1021,20 +1043,18 @@ The test plan consists of three phases:
         \hline
         \textbf{Test ID} & \textbf{Objective} & \textbf{Procedure} & \textbf{Expected Result} & \textbf{Observed Result} & \textbf{Pass / Fail} \\
         \hline
-        B-01 & Verify ESP-NOW command path & Send potentiometer command from remote ESP32 to receiver ESP32 & Receiver updates motor direction and PWM duty & Bench prototype demonstrated direction and speed control with H-bridge/DC motor & Pass for bench prototype \\
+        B-01 & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        B-02 & Verify temperature/humidity readout & Read SHTC3 over I2C on receiver and return values to sender & Serial output shows temperature and relative humidity & Firmware implements CRC-checked SHTC3 read and ESP-NOW return packet & Pass for readout; calibration pending \\
+        B-02 & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        B-03 & Verify GPS telemetry packet shape & Parse GPS GGA sentence and broadcast JSON to UDP port 4210 & Ground station receives id, seq, lat, lon, altitude, heading, sats, and HDOP & Firmware and Flask UDP listener implement the packet path & Implemented; range pending \\
-        \hline
-        B-04 & Verify visual detection to map path & Run YOLO detector on fire video or MJPEG stream and post to server & Sustained fire detection creates map marker & Detector and \verb|/api/fire| route implement this behavior & Software proof complete \\
+        B-03 & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Bench-test log and proof-of-concept status.}
+    \caption{Bench-test log template.}
     \label{tab:bench_test_template}
 \end{table}
 
-\subsection{Tethered Flight Plan}
+\subsection{Tethered Flight Log Template}
 
 \begin{table}[H]
     \centering
@@ -1043,18 +1063,18 @@ The test plan consists of three phases:
         \hline
         \textbf{Flight ID} & \textbf{Configuration} & \textbf{Duration} & \textbf{Stability Notes} & \textbf{Telemetry Notes} & \textbf{Issues / Corrective Action} \\
         \hline
-        T-01 & Frame, final ESC, brushless motors, no sensor payload & Short hover bursts & Verify arm rigidity, motor direction, and throttle response & Confirm ground station continues to receive telemetry if GPS is mounted & Planned after ESC integration \\
+        T-01 & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        T-02 & Frame plus ESP32 telemetry payload & 1--2 min tethered hover & Check vibration impact on wiring and GPS heading stability & Log packet sequence continuity and stale-drone behavior & Planned \\
+        T-02 & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        T-03 & Frame plus camera or simulated camera payload & 1--2 min tethered hover & Verify payload mounting and center of mass & Verify camera URL registration and map UI responsiveness & Planned \\
+        T-03 & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Tethered-flight validation plan.}
+    \caption{Tethered-flight test log template.}
     \label{tab:tethered_flight_template}
 \end{table}
 
-\subsection{Open Field Flight Plan}
+\subsection{Open Field Flight Log Template}
 
 \begin{table}[H]
     \centering
@@ -1063,18 +1083,18 @@ The test plan consists of three phases:
         \hline
         \textbf{Flight ID} & \textbf{Wind / Weather} & \textbf{Payload} & \textbf{Flight Time} & \textbf{Range} & \textbf{Alert Behavior} & \textbf{Observations} \\
         \hline
-        F-01 & Calm, clear & GPS telemetry only & Target 3--5 min & Local Wi-Fi range walk & No fire source; telemetry only & Establish safe baseline flight \\
+        F-01 & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        F-02 & Calm, clear & GPS plus camera stream & Target 3--5 min & Measure stream reliability & Use controlled visual target or recorded stream & Validate operator map workflow \\
+        F-02 & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        F-03 & Light wind limit & GPS plus environmental payload & Target 5 min & Measure packet loss with movement & Inject safe heat/smoke substitute if permitted & Validate threshold workflow without open flame \\
+        F-03 & [ ] & [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Open-field flight validation plan.}
+    \caption{Open-field flight test log template.}
     \label{tab:open_field_template}
 \end{table}
 
-\subsection{Sensor Calibration Plan}
+\subsection{Sensor Calibration Log Template}
 
 \begin{table}[H]
     \centering
@@ -1083,26 +1103,26 @@ The test plan consists of three phases:
         \hline
         \textbf{Sensor} & \textbf{Reference Instrument} & \textbf{Reference Value} & \textbf{Measured Value} & \textbf{Offset / Correction} \\
         \hline
-        SHTC3 temperature & Calibrated thermometer & Ambient lab temperature & ESP32 serial reading & Compute temperature offset before field use \\
+        [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        SHTC3 humidity & Calibrated hygrometer & Ambient relative humidity & ESP32 serial reading & Compute humidity offset before field use \\
+        [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
-        Camera geolocation & Measured ground marker & Known marker position & YOLO/bearing estimate & Tune camera HFOV, VFOV, tilt, and altitude assumptions \\
+        [ ] & [ ] & [ ] & [ ] & [ ] \\
         \hline
     \end{tabular}
-    \caption{Sensor-calibration plan.}
+    \caption{Sensor-calibration template.}
     \label{tab:calibration_template}
 \end{table}
 
 \subsection{Post-Test Design Changes}
 \begin{itemize}
-    \item Motor fit issue: update CAD motor-pod dimensions and reprint before brushless propulsion testing.
-    \item ESC delay: keep the H-bridge/DC motor rig for command-path testing, then repeat with the selected 4-in-1 ESC.
-    \item ESP-NOW command risk: validate source MAC, clamp duty values, and add authentication before any powered flight test.
-    \item Geolocation scope: continue validating map, camera, and triangulation independently while flight automation remains future work.
+    \item Change 1: [test finding -> design response]
+    \item Change 2: [test finding -> design response]
+    \item Change 3: [test finding -> design response]
 \end{itemize}
 
 \newpage
+\end{comment}
 
 % ============================================================
 \section{Appendix 4 - Review}
@@ -1137,5 +1157,43 @@ The test plan consists of three phases:
 \vspace{1em}
 
 \textbf{Ryan Yu:} Looking back at the beginning of this project, there are a few things that went well and a few things that went poorly. I think we got our group together, talked about initial parts, calculations, and ideas quite early, and were on top of things. However, I think the communication between the professor, TA, and our group was extremely poor. It was not clearly laid out that we were designing a product but producing a prototype. We had difficulties having useful long discussions with the professor and were often confused on what he wanted, constantly changing last minute.
+
+\newpage
+\section{Front End}
+
+\subsection{Website}
+While the FireFly system operates with a high degree of technical sophistication, the vast streams of atmospheric chemistry and thermal imagery are functionally useless if the first responders cannot access and interpret them in the heat of an emergency. The front end serves as the vital translation layer, transforming complex raw telemetry and AI-driven detections into a clear, intuitive, and high-stakes user interface. By centralizing every facet of the mission into a unified web-based command center, the front end ensures that incident commanders are not overwhelmed by data, but are instead empowered with the situational awareness needed to make life-saving tactical decisions in real time. 
+
+\subsection{Table Data}
+The data management interface is centered around a multi-tier table that serves as the primary health and status monitor for the entire drone fleet. To ensure that incident commanders can make split-second decisions without being overwhelmed by raw numbers, the default "Processed" view utilizes a high-visibility color-coding system. Key metrics such as battery life and mesh connection strength are represented by a "traffic light" protocol—where green indicates optimal status, yellow warns of approaching thresholds, and red signals a critical failure or the need for immediate extraction. Rather than displaying complex chemical PPM (parts per million) values in this view, the table translates sensor readings into a simplified confidence rating for each drone, allowing an operator to instantly see which units have the highest probability of being near an active fire.
+For technical leads or analysts who require deeper insight, the table features a global toggle to shift from processed ratings into "Raw Data" mode. When activated, the color-coded indicators are supplemented or replaced by the exact numerical values for Carbon Monoxide, $CO_2$, VOCs, and Particulate Matter. This transparency is vital for verifying the nuances of a fire's chemical signature or troubleshooting a specific sensor's behavior in the field. By providing both a simplified and a granular view, the website accommodates different levels of operational needs, from high-level strategic oversight to detailed environmental diagnostics.
+To further enhance usability, the interface supports a "Drill-Down" capability that allows users to isolate a specific drone from the rest of the fleet. By clicking on an individual unit, such as "Scout 1," the table filters out all other distractions and expands a dedicated profile for that specific node. This isolated view provides a focused look at that drone’s specific sensor trends, precise GPS telemetry, and hardware health over time. This functionality is particularly important during a "Surround" maneuver, as it allows the commander to monitor the specific unit that is closest to the fire's head without losing sight of the broader mission data.
+
+\subsection{History}
+The history section of the website provides a comprehensive longitudinal record of the mission, presenting the recorded atmospheric data in a series of organized tables and trend graphs. This archival view specifically tracks the fluctuations of Carbon Monoxide, Carbon Dioxide, Volatile Organic Compounds, and Particulate Matter over the duration of the drone's flight, allowing responders to identify exactly when and where a chemical spike occurred. By maintaining this accessible log of historical data, the front end enables users to cross-reference current readings with past environmental baselines, turning a momentary sensor spike into a documented trend that can be used to map the fire's progression or verify its eventual suppression.
+
+\subsection{Live Feed}
+The website's live feed interface provides a side-by-side visual command center that streams high-definition optical video alongside Long-Wave Infrared (LWIR) imagery in real-time. This dual-pane layout is engineered for simultaneous verification, allowing incident commanders to overlay visual cues, such as smoke color and terrain features, with the corresponding thermal heat map. To enhance the utility of these feeds, the interface includes interactive overlays where the server-side AI highlights detected hotspots and smoke boundaries directly onto the video. This synchronized display ensures that visual obstructions—like thick smoke or a dense forest canopy—do not prevent the operator from maintaining a clear understanding of the fire’s precise location and intensity.
+
+\subsection{Map}
+The interactive GIS map acts as the primary spatial command center, providing a bird's-eye view of the entire operational theater. Each drone in the fleet is represented by a dynamic icon that moves across the map in real-time, allowing incident commanders to track the exact distribution and search patterns of the Scouts and Relays. To maintain clarity, each icon is labeled with the drone's unique ID and color-coded to match the "health" status seen in the data tables, ensuring that the commander can see not just where a drone is, but how it is performing relative to its position in the mission area.
+When the server-side logic confirms a combustion event, the map automatically generates a high-visibility fire icon at the precise GPS coordinates determined by the triangulation algorithm. This icon serves as the tactical focal point for the entire mission, allowing ground crews to visualize the fire's location in relation to landmarks, access roads, and existing drones. By displaying the distance between the fire icon and the nearest Scout units, the map facilitates the "Surround" maneuver, providing a clear visual representation of the containment perimeter as it forms around the detected hazard.
+
+\subsection{Final confidence rating}
+The final element of the web interface is a dedicated "Global Confidence" dashboard, which serves as the primary diagnostic tool for the entire mission. Rather than focusing on individual drones, this page aggregates the processing results from every active node in the field to present a unified "Final Confidence Rating" at the top of the display. Below this master score, the dashboard breaks down the intelligence into two primary supporting pillars: the Vision-Based Confidence (derived from the collective data of the RGB and LWIR AI agents) and the Atmospheric Confidence (calculated from the fused chemical ratios of $CO_2$, CO, VOCs, and PM sensors). This top-down view provides the incident commander with a high-level summary of the system’s certainty, allowing them to see instantly if the chemical evidence is corroborating the visual detections across the entire operation area. 
+
+\subsection{Security}
+To ensure the integrity of the mission and the safety of the data, the FireFly website implements a robust, role-based security architecture centered around individual station authentication. Each firefighting district or command post is assigned a unique organizational account, requiring a secure login to access the dashboard. By default, the system enforces strict data compartmentalization: a station only has visibility and control over the specific drones and sensor nodes registered to their local fleet. This prevents cross-talk or accidental command interference between neighboring districts, ensuring that an incident commander in one county cannot inadvertently alter the flight path or settings of a drone operating in a different jurisdiction.
+While the system is built on a foundation of privacy, it includes a "Collaborative Handshake" protocol that allows for the secure sharing of intelligence during large-scale, multi-agency responses. If a wildfire crosses jurisdictional lines, an authorized station lead can manually grant a "Share Permission" to another verified account, providing them with real-time access to their live feeds, sensor tables, and triangulation data. This sharing mechanism is designed to be granular and temporary; the host station can choose exactly which data layers to reveal and can revoke access instantly once the joint operation is concluded. This balance of rigid security and flexible cooperation ensures that while the drones are protected from unauthorized access, the flow of life-saving information remains unhindered during a crisis.
+
+\subsection{Production}
+To scale the FireFly project from a prototype to a widespread environmental solution, the project plan includes the establishment of a dedicated manufacturing facility designed for high-precision systematic assembly. This factory will utilize an optimized production line specifically tailored for the integration of sensitive electronic components, such as the Long-Wave Infrared (LWIR) sensors and custom gas sensor arrays. By implementing standardized manufacturing protocols and automated quality control testing at each stage of the assembly—from the soldering of the communication modules to the calibration of the flight controllers—the facility ensures that every drone that leaves the line meets the rigorous engineering standards required for emergency response hardware.
+The production infrastructure is built on a modular "Scalable Factory" model, allowing the manufacturing capacity to expand dynamically in response to market demand. As more fire departments and forestry agencies adopt the technology, the facility can introduce additional assembly cells and shift from low-volume batch production to high-output continuous manufacturing without requiring a complete redesign of the workspace. This scalability is supported by a robust supply chain strategy that maintains strategic reserves of critical components, ensuring that during active wildfire seasons or periods of rapid agency expansion, the production rate can be accelerated to put more eyes in the sky exactly when they are needed most.
+
+\subsection{Distro}
+The distribution of the FireFly system will be managed through a centralized, professional e-commerce platform that serves as the primary gateway for government agencies and private fire services to acquire the technology. This dedicated online portal is designed to streamline the procurement process, allowing fire departments to customize their fleet configurations—selecting the number of Scout and Relay units—and manage their software subscriptions in one place. By bypassing traditional third-party retail channels, the direct-to-agency online model ensures that the hardware remains cost-effective while maintaining a direct line of communication between our engineering team and the end users for technical support and software updates.
+To reach our target market effectively, the sales strategy focuses on building relationships with regional fire bureaus and environmental protection agencies through a "Regional Deployment" model. The website will feature a consultation portal where incident commanders can request a needs-based assessment, ensuring they receive the correct mix of sensors and communication hardware for their specific terrain, whether it be dense forest or open brushland. This digital storefront also serves as the hub for global distribution, coordinating the logistics of shipping sensitive hardware from the factory to the station house, while providing all necessary documentation, training manuals, and certification records required for immediate deployment.
+Once a sale is finalized, the distribution website transitions into a long-term fleet management tool for the customer. Through their secure account, agencies can track the delivery of new hardware, order replacement sensor modules, and download the latest AI firmware updates. By housing the entire sales and distribution lifecycle within a single online ecosystem, we can ensure that every FireFly drone in the field is properly registered and supported. This model not only simplifies the initial purchase but also creates a scalable, global distribution network that can rapidly supply fire-prone regions around the world with the tools they need to combat emerging wildfire threats.
+
 
 \end{document}
