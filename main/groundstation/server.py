@@ -511,6 +511,12 @@ def login_page():
                            supabase_url=SUPABASE_URL,
                            supabase_key=SUPABASE_PUBLISHABLE_KEY)
 
+@app.get("/auth/callback")
+def auth_callback():
+    return render_template("auth_callback.html",
+                           supabase_url=SUPABASE_URL,
+                           supabase_key=SUPABASE_PUBLISHABLE_KEY)
+
 
 @app.post("/login")
 def login_submit():

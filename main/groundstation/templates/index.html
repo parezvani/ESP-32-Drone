@@ -138,5 +138,34 @@
   <script>
     window._sb = window.supabase.createClient("{{ supabase_url }}", "{{ supabase_key }}");
   </script>
+  <script>
+    (async function handleOAuthLanding() {
+      const hash = window.location.hash.substring(1);
+      if (!hash.includes("access_token=")) return; // normal page load, skip
+  
+      const params = Object.fromEntries(new URLSearchParams(hash));
+      const token = params.access_token;
+      if (!token) return;
+  
+      // Clear the token from the URL immediately
+      history.replaceState(null, "", window.location.pathname);
+  
+      try {
+        const r = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        if (r.ok) {
+          location.reload(); // reload now that session is set
+        } else {
+          location.href = "/login";
+        }
+      } catch (e) {
+        console.error("OAuth landing handler failed:", e);
+        location.href = "/login";
+      }
+    })();
+  </script>
 </body>
 </html>
