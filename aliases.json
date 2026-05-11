@@ -1,0 +1,50 @@
+[
+  {
+    "primary": "nlafredo@ucsc.edu",
+    "name": "Nick",
+    "aliases": ["nicholas@lafredo.com"]
+  },
+  {
+    "primary": "cli277@ucsc.edu",
+    "name": "Christian",
+    "aliases": [
+      "129895958+christianjli@users.noreply.github.com",
+      "cjli0430@gmail.com"
+    ]
+  },
+  {
+    "primary": "parezvan@ucsc.edu",
+    "name": "Parsa",
+    "aliases": [
+      "94255699+parezvani@users.noreply.github.com",
+      "parsarezvani@eduroam-169-233-190-252.ucsc.edu",
+      "parsarezvani@eduroam-169-233-198-231.ucsc.edu",
+      "parsarezvani@Parsas-MacBook-Pro.local",
+      "parsarezvani10@gmail.com"
+    ]
+  },
+  {
+    "primary": "msobhani@ucsc.edu",
+    "name": "Matin",
+    "aliases": ["178424700+MatinSobhani@users.noreply.github.com"]
+  },
+  {
+    "primary": "kejwang@ucsc.edu",
+    "name": "Kenny",
+    "aliases": [
+      "157878840+kennywang44@users.noreply.github.com",
+      "kennethwang@eduroam-169-233-188-64.ucsc.edu",
+      "kennethwang@Kenneths-MacBook-Pro.local"
+    ]
+  },
+  {
+    "primary": "kyao10@ucsc.edu",
+    "name": "Kevin",
+    "aliases": []
+  },
+  {
+    "primary": "ryjoyu@ucsc.edu",
+    "name": "Ryan",
+    "aliases": ["ryyu5123@gmail.com"]
+  }
+]
