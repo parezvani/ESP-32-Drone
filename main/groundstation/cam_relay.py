@@ -9,7 +9,7 @@ Usage:
     python cam_relay.py \\
         --cam-url http://192.168.1.47:81/stream \\
         --server  https://your-firefly.onrender.com \\
-        --api-key <api-key-from-the-dashboard> \\
+        --api-key JFjQoTWebvkz823ayIaHxwqhEMfm7phPamLE1r8--XkGgSxYHNvT74rYxWrFDVpu \\
         --fps 5
 """
 
