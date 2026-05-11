@@ -415,6 +415,7 @@ def _gps_listener(port: int) -> None:
 
         resolved_user_id = None
         resolved_drone_id = drone_id
+        resolved_drone_name = None
 
         if _db_session_maker and msg.get("api_key"):
             Drone = _models["Drone"]
@@ -428,6 +429,7 @@ def _gps_listener(port: int) -> None:
                         if drone_row:
                             resolved_user_id = str(drone_row.user_id)
                             resolved_drone_id = str(drone_row.id)
+                            resolved_drone_name = drone_row.name
             except Exception as e:
                 print(f"[gps] db lookup error: {e}")
 
@@ -459,6 +461,7 @@ def _gps_listener(port: int) -> None:
 
             _drones[resolved_drone_id] = {
                 "user_id": resolved_user_id,
+                "name": resolved_drone_name or existing.get("name"),
                 "lat": float(lat),
                 "lon": float(lon),
                 "alt_m": msg.get("alt_m"),
