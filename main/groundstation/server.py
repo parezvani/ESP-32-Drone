@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 
 from triangulator import triangulate
 
@@ -272,9 +272,9 @@ app.config.update(
     SESSION_COOKIE_SECURE=IS_PRODUCTION,
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE="Lax",
-    # Reject any POST body larger than 64 KB — telemetry packets are <1 KB,
-    # camera URLs <500 B; nobody legitimate sends megabytes.
-    MAX_CONTENT_LENGTH=64 * 1024,
+    # 256 KB ceiling — telemetry/JSON bodies are <1 KB, but camera frames
+    # arriving on /api/camera/frame can be up to ~150 KB at VGA quality.
+    MAX_CONTENT_LENGTH=256 * 1024,
 )
 # Honor Render's X-Forwarded-Proto so `request.is_secure` is correct
 # (without this, Secure cookies wouldn't be sent because Flask would think
@@ -325,6 +325,24 @@ _fire_id = 0
 _camera_url: str | None = None
 _last_triangulation: dict[str, float] = {}  # per user_id
 _warned_ids: set[str] = set()
+
+# Camera frame relay state. The laptop relay pulls MJPEG from the ESP32-CAM
+# and POSTs each JPEG to /api/camera/frame; the per-drone latest frame is
+# kept here for the authenticated /api/camera/<drone_id>/stream view.
+CAM_FRAME_FRESH_S = 10.0
+_frames: dict[str, dict] = {}  # drone_id -> {"jpeg": bytes, "ts": float, "version": int}
+_frames_lock = threading.Lock()
+
+
+def _user_owns_drone(user_id: str | None, drone_id: str) -> bool:
+    """True if the user owns this drone, or in local dev (no auth)."""
+    if user_id is None:
+        return True
+    if not _db_session_maker:
+        return True
+    Drone = _models["Drone"]
+    with _db_session_maker() as db:
+        return db.query(Drone).filter_by(id=drone_id, user_id=user_id).first() is not None
 
 
 def _get_user_fires(user_id: str | None) -> list[dict]:
@@ -485,6 +503,10 @@ def _drone_reaper() -> None:
                 del _drones[k]
                 _warned_ids.discard(k)
                 print(f"[gps] dropped stale drone: {k}")
+        if stale:
+            with _frames_lock:
+                for k in stale:
+                    _frames.pop(k, None)
 
 
 threading.Thread(target=_gps_listener, args=(GPS_UDP_PORT,), daemon=True).start()
@@ -697,6 +719,8 @@ def delete_drone(drone_id):
     # Also evict from in-memory state
     with _lock:
         _drones.pop(drone_id, None)
+    with _frames_lock:
+        _frames.pop(drone_id, None)
 
     return jsonify({"ok": True})
 
@@ -728,6 +752,15 @@ def get_state():
             }
 
         user_fires = list(_get_user_fires(uid))
+
+    now = time.time()
+    with _frames_lock:
+        fresh_frame_ids = {
+            d_id for d_id, e in _frames.items()
+            if (now - e["ts"]) < CAM_FRAME_FRESH_S
+        }
+    for d_id, d in user_drones.items():
+        d["has_camera_frame"] = d_id in fresh_frame_ids
 
     return jsonify({
         "drones": user_drones,
@@ -786,6 +819,80 @@ def set_camera():
     with _lock:
         _camera_url = url
     return jsonify({"camera_url": _camera_url})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Camera frame relay
+#  Ingest: laptop relay POSTs raw JPEG bytes here, authenticated with the
+#  same X-API-Key the GPS firmware uses. Drone identity comes from the key,
+#  so the URL doesn't need it (and can't be spoofed).
+#  View: authenticated browser fetches /api/camera/<drone_id>/stream as a
+#  multipart MJPEG response, gated by the user owning the drone.
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/camera/frame")
+def post_camera_frame():
+    drone_id, _drone = _resolve_api_key()
+    if not drone_id:
+        return jsonify({"error": "invalid or missing X-API-Key"}), 401
+
+    jpeg = request.get_data(cache=False)
+    if not jpeg:
+        return jsonify({"error": "empty body"}), 400
+    if not (jpeg[:2] == b"\xff\xd8" and jpeg[-2:] == b"\xff\xd9"):
+        return jsonify({"error": "body must be a complete JPEG"}), 400
+
+    now = time.time()
+    with _frames_lock:
+        prev = _frames.get(drone_id, {"version": 0})
+        _frames[drone_id] = {
+            "jpeg": jpeg,
+            "ts": now,
+            "version": prev["version"] + 1,
+        }
+    return jsonify({"ok": True, "bytes": len(jpeg)})
+
+
+@app.get("/api/camera/<drone_id>/stream")
+@require_jwt
+def camera_stream(drone_id):
+    if not _user_owns_drone(request.user_id, drone_id):
+        # Don't leak existence — return 404, not 403
+        return jsonify({"error": "not found"}), 404
+
+    boundary = "firefly-frame"
+
+    def gen():
+        last_version = 0
+        # Cap connection lifetime so a stuck client doesn't pin a worker forever;
+        # browsers reconnect cleanly when the stream ends.
+        deadline = time.time() + 3600.0
+        while time.time() < deadline:
+            with _frames_lock:
+                entry = _frames.get(drone_id)
+                if (entry
+                        and entry["version"] > last_version
+                        and (time.time() - entry["ts"]) < CAM_FRAME_FRESH_S):
+                    jpeg = entry["jpeg"]
+                    last_version = entry["version"]
+                else:
+                    jpeg = None
+
+            if jpeg is None:
+                time.sleep(0.05)
+                continue
+
+            yield (
+                b"--" + boundary.encode() + b"\r\n"
+                b"Content-Type: image/jpeg\r\n"
+                b"Content-Length: " + str(len(jpeg)).encode() + b"\r\n\r\n"
+                + jpeg + b"\r\n"
+            )
+
+    resp = Response(gen(), mimetype=f"multipart/x-mixed-replace; boundary={boundary}")
+    resp.headers["Cache-Control"] = "no-store"
+    resp.headers["X-Accel-Buffering"] = "no"  # disable buffering at any reverse proxy
+    return resp
 
 
 @app.post("/api/triangulate")

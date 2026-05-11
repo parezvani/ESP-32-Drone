@@ -339,36 +339,46 @@ async function poll() {
 
     $("server-time").textContent = fmtTime(now);
 
-    updateCamera(s.camera_url);
+    updateCamera(s.camera_url, s.drones);
   } catch (e) {
     console.error("poll failed", e);
   }
 }
 
-let currentCamUrl = null;
+let currentCamSrc = null;
 function applyCamSrc() {
   const img = $("cam-stream");
   const ph = $("cam-placeholder");
   const foot = $("cam-url");
   const panelOpen = !$("cam-panel").classList.contains("hidden");
 
-  if (currentCamUrl && panelOpen) {
-    if (img.getAttribute("src") !== currentCamUrl) {
-      img.src = currentCamUrl;
+  if (currentCamSrc && panelOpen) {
+    if (img.getAttribute("src") !== currentCamSrc) {
+      img.src = currentCamSrc;
       img.classList.add("live");
     }
     ph.classList.add("hidden");
-    foot.textContent = currentCamUrl;
+    foot.textContent = currentCamSrc;
   } else {
     img.removeAttribute("src");
     img.classList.remove("live");
     ph.classList.remove("hidden");
-    foot.textContent = currentCamUrl || "no stream URL configured — authorized POST required";
+    foot.textContent = currentCamSrc || "no stream — start cam_relay.py or POST a camera URL";
   }
 }
 
-function updateCamera(url) {
-  currentCamUrl = url || null;
+function updateCamera(legacyUrl, drones) {
+  // Prefer a relayed cloud stream from any owned drone with a fresh frame.
+  let relaySrc = null;
+  if (drones) {
+    for (const [id, d] of Object.entries(drones)) {
+      if (d.has_camera_frame) {
+        relaySrc = `/api/camera/${encodeURIComponent(id)}/stream`;
+        break;
+      }
+    }
+  }
+  currentCamSrc = relaySrc || legacyUrl || null;
   applyCamSrc();
 }
 
