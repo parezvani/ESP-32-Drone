@@ -148,7 +148,7 @@ function renderDroneList(drones, now, anyFireSeen) {
 
     return `
       <div class="${cls.join(" ")}">
-        <div class="drone-id"><span>${id}</span>${badge}</div>
+        <div class="drone-id"><span>${d.name || id}</span>${badge}</div>
         ${lastSeen}
         <div class="stats">
           <span class="label">lat</span><span>${lat}</span>
