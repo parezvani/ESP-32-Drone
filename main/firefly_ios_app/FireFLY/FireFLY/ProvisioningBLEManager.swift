@@ -14,7 +14,7 @@ struct DiscoveredBLEDevice: Identifiable, Equatable {
     let name: String
     let rssi: Int
     let advertisedServices: [String]
-    let isLikelyArduino: Bool
+    let isLikelyProvisioningDevice: Bool
     fileprivate let peripheral: CBPeripheral
 
     var detailText: String {
@@ -34,7 +34,7 @@ struct DiscoveredBLEDevice: Identifiable, Equatable {
         lhs.name == rhs.name &&
         lhs.rssi == rhs.rssi &&
         lhs.advertisedServices == rhs.advertisedServices &&
-        lhs.isLikelyArduino == rhs.isLikelyArduino
+        lhs.isLikelyProvisioningDevice == rhs.isLikelyProvisioningDevice
     }
 }
 
@@ -54,7 +54,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
     @Published private(set) var canSendCredentials = false
     @Published private(set) var isBluetoothReady = false
     @Published private(set) var bluetoothStateMessage = "Bluetooth is starting."
-    @Published private(set) var statusMessage = "Scan for an Arduino device."
+    @Published private(set) var statusMessage = "Scan for an ESP32 device."
 
     private var centralManager: CBCentralManager!
     private var peripheralsByID: [UUID: CBPeripheral] = [:]
@@ -85,7 +85,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         devices.removeAll()
         peripheralsByID.removeAll()
         isScanning = true
-        statusMessage = "Scanning for Arduino."
+        statusMessage = "Scanning for ESP32."
 
         centralManager.scanForPeripherals(
             withServices: nil,
@@ -124,7 +124,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         }
 
         guard let peripheral = connectedPeripheral else {
-            statusMessage = "Connect to an Arduino first."
+            statusMessage = "Connect to an ESP32 first."
             return false
         }
 
@@ -195,7 +195,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         let serviceStrings = serviceUUIDs.map(\.uuidString)
         let name = advertisedName ?? peripheral.name ?? "Unknown Device"
         let serviceMatch = serviceUUIDs.contains { $0.matches(Self.provisioningServiceUUID) }
-        let isLikelyArduino = serviceMatch || Self.arduinoNameHints.contains { name.localizedCaseInsensitiveContains($0) }
+        let isLikelyProvisioningDevice = serviceMatch || Self.provisioningDeviceNameHints.contains { name.localizedCaseInsensitiveContains($0) }
 
         guard name != "Unknown Device" || serviceMatch else {
             return
@@ -208,7 +208,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
             name: name,
             rssi: rssi.intValue,
             advertisedServices: serviceStrings,
-            isLikelyArduino: isLikelyArduino,
+            isLikelyProvisioningDevice: isLikelyProvisioningDevice,
             peripheral: peripheral
         )
 
@@ -219,8 +219,8 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         }
 
         devices.sort { lhs, rhs in
-            if lhs.isLikelyArduino != rhs.isLikelyArduino {
-                return lhs.isLikelyArduino && !rhs.isLikelyArduino
+            if lhs.isLikelyProvisioningDevice != rhs.isLikelyProvisioningDevice {
+                return lhs.isLikelyProvisioningDevice && !rhs.isLikelyProvisioningDevice
             }
 
             if lhs.rssi != rhs.rssi {
@@ -315,7 +315,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         }
     }
 
-    private static let arduinoNameHints = [
+    private static let provisioningDeviceNameHints = [
         "arduino",
         "nano",
         "esp32",
@@ -331,7 +331,7 @@ extension ProvisioningBLEManager: CBCentralManagerDelegate {
         case .poweredOn:
             isBluetoothReady = true
             bluetoothStateMessage = "Bluetooth ready."
-            statusMessage = "Scan for an Arduino device."
+            statusMessage = "Scan for an ESP32 device."
         case .poweredOff:
             isBluetoothReady = false
             bluetoothStateMessage = "Bluetooth is off."
@@ -457,7 +457,7 @@ private struct WriteRequest {
 
 private extension CBPeripheral {
     var displayName: String {
-        name ?? "Arduino"
+        name ?? "ESP32"
     }
 }
 

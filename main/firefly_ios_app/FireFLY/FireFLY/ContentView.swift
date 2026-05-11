@@ -23,7 +23,7 @@ struct ContentView: View {
             GlassEffectContainer(spacing: 18) {
                 VStack(alignment: .leading, spacing: 30) {
                     credentialsSection
-                    arduinoSection
+                    esp32Section
                     provisionSection
                 }
                 .padding(.horizontal, 24)
@@ -104,16 +104,16 @@ struct ContentView: View {
         }
     }
 
-    private var arduinoSection: some View {
+    private var esp32Section: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Arduino")
+            Text("ESP32")
                 .font(.title.weight(.bold))
 
             Button {
                 bluetooth.isScanning ? bluetooth.stopScanning() : bluetooth.startScanning()
             } label: {
                 Label(
-                    bluetooth.isScanning ? "Stop Scan" : "Scan for Arduino",
+                    bluetooth.isScanning ? "Stop Scan" : "Scan for ESP32",
                     systemImage: bluetooth.isScanning ? "stop.circle" : "antenna.radiowaves.left.and.right"
                 )
                 .font(.title3.weight(.medium))
