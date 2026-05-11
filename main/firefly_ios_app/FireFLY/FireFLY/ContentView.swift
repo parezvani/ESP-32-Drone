@@ -123,20 +123,22 @@ struct ContentView: View {
             .tint(.blue)
             .disabled(!bluetooth.isBluetoothReady)
 
-            VStack(spacing: 12) {
-                ForEach(bluetooth.devices) { device in
-                    Button {
-                        bluetooth.connect(to: device)
-                    } label: {
-                        DeviceRow(
-                            device: device,
-                            isSelected: bluetooth.selectedDeviceID == device.id
-                        )
+            if !bluetooth.devices.isEmpty {
+                VStack(spacing: 12) {
+                    ForEach(bluetooth.devices) { device in
+                        Button {
+                            bluetooth.connect(to: device)
+                        } label: {
+                            DeviceRow(
+                                device: device,
+                                isSelected: bluetooth.selectedDeviceID == device.id
+                            )
+                        }
+                        .buttonStyle(.glass)
+                        .controlSize(.large)
+                        .tint(.blue)
+                        .disabled(bluetooth.selectedDeviceID == device.id)
                     }
-                    .buttonStyle(.glass)
-                    .controlSize(.large)
-                    .tint(.blue)
-                    .disabled(bluetooth.selectedDeviceID == device.id)
                 }
             }
 
