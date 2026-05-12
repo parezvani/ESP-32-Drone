@@ -14,6 +14,37 @@ esp-idf/
 .DS_Store
 Thumbs.db
 
+# Xcode local state and build products
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+**/*.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+
+# Swift Package Manager local state
+.build/
+.swiftpm/
+
+# Local environment and secrets
+.env
+.env.*
+.envrc
+*.local
+*.local.*
+*.mobileprovision
+*.provisionprofile
+*.p12
+*.cer
+*.csr
+*.key
+AuthKey_*.p8
+
 # Python bytecode
 __pycache__/
 *.py[cod]

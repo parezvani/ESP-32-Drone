@@ -1,0 +1,9 @@
+{
+  "code": {
+    "exts": [".c", ".h", ".cpp", ".py", ".vue"]
+  },
+  "doc": {
+    "exts": [".tex"],
+    "include": ["design-document/"]
+  }
+}
