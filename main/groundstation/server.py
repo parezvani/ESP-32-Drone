@@ -333,6 +333,66 @@ CAM_FRAME_FRESH_S = 10.0
 _frames: dict[str, dict] = {}  # drone_id -> {"jpeg": bytes, "ts": float, "version": int}
 _frames_lock = threading.Lock()
 
+# Health check state (camera + GPS)
+_health = {
+    "camera": {"status": "unknown", "ts": 0.0, "detail": None},
+    "gps": {"status": "unknown", "ts": 0.0, "detail": None},
+}
+
+
+def _run_health_check_loop(interval_s: float = 10.0):
+    """Background thread: run lightweight health checks for camera and GPS.
+    Camera: run the test script against the configured _camera_url (short duration).
+    GPS: check for recent drone telemetry in-memory (fast local check).
+    """
+    import subprocess, sys
+    script_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "testing"))
+    cam_script = os.path.join(script_dir, "test_cam_feed.py")
+    gps_script = os.path.join(script_dir, "test_gps_data.py")
+
+    while True:
+        # Camera health: if no camera URL configured, mark as missing
+        cam_state = {"status": "missing", "ts": time.time(), "detail": None}
+        url = _camera_url
+        if url:
+            cam_state["status"] = "running"
+            try:
+                proc = subprocess.run(
+                    [sys.executable, cam_script, "--url", url, "--duration", "3"],
+                    capture_output=True, text=True, timeout=8
+                )
+                out = proc.stdout + proc.stderr
+                if "STATUS: SUCCESS" in out or "STATUS:      SUCCESS" in out:
+                    cam_state["status"] = "ok"
+                else:
+                    cam_state["status"] = "fail"
+                    cam_state["detail"] = out.splitlines()[-5:]
+            except Exception as e:
+                cam_state["status"] = "fail"
+                cam_state["detail"] = str(e)
+        else:
+            cam_state["detail"] = "no camera URL configured"
+
+        # GPS health: quick in-memory check — any drone with a recent fix?
+        gps_state = {"status": "fail", "ts": time.time(), "detail": None}
+        now = time.time()
+        with _lock:
+            any_recent = any((now - v.get("ts", 0) < 5.0) for v in _drones.values())
+        if any_recent:
+            gps_state["status"] = "ok"
+        else:
+            gps_state["status"] = "no-data"
+
+        with _lock:
+            _health["camera"] = cam_state
+            _health["gps"] = gps_state
+
+        time.sleep(interval_s)
+
+
+# Start background health thread
+threading.Thread(target=_run_health_check_loop, args=(), daemon=True).start()
+
 
 def _user_owns_drone(user_id: str | None, drone_id: str) -> bool:
     """True if the user owns this drone, or in local dev (no auth)."""
@@ -767,6 +827,7 @@ def get_state():
         "fires": user_fires,
         "camera_url": _camera_url,
         "server_ts": time.time(),
+        "health": _health,
     })
 
 

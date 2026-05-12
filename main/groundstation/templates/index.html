@@ -39,6 +39,25 @@
     color: #ff7a3a;
     background: rgba(42,18,12,0.5);
   }
+  /* Bottom-right health indicator */
+  #health-indicator {
+    position: fixed;
+    right: 16px;
+    bottom: 110px;
+    z-index: 650;
+    padding: 8px 12px;
+    background: rgba(12,12,14,0.75);
+    color: #e7e9ec;
+    border-radius: 8px;
+    font: 12px/1.1 'Inter', system-ui, sans-serif;
+    border: 1px solid rgba(255,255,255,0.06);
+    backdrop-filter: blur(8px) saturate(120%);
+  }
+  #health-indicator .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:middle }
+  #health-indicator .ok { background: #49d07a }
+  #health-indicator .fail { background: #ff5a5a }
+  #health-indicator .missing { background: #999 }
+  #health-indicator .running { background: #ffd166 }
   </style>
 </head>
 <body>
@@ -138,6 +157,10 @@
   <script>
     window._sb = window.supabase.createClient("{{ supabase_url }}", "{{ supabase_key }}");
   </script>
+  <div id="health-indicator" aria-hidden="true">
+    <span class="dot missing"></span>
+    <span class="text">Camera: unknown · GPS: unknown</span>
+  </div>
   <script>
     (async function handleOAuthLanding() {
       const hash = window.location.hash.substring(1);

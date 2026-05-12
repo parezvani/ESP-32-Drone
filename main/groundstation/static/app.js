@@ -340,11 +340,33 @@ async function poll() {
     $("server-time").textContent = fmtTime(now);
 
     updateCamera(s.camera_url, s.drones);
+      try {
+        if (s.health) updateHealth(s.health);
+      } catch (e) {
+        console.warn('updateHealth failed', e);
+      }
   } catch (e) {
     console.error("poll failed", e);
   }
 }
 
+  function updateHealth(health) {
+    const el = document.getElementById('health-indicator');
+    if (!el) return;
+    const cam = health.camera || { status: 'unknown' };
+    const gps = health.gps || { status: 'unknown' };
+    const dot = el.querySelector('.dot');
+    const text = el.querySelector('.text');
+    // camera-driven primary color (if camera is present)
+    const camStatus = cam.status || 'unknown';
+    const gpsStatus = gps.status || 'unknown';
+    if (dot) {
+      dot.className = 'dot ' + (camStatus === 'ok' ? 'ok' : camStatus === 'running' ? 'running' : camStatus === 'missing' ? 'missing' : 'fail');
+    }
+    if (text) {
+      text.textContent = `Camera: ${camStatus} · GPS: ${gpsStatus}`;
+    }
+  }
 let currentCamSrc = null;
 function applyCamSrc() {
   const img = $("cam-stream");
