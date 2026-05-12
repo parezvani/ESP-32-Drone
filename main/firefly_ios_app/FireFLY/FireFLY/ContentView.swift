@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 
 struct ContentView: View {
+    @EnvironmentObject private var authStore: FireFLYAuthStore
     @StateObject private var bluetooth = ProvisioningBLEManager()
 
     @State private var ssid = ""
@@ -22,6 +23,7 @@ struct ContentView: View {
         ScrollView {
             GlassEffectContainer(spacing: 18) {
                 VStack(alignment: .leading, spacing: 30) {
+                    accountSection
                     credentialsSection
                     esp32Section
                     provisionSection
@@ -46,6 +48,63 @@ struct ContentView: View {
             )
             .ignoresSafeArea()
         }
+    }
+
+    private var accountSection: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "person.crop.circle.fill")
+                .font(.system(size: 24))
+                .foregroundStyle(.blue)
+                .frame(width: 32, height: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(authStore.displayName)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.84)
+
+                Text(authStore.accountEmail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+
+            Spacer(minLength: 8)
+
+            Button {
+                Task {
+                    await authStore.signOut()
+                }
+            } label: {
+                ViewThatFits(in: .horizontal) {
+                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        .font(.subheadline.weight(.semibold))
+                        .fixedSize(horizontal: true, vertical: false)
+
+                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 16, height: 16)
+                }
+            }
+            .buttonStyle(.glass)
+            .controlSize(.regular)
+            .tint(.orange)
+            .disabled(authStore.isWorking)
+            .accessibilityLabel("Sign Out")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 60)
+        .glassEffect(
+            .regular.tint(Color.white.opacity(0.16)).interactive(),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.white.opacity(0.28), lineWidth: 1)
+        )
     }
 
     private var credentialsSection: some View {

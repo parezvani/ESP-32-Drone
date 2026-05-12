@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct FireFLYApp: App {
+    @StateObject private var authStore = FireFLYAuthStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppRootView()
+                .environmentObject(authStore)
         }
     }
 }

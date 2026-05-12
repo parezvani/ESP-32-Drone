@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		525A90282FB1D4E100BC7F93 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 525A90272FB1D4E100BC7F93 /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		525A90082FB18B8700BC7F93 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				525A90282FB1D4E100BC7F93 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = FireFLY;
 			packageProductDependencies = (
+				525A90272FB1D4E100BC7F93 /* Supabase */,
 			);
 			productName = FireFLY;
 			productReference = 525A8FF82FB18B8500BC7F93 /* FireFLY.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 525A8FEF2FB18B8500BC7F93;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				525A90262FB1D4E100BC7F93 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 525A8FF92FB18B8500BC7F93 /* Products */;
 			projectDirPath = "";
@@ -614,6 +623,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		525A90262FB1D4E100BC7F93 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.43.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		525A90272FB1D4E100BC7F93 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 525A90262FB1D4E100BC7F93 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 525A8FF02FB18B8500BC7F93 /* Project object */;
 }
