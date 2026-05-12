@@ -118,6 +118,21 @@ final class FireFLYAuthStore: ObservableObject {
         }
     }
 
+    func signInWithOAuth(provider: Provider) async {
+        isWorking = true
+        message = ""
+        defer { isWorking = false }
+
+        do {
+            try await FireFLYSupabase.client.auth.signInWithOAuth(
+                provider: provider,
+                redirectTo: FireFLYSupabase.oauthRedirectURL
+            )
+        } catch {
+            message = oauthFailureMessage(for: error)
+        }
+    }
+
     func signOut() async {
         isWorking = true
         message = ""
@@ -184,5 +199,16 @@ final class FireFLYAuthStore: ObservableObject {
             phase = .signedIn
             await loadCurrentProfile()
         }
+    }
+
+    private func oauthFailureMessage(for error: Error) -> String {
+        let nsError = error as NSError
+
+        if nsError.domain == "com.apple.AuthenticationServices.WebAuthenticationSession",
+           nsError.code == 1 {
+            return "Sign-in was canceled."
+        }
+
+        return error.localizedDescription
     }
 }

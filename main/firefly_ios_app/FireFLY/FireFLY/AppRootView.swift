@@ -3,6 +3,8 @@
 //  FireFLY
 //
 
+import Auth
+import Supabase
 import SwiftUI
 
 struct AppRootView: View {
@@ -21,6 +23,9 @@ struct AppRootView: View {
         }
         .task {
             authStore.start()
+        }
+        .onOpenURL { url in
+            FireFLYSupabase.client.handle(url)
         }
     }
 }
@@ -126,6 +131,29 @@ private struct FireFLYAuthView: View {
                     .tint(.blue)
                     .disabled(authStore.isWorking)
 
+                    OAuthDivider()
+
+                    VStack(spacing: 12) {
+                        OAuthProviderButton(
+                            title: "Continue with Google",
+                            imageName: "GoogleLogo"
+                        ) {
+                            Task {
+                                await authStore.signInWithOAuth(provider: .google)
+                            }
+                        }
+
+                        OAuthProviderButton(
+                            title: "Continue with GitHub",
+                            imageName: "GitHubLogo"
+                        ) {
+                            Task {
+                                await authStore.signInWithOAuth(provider: .github)
+                            }
+                        }
+                    }
+                    .disabled(authStore.isWorking)
+
                     if !statusText.isEmpty {
                         Text(statusText)
                             .font(.body.weight(.medium))
@@ -179,6 +207,57 @@ private struct FireFLYAuthView: View {
                 )
             }
         }
+    }
+}
+
+private struct OAuthDivider: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Rectangle()
+                .fill(Color.secondary.opacity(0.45))
+                .frame(height: 1)
+
+            Text("or")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            Rectangle()
+                .fill(Color.secondary.opacity(0.45))
+                .frame(height: 1)
+        }
+    }
+}
+
+private struct OAuthProviderButton: View {
+    let title: String
+    let imageName: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(.white.opacity(0.96))
+
+                    Image(imageName)
+                        .renderingMode(.original)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 20, height: 20)
+                }
+                .frame(width: 28, height: 28)
+
+                Text(title)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.white)
+            }
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.glassProminent)
+        .controlSize(.large)
+        .tint(.blue)
     }
 }
 
