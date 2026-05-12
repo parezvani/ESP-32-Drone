@@ -13,9 +13,11 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "nvs_flash.h"
+#include "nvs.h"
 #include "lwip/sockets.h"
 
 #include "cloud_uplink.h"
+#include "ble_provision.h"
 
 #define GPS_UART_NUM   UART_NUM_1
 #define GPS_TX_PIN     5
@@ -32,19 +34,34 @@ static EventGroupHandle_t s_wifi_events;
 static int s_udp_sock = -1;
 static struct sockaddr_in s_bcast_addr;
 
+static bool s_ble_provisioning_active = false;
+static bool s_wifi_connected = false;
+
 static void wifi_event_handler(void *arg, esp_event_base_t base,
                                int32_t id, void *data)
 {
     if (base == WIFI_EVENT && id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
+        s_wifi_connected = false;
         xEventGroupClearBits(s_wifi_events, WIFI_CONNECTED_BIT);
-        ESP_LOGW(TAG, "wifi disconnected, retrying");
+        wifi_event_sta_disconnected_t *evt = (wifi_event_sta_disconnected_t *)data;
+        int reason = evt ? evt->reason : -1;
+        ESP_LOGW(TAG, "wifi disconnected (reason=%d), retrying in 1s", reason);
+        vTaskDelay(pdMS_TO_TICKS(1000));
         esp_wifi_connect();
     } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *ev = (ip_event_got_ip_t *)data;
         ESP_LOGI(TAG, "wifi got ip: " IPSTR, IP2STR(&ev->ip_info.ip));
+        s_wifi_connected = true;
         xEventGroupSetBits(s_wifi_events, WIFI_CONNECTED_BIT);
+        
+        /* Stop BLE provisioning once WiFi is connected */
+        if (s_ble_provisioning_active) {
+            ble_provision_stop();
+            s_ble_provisioning_active = false;
+            ESP_LOGI(TAG, "BLE provisioning stopped");
+        }
     }
 }
 
@@ -52,7 +69,10 @@ static void wifi_init_sta(void)
 {
     s_wifi_events = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    esp_err_t _evt_err = esp_event_loop_create_default();
+    if (_evt_err != ESP_OK && _evt_err != ESP_ERR_INVALID_STATE) {
+        ESP_ERROR_CHECK(_evt_err);
+    }
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
@@ -63,18 +83,52 @@ static void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register(
         IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL));
 
+    /* Try to load WiFi credentials from NVS first (set via BLE provisioning) */
+    char ssid[32] = {0};
+    char password[64] = {0};
+    size_t ssid_len = sizeof(ssid) - 1;
+    size_t pwd_len = sizeof(password) - 1;
+
+    nvs_handle_t nvs_h;
+    esp_err_t err = nvs_open("wifi", NVS_READONLY, &nvs_h);
+    if (err == ESP_OK) {
+        esp_err_t ssid_err = nvs_get_str(nvs_h, "ssid", ssid, &ssid_len);
+        esp_err_t pwd_err = nvs_get_str(nvs_h, "password", password, &pwd_len);
+        ESP_LOGI(TAG, "NVS read results: ssid_err=%s pwd_err=%s (ssid_len=%d pwd_len=%d)",
+                 esp_err_to_name(ssid_err), esp_err_to_name(pwd_err), (int)ssid_len, (int)pwd_len);
+        nvs_close(nvs_h);
+
+        if (ssid_err == ESP_OK && pwd_err == ESP_OK) {
+            ESP_LOGI(TAG, "Loaded WiFi credentials from NVS: SSID='%s' (len=%d), password_len=%d",
+                     ssid, (int)ssid_len, (int)pwd_len);
+        } else {
+            /* Fall back to hardcoded credentials from Kconfig */
+            strncpy(ssid, CONFIG_GPS_WIFI_SSID, sizeof(ssid) - 1);
+            strncpy(password, CONFIG_GPS_WIFI_PASSWORD, sizeof(password) - 1);
+            ESP_LOGI(TAG, "Using hardcoded WiFi credentials: SSID='%s'", ssid);
+        }
+    } else {
+        /* Fall back to hardcoded credentials */
+        strncpy(ssid, CONFIG_GPS_WIFI_SSID, sizeof(ssid) - 1);
+        strncpy(password, CONFIG_GPS_WIFI_PASSWORD, sizeof(password) - 1);
+        ESP_LOGI(TAG, "Using hardcoded WiFi credentials: SSID='%s'", ssid);
+    }
+
     wifi_config_t wc = {
         .sta = {
-            .ssid     = CONFIG_GPS_WIFI_SSID,
-            .password = CONFIG_GPS_WIFI_PASSWORD,
+            .ssid     = {0},
+            .password = {0},
         },
     };
+    strncpy((char *)wc.sta.ssid, ssid, sizeof(wc.sta.ssid) - 1);
+    strncpy((char *)wc.sta.password, password, sizeof(wc.sta.password) - 1);
+    
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wc));
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
-    ESP_LOGI(TAG, "connecting to SSID '%s'", CONFIG_GPS_WIFI_SSID);
+    ESP_LOGI(TAG, "connecting to SSID '%s'", ssid);
 }
 
 static void udp_init(void)
@@ -206,10 +260,43 @@ static void parse_gga(const char *line)
 
 void app_main(void)
 {
+    /* TEST ACTION: erase NVS on boot to clear stored WiFi credentials */
+    ESP_LOGW(TAG, "TEST: erasing NVS partition to clear credentials");
+    esp_err_t _erase_ret = nvs_flash_erase();
+    if (_erase_ret != ESP_OK) {
+        ESP_LOGW(TAG, "nvs_flash_erase returned %s", esp_err_to_name(_erase_ret));
+    }
+
     esp_err_t nvs = nvs_flash_init();
     if (nvs == ESP_ERR_NVS_NO_FREE_PAGES || nvs == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         ESP_ERROR_CHECK(nvs_flash_init());
+    }
+
+    /* Check if WiFi credentials exist; if not, start BLE provisioning */
+    char ssid[32] = {0};
+    size_t ssid_len = sizeof(ssid) - 1;
+    nvs_handle_t nvs_h;
+    esp_err_t err = nvs_open("wifi", NVS_READONLY, &nvs_h);
+    bool has_credentials = false;
+    if (err == ESP_OK) {
+        if (nvs_get_str(nvs_h, "ssid", ssid, &ssid_len) == ESP_OK && ssid_len > 0) {
+            has_credentials = true;
+        }
+        nvs_close(nvs_h);
+    }
+
+    if (!has_credentials) {
+        ESP_LOGI(TAG, "No WiFi credentials found, starting BLE provisioning");
+        ESP_ERROR_CHECK(ble_provision_init());
+        s_ble_provisioning_active = true;
+        ESP_LOGI(TAG, "Open iOS app and select 'FireFly-C3' to configure WiFi");
+
+        while (!ble_provision_credentials_updated()) {
+            vTaskDelay(pdMS_TO_TICKS(250));
+        }
+
+        ESP_LOGI(TAG, "BLE provisioning complete, starting WiFi");
     }
 
     wifi_init_sta();
@@ -238,12 +325,26 @@ void app_main(void)
 
     int bytes_since_log = 0;
     TickType_t last_log = xTaskGetTickCount();
+    TickType_t last_ble_check = xTaskGetTickCount();
 
     while (1) {
         int n = uart_read_bytes(GPS_UART_NUM, buf, sizeof(buf), pdMS_TO_TICKS(200));
         bytes_since_log += n;
 
+        /* Periodically check if new BLE credentials were received */
         TickType_t now = xTaskGetTickCount();
+        if (s_ble_provisioning_active && (now - last_ble_check) * portTICK_PERIOD_MS >= 1000) {
+            if (ble_provision_credentials_updated()) {
+                ESP_LOGI(TAG, "New WiFi credentials received via BLE, reconnecting WiFi");
+                esp_wifi_disconnect();
+                s_ble_provisioning_active = false;
+                vTaskDelay(pdMS_TO_TICKS(500));
+                /* Re-read credentials and reconnect */
+                wifi_init_sta();
+            }
+            last_ble_check = now;
+        }
+
         if ((now - last_log) * portTICK_PERIOD_MS >= 3000) {
             if (bytes_since_log == 0) {
                 ESP_LOGW(TAG, "no UART data in 3s — check GPS power / GND / RX wiring (ESP RX=GPIO%d must connect to GPS TX)", GPS_RX_PIN);

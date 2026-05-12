@@ -7,7 +7,7 @@ authenticated with the drone's API key — the same key the GPS firmware uses.
 
 Usage:
     python cam_relay.py \\
-        --cam-url http://192.168.1.47:81/stream \\
+        --cam-url http://<cam-ip>:81/stream \\
         --server  https://your-firefly.onrender.com \\
         --api-key JFjQoTWebvkz823ayIaHxwqhEMfm7phPamLE1r8--XkGgSxYHNvT74rYxWrFDVpu \\
         --fps 5
