@@ -8,6 +8,7 @@
 \usepackage{caption}
 \usepackage{wrapfig}
 \usepackage{comment}
+\usepackage{bm}
 
 \titleformat{\section}
     {\normalfont\bfseries}
@@ -302,6 +303,100 @@ FireFly can be deployed in multiple locations at the boundary of a detected fire
 % ============================================================
 \section{Design}
 % ============================================================
+
+
+\subsection{Sensor}
+
+\textbf{Intro: }
+
+While a drone equipped solely with a standard optical camera provides a valuable "eye in the sky," it is fundamentally insufficient for the complex task of early-phase wildfire detection and comprehensive situational awareness. Visual feeds are easily obscured by dense canopy, low-light conditions, or the very smoke the system is trying to identify, leaving first responders with an incomplete and potentially misleading picture of the threat. To provide the high-fidelity data required for rapid emergency response, a drone must move beyond simple sight and operate as a mobile, multi-modal sensing laboratory capable of "smelling" and "feeling" the environment long before flames become visible to the naked eye.
+
+
+To bridge this information gap, our design integrates a sophisticated array of atmospheric and thermal hardware designed to cross-verify environmental anomalies. The onboard suite includes long-range infrared (IR) imaging to pierce through visual obstructions and identify heat signatures, alongside a chemical sensing core consisting of carbon monoxide (CO), carbon dioxide ($CO_2$), and volatile organic compound (VOC) sensors. By augmenting these with particulate matter (PM) sensors to track smoke density, the platform can distinguish between harmless atmospheric changes and active combustion events. This fused data approach ensures that the information relayed to ground crews is not just a visual confirmation, but a detailed chemical and thermal profile of the fire's behavior.
+
+\vspace{1em}
+
+\textbf{LWIR(Long-Wave Infrared): }
+
+Long-Wave Infrared (LWIR) refers to a specific band of the electromagnetic spectrum, typically spanning wavelengths from $8 \mu m$ to $14 \mu m$. Unlike visible light, which is reflected off surfaces, LWIR sensors detect the thermal radiation emitted naturally by all objects with a temperature above absolute zero. In this "thermal" window, the atmosphere is remarkably transparent, allowing long-wave energy to travel through air with minimal absorption. This allows LWIR cameras to act as heat maps rather than traditional photographs, converting the invisible infrared energy of the environment into a visible image where intensity corresponds to temperature.
+
+
+In the context of drone hardware, LWIR sensors are distinct from the "Near-Infrared" used in night-vision goggles or TV remotes. While Near-IR still relies on some light reflecting off an object, LWIR is completely passive and does not require any external light source to function. This makes it a "true" thermal imaging technology. Because it operates in a specific atmospheric window, it is uniquely suited for outdoor, long-range sensing where environmental factors like humidity and distance might otherwise scatter or block shorter wavelengths of energy.
+
+
+The primary importance of LWIR in fire detection lies in its ability to achieve "visual penetration" through smoke and debris. In a wildfire, a standard camera is often blinded by the thick, opaque clouds of smoke produced by burning organic matter. However, the wavelengths of LWIR are significantly larger than the soot particles found in smoke, allowing the thermal radiation to pass through the plume virtually unimpeded. This enables the drone to "see" through the smoke to locate the actual seat of the fire, providing first responders with the exact coordinates of the ignition point rather than just the location of the smoke cloud.
+
+
+Furthermore, LWIR is essential for identifying "incipient" or hidden fires that have not yet broken through the forest canopy. In many forest fires, the heat can build up on the ground or within the duff layer before flames are visually apparent from above. An LWIR sensor can detect these thermal anomalies—hotspots that are significantly warmer than the surrounding terrain—allowing for the discovery of potential fires before they escalate into massive conflagrations. This early detection window is the most critical period for containment efforts.
+
+
+Finally, LWIR provides a level of quantitative data that visual cameras cannot offer. By utilizing radiometric LWIR sensors, the system can measure the actual temperature of the ground in real-time. This allows the drone to distinguish between a "false positive," such as a sun-warmed rock or a vehicle, and the intense thermal signature of active combustion. For first responders, this means the drone can provide a "fire line" map, showing exactly where the fire is most intense and where it has already cooled, which is vital for safely directing ground crews and aerial water drops.
+
+\vspace{1em}
+
+\textbf{CO(Carbon Monoxide): }
+
+Carbon Monoxide (CO) is a colorless, odorless, and tasteless gas that is a byproduct of incomplete combustion. It is produced when organic fuels—such as wood, brush, or peat—burn in an environment where oxygen is limited, preventing the carbon from fully oxidizing into carbon dioxide ($CO_2$). Because it is nearly impossible for the human senses to detect and is highly toxic, it is often referred to as the "silent killer." In a wildfire scenario, CO is one of the primary gases released into the atmosphere, often rising in concentrated plumes that can be detected by localized sensors even when the fire is not yet visible.
+
+
+For fire detection, Carbon Monoxide is an essential metric because it serves as a highly reliable "chemical signature" of active burning. Unlike smoke particles, which can be confused with dust or fog, or temperature spikes, which can be caused by direct sunlight on a sensor, a significant rise in CO levels is almost exclusively tied to a combustion event. This makes it an invaluable tool for reducing false positives. 
+
+Furthermore, CO is particularly prevalent during the smoldering phase of a fire—the critical early stage before an open flame breaks out. By detecting these elevated CO levels, a drone can identify a potential disaster in its infancy, providing first responders with the earliest possible warning to intervene before the fire reaches a catastrophic scale.
+
+\vspace{1em}
+
+$\bm{CO_2(CarbonDioxide): }$
+
+Carbon Dioxide ($CO_2$) is a naturally occurring, colorless gas composed of one carbon atom covalently bonded to two oxygen atoms. While it is a fundamental component of Earth's atmosphere and a primary product of cellular respiration, it is also the most abundant gas produced during the combustion of organic materials. In the presence of a well-oxygenated fire, the carbon stored in vegetation reacts almost completely with atmospheric oxygen to release $CO_2$. Because it is denser than air at standard temperatures but rises rapidly when heated by a blaze, it creates distinct "pillars" of high concentration above an active fire site.
+
+
+In the field of autonomous fire detection, monitoring $CO_2$ levels is critical for assessing the intensity and scale of a fire. While Carbon Monoxide is a marker for smoldering, a sharp and sustained spike in $CO_2$ typically indicates "clean" flaming combustion where the fire has reached a high enough temperature to oxidize fuel efficiently. By comparing the ratio of $CO_2$ to other gases, the drone's onboard systems can determine the fire’s current stage and metabolic rate. This data is essential for first responders, as it helps distinguish between a small, controlled burn and a rapidly spreading wildfire, allowing for a more strategic and proportional deployment of firefighting resources.
+
+\vspace{1em}
+
+\textbf{VOC(Volatile Organic Compounds)}
+Volatile Organic Compounds (VOCs) are a broad category of organic chemicals that have a high vapor pressure at ordinary room temperature. This high volatility results from a low boiling point, which causes large numbers of molecules to evaporate or sublimate from the liquid or solid form of the compound and enter the surrounding air. In the context of a forest or wildland environment, VOCs can include naturally occurring compounds like isoprenes and terpenes emitted by trees, as well as a vast array of synthetic chemicals. When these organic materials are heated during the pre-ignition or combustion phases of a fire, the rate of VOC emission increases dramatically as the chemical bonds within the fuel begin to break down.
+
+
+The inclusion of VOC sensors is vital for fire detection because they act as an "early warning" system for the thermal decomposition of fuel, often preceding the appearance of open flames or thick smoke. Before a fire fully ignites, the heat from a nearby heat source or a small smolder causes "pyrolysis"—the chemical decomposition of wood and leaf litter. This process releases a specific "cocktail" of VOC gases into the atmosphere. By monitoring these chemical spikes, the drone can detect a brewing fire that may still be hidden from thermal and optical sensors. For first responders, this means the difference between responding to a manageable hotspot and arriving at a fully developed wildfire, as VOC detection provides the chemical evidence of a fire's earliest "breath."
+
+\vspace{1em}
+
+\textbf{PM(Particulate Matter): }
+Particulate Matter (PM) refers to a complex mixture of solid particles and liquid droplets suspended in the air. These particles come in many sizes and shapes and can be made up of hundreds of different chemicals. In an environmental context, PM is categorized by its diameter, as the size determines how the particles behave in the atmosphere and how they impact human health. When organic materials like timber, grass, and brush burn during a wildfire, they release massive quantities of these particles, creating the thick, visible plumes commonly associated with smoke.
+
+
+The classification of PM into "2.5" and "10" is a measurement of their aerodynamic diameter in micrometers ($\mu m$). PM10, known as "coarse" particles, consists of any particulate matter with a diameter of 10 micrometers or less. These are typically generated by mechanical processes, such as wind blowing dust, construction activities, or debris being kicked up by the movement of air. In contrast, PM2.5 refers to "fine" particles that are 2.5 micrometers or smaller. These are so microscopic that they are primarily the result of chemical reactions and combustion, making them the signature component of smoke.
+
+
+The primary difference between the two lies in their buoyancy and origin. Because PM10 particles are larger and heavier, they tend to settle out of the air relatively quickly and remain closer to the ground near the source of the disturbance. PM2.5 particles, however, are light enough to remain suspended in the atmosphere for days or even weeks. Due to this extreme lightness, PM2.5 can be carried by wind currents over hundreds of miles, meaning a drone at high altitude is far more likely to encounter a "scent" of fine combustion particles than the heavier coarse dust associated with PM10.
+
+
+For fire detection, monitoring both metrics is essential because the relationship between them acts as a filter for false alarms. In a wildland environment, high PM10 levels are frequently caused by non-fire events, such as a vehicle driving on a dirt road or high winds lifting topsoil. If a sensor suite only measured PM10, the system might trigger a fire alert every time a gust of wind blew through a dry clearing. By comparing the two, the drone’s onboard logic can identify a "combustion profile": a sharp spike in PM2.5 that far outweighs the PM10 concentration, confirming the presence of smoke rather than simple dust.
+
+
+Furthermore, tracking both sizes allows first responders to assess the quality of the air and the intensity of the blaze. While PM2.5 is the definitive indicator of a fire, the presence of PM10 in a smoke plume often indicates a high-intensity fire that is physically lifting ash and charred debris into the air. By providing data on the full spectrum of particulate matter, the drone provides ground crews with a "particle signature" that helps them understand the fire's behavior. This dual-sensing approach ensures that the information relayed is both accurate and comprehensive, allowing for a more effective emergency response.
+
+\vspace{1em}
+
+\textbf{Live Camera feed: }
+
+A live camera feed serves as the primary visual confirmation layer, transforming abstract sensor data into actionable intelligence. While gas and thermal sensors can identify the presence of a fire, the optical feed allows operators and autonomous systems to verify the "ground truth" of the situation. This visual context is vital for distinguishing between a high-confidence fire event and environmental anomalies, such as a localized dust cloud or a reflection that might trigger a single-sensor alert. For first responders, seeing the actual environment provides an immediate understanding of the terrain, fuel types, and potential obstacles that no numerical data point can replicate.
+
+
+By integrating this live feed into an onboard AI fire detection model, the system gains the ability to perform real-time pattern recognition and smoke characterization. Modern computer vision algorithms, such as convolutional neural networks, are trained to identify the specific volumetric expansion and grayish-white color of rising smoke plumes that often precede visible flames. Because the AI processes the video frame-by-frame as it is captured, it can detect the subtle motion of smoke against a static background far faster than a human operator might. This automation ensures that the drone remains a vigilant sentinel, constantly scanning the horizon for the first visual signs of ignition.
+
+
+The synergy between the live feed and AI is also critical for the "locate" phase of the mission. By analyzing the visual data alongside the drone’s telemetry, the AI can estimate the fire's coordinates and movement vectors with high precision. For instance, the AI can track the "head" of the fire and the direction of the smoke drift, allowing the system to project the fire's probable path over the next few minutes. This real-time mapping is essential for protecting ground crews and determining which areas are at the highest risk of immediate spread, providing a level of foresight that is only possible through continuous visual monitoring.
+
+
+Lastly, the live feed provides the essential "human-in-the-loop" capability required for high-stakes emergency response. Even with sophisticated AI, the ability for a remote incident commander to view the fire line in real-time allows for informed decision-making regarding the deployment of resources. The video feed can highlight specific hazards, such as nearby structures, power lines, or trapped vehicles, which are critical for tactical planning. Ultimately, the live feed acts as the bridge between autonomous detection and human intervention, ensuring that the information gathered by the drone is utilized to its fullest potential in saving lives and protecting property.
+
+
+
+
+\vspace{1em}
+
 
 \subsection{Aesthetic Prototype}
 
