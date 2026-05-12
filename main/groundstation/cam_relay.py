@@ -22,8 +22,15 @@ import requests
 def _parse_boundary(content_type: str) -> str | None:
     for part in content_type.split(";"):
         part = part.strip()
-        if part.startswith("boundary="):
-            return part.split("=", 1)[1].strip().strip('"')
+        if part.lower().startswith("boundary="):
+            value = part.split("=", 1)[1].strip().strip('"').strip("'")
+            # Some servers (IP Camera Lite on iOS, others) include the -- prefix
+            # directly in the header value, which is non-spec. The on-the-wire
+            # delimiter is always --<value>, so strip a leading -- here to avoid
+            # ending up looking for ----<value> in the body.
+            if value.startswith("--"):
+                value = value[2:]
+            return value
     return None
 
 
