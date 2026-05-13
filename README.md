@@ -154,7 +154,7 @@ Python process on your laptop, viewing on the cloud site.
 ### 1. Power everything on
 
 1. **Plug in the GPS chip**. It'll auto-connect to your WiFi using the
-   credentials from menuconfig and within ~10 seconds start POSTing GPS
+   credentials from the FireFLY iOS App and within ~10 seconds start POSTing GPS
    fixes to Render.
 2. **Open the FireFly website** and check the drone panel — your drone
    should show **LIVE** with GPS coordinates and a marker on the map.
