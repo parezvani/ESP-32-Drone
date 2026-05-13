@@ -43,15 +43,22 @@ YOLO_CONF = 0.25             # detection confidence threshold (was 0.4 — lower
 YOLO_IMGSZ = 960             # input size YOLO resizes to (was 640 — larger = better small-target recall)
 
 # --- Camera / GSD Config ---
-# GSD = Ground Sampling Distance (meters per pixel)
-# Formula: GSD = (altitude_m * sensor_width_mm) / (focal_length_mm * image_width_px)
-# Defaults assume: 50m altitude, DJI Mavic-class camera (4.5mm focal, 6.3mm sensor, 1920px wide)
-# Update ALTITUDE_M and FOCAL_LENGTH_MM when real drone specs are known
-ALTITUDE_M       = 50.0
-SENSOR_WIDTH_MM  = 6.3
-FOCAL_LENGTH_MM  = 4.5
-IMAGE_WIDTH_PX   = 1920
-GSD = (ALTITUDE_M * SENSOR_WIDTH_MM) / (FOCAL_LENGTH_MM * IMAGE_WIDTH_PX)  # m/px
+# GSD (Ground Sampling Distance, m/pixel) = (altitude_m * sensor_width_mm)
+# / (focal_length_mm * image_width_px). It tells us how many real-world
+# meters each pixel of the image covers on the ground, which lets us turn
+# a bounding-box pixel size into a real-world size.
+#
+# These two values are intrinsic to the ESP32-CAM (OV3660 sensor) and don't
+# change between captures. The OTHER two inputs to GSD — altitude and image
+# width — vary per frame and per flight, so we read them live in report_fire
+# instead of baking them in here.
+CAM_SENSOR_WIDTH_MM  = 2.95   # OV3660: 1/4" optical format, ~2.95 mm wide
+CAM_FOCAL_LENGTH_MM  = 2.5    # OV3660 standard lens
+
+# Fallback altitude used only if the drone telemetry has no alt_m. Set to a
+# small non-zero number so the math doesn't blow up on a desk demo. For a
+# real flight, drone.alt_m from the GPS chip is used directly.
+DEFAULT_ALTITUDE_M   = 1.0
 
 
 def report_fire(frame_shape, boxes):
@@ -61,10 +68,6 @@ def report_fire(frame_shape, boxes):
         return
     x1, y1, x2, y2 = fire_box.xyxy[0].tolist()
     confidence = float(fire_box.conf[0])
-
-    real_w = (x2 - x1) * GSD
-    real_h = (y2 - y1) * GSD
-    real_area = real_w * real_h
 
     drone = {}
     try:
@@ -81,6 +84,20 @@ def report_fire(frame_shape, boxes):
           f"alt_m={drone.get('alt_m')} heading_deg={drone.get('heading_deg')}")
 
     H, W = frame_shape[:2]
+
+    # Compute GSD live using the ACTUAL drone altitude (from telemetry) and
+    # the ACTUAL captured frame width. This replaces the previous hard-coded
+    # 50 m / Mavic-class / 1920 px assumptions, so size estimates reflect
+    # the real flight conditions instead of a fictional UAV.
+    altitude_m = drone.get("alt_m") or DEFAULT_ALTITUDE_M
+    if altitude_m <= 0:
+        altitude_m = DEFAULT_ALTITUDE_M
+    gsd_m_per_px = (altitude_m * CAM_SENSOR_WIDTH_MM) / (CAM_FOCAL_LENGTH_MM * W)
+
+    real_w = (x2 - x1) * gsd_m_per_px
+    real_h = (y2 - y1) * gsd_m_per_px
+    real_area = real_w * real_h
+
     pos = fire_position(drone, (x1, y1, x2, y2), (W, H), CAMERA)
 
     payload = {
