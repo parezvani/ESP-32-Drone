@@ -5,7 +5,6 @@
 #include <string.h>
 
 #include "esp_log.h"
-#include "esp_nimble_hci.h"
 #include "nvs.h"
 #include "nvs_flash.h"
 

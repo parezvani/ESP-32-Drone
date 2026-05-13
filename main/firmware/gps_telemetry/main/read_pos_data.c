@@ -260,13 +260,6 @@ static void parse_gga(const char *line)
 
 void app_main(void)
 {
-    /* TEST ACTION: erase NVS on boot to clear stored WiFi credentials */
-    ESP_LOGW(TAG, "TEST: erasing NVS partition to clear credentials");
-    esp_err_t _erase_ret = nvs_flash_erase();
-    if (_erase_ret != ESP_OK) {
-        ESP_LOGW(TAG, "nvs_flash_erase returned %s", esp_err_to_name(_erase_ret));
-    }
-
     esp_err_t nvs = nvs_flash_init();
     if (nvs == ESP_ERR_NVS_NO_FREE_PAGES || nvs == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
