@@ -68,16 +68,28 @@ Next steps:
        source .venv/bin/activate           (macOS / Linux / Git Bash)
        .venv\\Scripts\\Activate.ps1        (Windows PowerShell)
 
-  2. Run the launcher:
-       python run.py
+  2a. Localhost sim demo (no hardware required):
+        python run.py
 
-     Optional flags:
-       --no-sim       skip the fake drone fleet (use real GPS only)
-       --no-cam       skip camera discovery and YOLO
-       --no-yolo      register the camera but skip fire detection
-       --no-browser   don't auto-open the browser
+      Optional flags:
+        --no-sim       skip the fake drone fleet (use real GPS only)
+        --no-cam       skip camera discovery and YOLO
+        --no-yolo      register the camera but skip fire detection
+        --no-browser   don't auto-open the browser
 
-  3. Browser opens at http://127.0.0.1:5050
+      Browser opens at http://127.0.0.1:5050
+
+  2b. Live Render demo (real GPS chip + cam + cloud site):
+        See "Run the full live demo" section in README.md.
+        Summary: power on the GPS chip + ESP32-CAM, then on the laptop:
+
+          cd main/fire_detect/fire_detect_YOLO8
+          export FIREFLY_VIDEO=http://<cam-ip>:81/stream
+          export FIREFLY_SERVER=https://firefly-j68i.onrender.com
+          export FIREFLY_API_KEY=<key-from-dashboard>
+          python fire_detect.py
+
+        View results at https://firefly-j68i.onrender.com/
 
 Notes:
   - For real ESP32 hardware (GPS firmware, ESP32-CAM), see the README. ESP-IDF

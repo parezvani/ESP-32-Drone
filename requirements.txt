@@ -2,3 +2,4 @@ flask>=3.0
 requests>=2.31
 ultralytics>=8.0
 opencv-python>=4.8
+lap>=0.5.12          # BoT-SORT tracker used by model.track(persist=True) in fire_detect.py
