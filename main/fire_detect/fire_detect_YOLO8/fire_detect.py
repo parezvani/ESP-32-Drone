@@ -8,7 +8,17 @@ from bearing import fire_position
 MODEL_PATH = "Trained-Models/last.pt"
 VIDEO_PATH = os.environ.get("FIREFLY_VIDEO", "test_videos/palisades_fire.mp4")
 MAP_SERVER = os.environ.get("FIREFLY_SERVER", "http://127.0.0.1:5050")
+FIREFLY_JWT = os.environ.get("FIREFLY_JWT", "").strip()
+FIREFLY_API_KEY = os.environ.get("FIREFLY_API_KEY", "").strip()
 CAMERA = {"hfov_deg": 60.0, "vfov_deg": 40.0, "tilt_deg": 90.0}
+
+
+def _auth_headers():
+    if FIREFLY_API_KEY:
+        return {"X-API-Key": FIREFLY_API_KEY}
+    if FIREFLY_JWT:
+        return {"Authorization": f"Bearer {FIREFLY_JWT}"}
+    return {}
 
 #cam - spped cont - vtx - pc reciever - python
 
@@ -50,7 +60,7 @@ def report_fire(frame_shape, boxes):
     real_area = real_w * real_h
 
     try:
-        drones = requests.get(f"{MAP_SERVER}/api/state", timeout=1.0).json().get("drones", {})
+        drones = requests.get(f"{MAP_SERVER}/api/state", headers=_auth_headers(), timeout=1.0).json().get("drones", {})
         drone = next(iter(drones.values()), {}) if drones else {}
     except requests.RequestException as e:
         print(f"[warn] could not fetch drone state: {e}")
@@ -71,7 +81,7 @@ def report_fire(frame_shape, boxes):
               f"bearing={pos['bearing_deg']:.0f}° dist={pos['distance_m']:.0f}m")
 
     try:
-        r = requests.post(f"{MAP_SERVER}/api/fire", json=payload, timeout=1.0)
+        r = requests.post(f"{MAP_SERVER}/api/fire", json=payload, headers=_auth_headers(), timeout=1.0)
         if not r.ok:
             print(f"[warn] /api/fire returned {r.status_code}: {r.text}")
     except requests.RequestException as e:

@@ -790,13 +790,24 @@ def delete_drone(drone_id):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @app.get("/api/state")
-@require_jwt
 def get_state():
     """
     Returns only the drones and fires belonging to the authenticated user.
-    An unauthenticated caller gets a 401 before reaching this code.
+    Authenticates via X-API-Key (worker path) or JWT (browser path).
     """
-    uid = request.user_id  # None in local dev (no JWT_SECRET)
+    api_key = request.headers.get("X-API-Key", "").strip()
+    uid = None
+    if api_key:
+        _drone_id_str, drone_row = _resolve_api_key()
+        if not drone_row:
+            return jsonify({"error": "invalid or revoked API key"}), 403
+        uid = drone_row["user_id"]
+    else:
+        token = _extract_jwt_token()
+        claims = _verify_jwt(token) if token else None
+        if JWT_SECRET and not claims:
+            return jsonify({"error": "auth required"}), 401
+        uid = (claims or {}).get("sub")
     with _lock:
         if uid:
             user_drones = {
@@ -832,20 +843,35 @@ def get_state():
 
 
 @app.post("/api/fire")
-@require_jwt
 def post_fire():
     """
     Accept a fire detection from the YOLO detector or ingest worker.
-    Requires a valid JWT so anonymous callers cannot inject fake fire events.
-    The fire is stored under the authenticated user's ID.
+    Authenticates via X-API-Key (preferred for long-running workers) or JWT
+    (browser sessions). The fire is stored under the user_id that owns the
+    drone whose key was presented, or under the JWT's sub claim.
     """
     global _fire_id
+
+    api_key = request.headers.get("X-API-Key", "").strip()
+    uid = None
+    if api_key:
+        _drone_id_str, drone_row = _resolve_api_key()
+        if not drone_row:
+            return jsonify({"error": "invalid or revoked API key"}), 403
+        uid = drone_row["user_id"]
+    else:
+        token = _extract_jwt_token()
+        claims = _verify_jwt(token) if token else None
+        if JWT_SECRET and not claims:
+            return jsonify({"error": "auth required"}), 401
+        uid = (claims or {}).get("sub")
+
     data = request.get_json(force=True, silent=True) or {}
     lat, lon, err = _validate_coords(data.get("lat"), data.get("lon"))
     if err:
         return jsonify({"error": err}), 400
 
-    uid = request.user_id or "__local__"
+    uid = uid or "__local__"
 
     with _lock:
         _fire_id += 1
