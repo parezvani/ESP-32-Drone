@@ -81,24 +81,33 @@ function fmtAge(ts, now) {
 function renderFireMarker(f, isStale) {
   const color = isStale ? "#888" : "#ffeb3b";
   const fill = isStale ? "#444" : "#ff4a1c";
+
+  const details = [
+    f.size_m != null ? `Size: ${f.size_m.toFixed(1)} m` : null,
+    f.area_m2 != null ? `Area: ${f.area_m2.toFixed(1)} m²` : null,
+    f.confidence != null ? `Confidence: ${(f.confidence * 100).toFixed(0)}%` : null,
+    f.observations != null ? `Observations: ${f.observations}` : null,
+    f.source ? `Source: ${f.source}` : null,
+    `Time: ${fmtTime(f.ts)}`,
+  ].filter(Boolean).join("<br>");
+  const popupHtml = `<b>🔥 Fire #${f.id}</b><br>${details}`;
+
   if (fireMarkers[f.id]) {
+    // Existing marker: refresh style, position (centroid may have drifted
+    // after merges), and popup contents so the latest server state is shown.
     fireMarkers[f.id].setStyle({ color, fillColor: fill, fillOpacity: isStale ? 0.4 : 0.85 });
+    fireMarkers[f.id].setLatLng([f.lat, f.lon]);
+    fireMarkers[f.id].setPopupContent(popupHtml);
     return;
   }
+
   const marker = L.circleMarker([f.lat, f.lon], {
     radius: 10,
     color, weight: 2,
     fillColor: fill, fillOpacity: 0.85,
     className: "fire-marker",
   });
-  const details = [
-    f.size_m != null ? `Size: ${f.size_m} m` : null,
-    f.area_m2 != null ? `Area: ${f.area_m2} m²` : null,
-    f.confidence != null ? `Confidence: ${(f.confidence * 100).toFixed(0)}%` : null,
-    f.source ? `Source: ${f.source}` : null,
-    `Time: ${fmtTime(f.ts)}`,
-  ].filter(Boolean).join("<br>");
-  marker.bindPopup(`<b>🔥 Fire #${f.id}</b><br>${details}`);
+  marker.bindPopup(popupHtml);
   marker.addTo(fireLayer);
   fireMarkers[f.id] = marker;
 }
