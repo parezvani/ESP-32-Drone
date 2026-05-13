@@ -272,14 +272,17 @@ async function poll() {
 
       const isOffline = droneAge > OFFLINE_DRONE_S;
 
+      const label = d.name || id;
+
       if (!droneMarkers[id]) {
         droneMarkers[id] = L.marker(latlng, { icon: droneIcon })
           .addTo(map)
-          .bindPopup(`<b>${id}</b>`);
+          .bindPopup(`<b>${label}</b>`);
         trailPoints[id] = [];
         trails[id] = L.polyline([], { color: "#4aa3ff", weight: 2, opacity: 0.7 }).addTo(map);
-      } else if (!isOffline) {
-        droneMarkers[id].setLatLng(latlng);
+      } else {
+        droneMarkers[id].setPopupContent(`<b>${label}</b>`);
+        if (!isOffline) droneMarkers[id].setLatLng(latlng);
       }
 
       // Visually mark offline markers as ghosted (CSS class on the icon DOM)

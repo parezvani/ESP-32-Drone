@@ -1,5 +1,6 @@
 import hashlib
 import json
+import math
 import os
 import secrets
 import socket
@@ -309,6 +310,14 @@ GPS_UDP_PORT = 4210
 TRIANGULATE_COOLDOWN_S = 5.0
 TRIANGULATE_FRESHNESS_S = 10.0
 DRONE_TIMEOUT_S = 600.0  # 10 minutes — keep drones visible as "offline" before dropping
+
+# Fire merge / growth — one real fire detected repeatedly should land as one
+# row whose perimeter grows with confirmations, but is capped so a stationary
+# camera staring at the same flame forever can't inflate it indefinitely.
+FIRE_MERGE_DISTANCE_M = 30.0       # detections within this radius merge with an existing fire
+FIRE_MERGE_WINDOW_S = 300.0        # only merge with fires reported in the last 5 minutes
+FIRE_SIZE_GROWTH_M = 2.0           # each confirmation adds 2 m to the perimeter estimate
+FIRE_SIZE_CAP_M = 50.0             # hard ceiling on the perimeter from confirmations alone
 
 _lock = threading.Lock()
 
@@ -873,19 +882,55 @@ def post_fire():
 
     uid = uid or "__local__"
 
+    now = time.time()
+    new_size = data.get("size_m")
+    new_conf = data.get("confidence")
+
     with _lock:
-        _fire_id += 1
-        fire = {
-            "id": _fire_id,
-            "lat": lat,
-            "lon": lon,
-            "size_m": data.get("size_m"),
-            "area_m2": data.get("area_m2"),
-            "confidence": data.get("confidence"),
-            "ts": time.time(),
-            "source": data.get("source", "detection"),
-        }
-        _fires_by_user.setdefault(uid, []).append(fire)
+        user_fires = _fires_by_user.setdefault(uid, [])
+
+        # Try to merge into an existing recent fire within range
+        match = None
+        m_per_deg_lat = 111320.0
+        m_per_deg_lon = 111320.0 * math.cos(math.radians(lat))
+        for f in user_fires:
+            if (now - f.get("ts", 0)) > FIRE_MERGE_WINDOW_S:
+                continue
+            dy = (f["lat"] - lat) * m_per_deg_lat
+            dx = (f["lon"] - lon) * m_per_deg_lon
+            if (dx * dx + dy * dy) <= FIRE_MERGE_DISTANCE_M * FIRE_MERGE_DISTANCE_M:
+                match = f
+                break
+
+        if match is not None:
+            # Merge: update the existing fire with this observation
+            obs = match.get("observations", 1) + 1
+            match["observations"] = obs
+            # Running-mean centroid
+            match["lat"] = (match["lat"] * (obs - 1) + lat) / obs
+            match["lon"] = (match["lon"] * (obs - 1) + lon) / obs
+            # Grow perimeter up to the cap
+            current_size = match.get("size_m") or new_size or 0.0
+            match["size_m"] = min(current_size + FIRE_SIZE_GROWTH_M, FIRE_SIZE_CAP_M)
+            # Keep highest confidence seen
+            if new_conf is not None:
+                match["confidence"] = max(match.get("confidence") or 0.0, new_conf)
+            match["ts"] = now
+            fire = match
+        else:
+            _fire_id += 1
+            fire = {
+                "id": _fire_id,
+                "lat": lat,
+                "lon": lon,
+                "size_m": new_size,
+                "area_m2": data.get("area_m2"),
+                "confidence": new_conf,
+                "ts": now,
+                "source": data.get("source", "detection"),
+                "observations": 1,
+            }
+            user_fires.append(fire)
 
     return jsonify(fire)
 
