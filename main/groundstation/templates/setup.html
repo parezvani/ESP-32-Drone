@@ -304,17 +304,7 @@
       </div>
     </div>
 
-  </div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const SUPABASE_URL = "{{ supabase_url }}";
-    const SUPABASE_KEY = "{{ supabase_key }}";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    async function getAuthHeader() {
-      const { data: { session } } = await sb.auth.getSession();
-      return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
-    }
-
+  </div><script>
     // ── Step nav ──────────────────────────────────────────────────
     let cur = 0;
     const STEPS = 4;
