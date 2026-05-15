@@ -4,6 +4,34 @@ const OFFLINE_DRONE_S = 30;  // show as OFFLINE (assume the drone disconnected)
 const STALE_FIRE_S = 60;
 const FRESH_FIRE_S = 30;
 
+// ── Fire banner notification ──────────────────────────────────────
+const _seenFireIds = new Set();
+let _bannerTimer = null;
+ 
+function _showFireBanner(fires) {
+  let banner = document.getElementById("ff-fire-banner");
+  if (!banner) {
+    banner = document.createElement("div");
+    banner.id = "ff-fire-banner";
+    document.body.appendChild(banner);
+  }
+  const newest = fires[fires.length - 1];
+  const conf = newest.confidence != null
+    ? ` · ${(newest.confidence * 100).toFixed(0)}% confidence` : "";
+  banner.textContent = fires.length > 1
+    ? `🔥 ${fires.length} new fires detected${conf}`
+    : `🔥 Fire detected${conf}`;
+  banner.classList.add("show");
+  clearTimeout(_bannerTimer);
+  _bannerTimer = setTimeout(() => banner.classList.remove("show"), 6000);
+}
+ 
+function _notifyNewFires(fires) {
+  const newFires = fires.filter(f => !_seenFireIds.has(f.id));
+  fires.forEach(f => _seenFireIds.add(f.id));
+  if (newFires.length) _showFireBanner(newFires);
+}
+
 const map = L.map("map", { zoomControl: true }).setView([36.995578, -122.058878], 16);
 
 const BASEMAPS = {
@@ -348,6 +376,7 @@ async function poll() {
     renderDroneList(s.drones, now, anyFireSeen);
     renderFireList(s.fires, now, anyFireSeen);
     updateAlert(anyFireSeen, Object.keys(s.drones).length, s.fires, now, s.drones);
+    if (s.fires && s.fires.length) _notifyNewFires(s.fires); // call notification
 
     $("server-time").textContent = fmtTime(now);
 
