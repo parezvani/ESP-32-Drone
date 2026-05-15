@@ -165,7 +165,7 @@
   <div class="hero-grid"></div>
   <div class="hero-pill"><span class="live-dot"></span><span>UCSC · Baskin Engineering · Team 6</span></div>
   <h1 class="hero-title">Catch fires <span>before</span> they spread.</h1>
-  <p class="hero-sub">A coordinated drone fleet that locates wildfires and streams live telemetry to a single operator map. Bearing rays from two drones converge on a GPS coordinate — and you see it.</p>
+  <p class="hero-sub">A coordinated drone fleet that locates wildfires and feeds everything to a single operator map. Multiple drones spot fires from different angles. You get a pin on the map.</p>
   <div class="hero-cta">
     <a class="btn btn-fire" href="#how">See How It Works<span class="btn-arrow">→</span></a>
     <a class="btn btn-ghost" href="#showcase">View the Console</a>
@@ -198,14 +198,14 @@
         <div class="problem-desc">Polar-orbit satellites typically revisit a given location every 1–6 hours. A drone fleet on patrol sees ignition the moment it begins.</div>
       </div>
       <div class="problem-card reveal">
-        <div class="problem-stat">$893B</div>
+        <div class="problem-stat">est. $893B</div>
         <div class="problem-title">Annual U.S. wildfire cost</div>
         <div class="problem-desc">Property loss, suppression, healthcare, and ecosystem damage compound every season. Early detection is the single highest-leverage intervention.</div>
       </div>
       <div class="problem-card reveal">
         <div class="problem-stat">73%</div>
         <div class="problem-title">Of acres burned in the West</div>
-        <div class="problem-desc">A fire under 10 acres at first response stays under 10 acres 95% of the time. Every minute beyond that costs hectares.</div>
+        <div class="problem-desc">A fire under 10 acres at first response stays under 10 acres 95% of the time. Every minute of delay is acres lost.</div>
       </div>
     </div>
   </div>
@@ -215,8 +215,8 @@
   <div class="container">
     <div class="showcase-head reveal">
       <div class="section-label">Live Operator View</div>
-      <h2 class="section-title">A fire is just a pin on the map.</h2>
-      <p class="section-body" style="margin: 0 auto;">When two drones see the same source from different angles, FireFly triangulates the bearing rays into a single GPS coordinate — and operators see it instantly.</p>
+      <h2 class="section-title">A fire shows up as a pin on the map.</h2>
+      <p class="section-body" style="margin: 0 auto;">When drones see the same source from different angles, FireFly triangulates the rays into a single GPS coordinate for operators to see.</p>
     </div>
     <div class="showcase-frame reveal">
       <svg class="showcase-rays" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
@@ -244,7 +244,7 @@
   <div class="container">
     <div class="features-head reveal">
       <div class="section-label">Capabilities</div>
-      <h2 class="section-title">Built for the worst day on the worst terrain.</h2>
+      <h2 class="section-title">Built for bad terrain and even worse days.</h2>
     </div>
     <div class="features-grid">
       <div class="feature-card reveal">
@@ -286,7 +286,7 @@
     <div class="how-header reveal">
       <div class="section-label">The Pipeline</div>
       <h2 class="section-title">From spark to map pin in seconds.</h2>
-      <p class="section-body">Each stage runs in parallel across the fleet. There is no single point of failure.</p>
+      <p class="section-body">Each stage runs in parallel across the fleet. If one drone goes down, the rest keep watching.</p>
     </div>
     <div class="steps">
       <div class="step reveal"><div class="step-num">01</div><div class="step-title">Patrol</div><p class="step-desc">Drones broadcast GPS telemetry over UDP and HTTPS to the ground station every fix cycle.</p></div>
@@ -301,7 +301,7 @@
   <div class="container">
     <div class="reveal">
       <span class="cta-pill">Open Source · Research Project</span>
-      <h2 class="cta-title">Locate fires. <span>See the data.</span></h2>
+      <h2 class="cta-title">The fire doesn't wait. <span>Neither should you.</span></h2>
       <p class="cta-sub">FireFly is a research-stage system. Open the operator console to explore how multi-drone triangulation and live telemetry come together on one map.</p>
       <div class="cta-actions">
         <a class="btn btn-fire" href="/login">Open Console<span class="btn-arrow">→</span></a>
