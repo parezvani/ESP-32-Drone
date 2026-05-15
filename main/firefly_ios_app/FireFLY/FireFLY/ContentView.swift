@@ -139,7 +139,7 @@ struct ContentView: View {
             .tint(.blue)
 
             if !restoreMessage.isEmpty {
-                FireFLYStatusNote(
+                FireFLYInlineStatus(
                     message: restoreMessage,
                     systemImage: "key.fill",
                     tint: .blue
