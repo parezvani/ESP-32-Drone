@@ -9,6 +9,11 @@ import SwiftUI
 
 struct AppRootView: View {
     @EnvironmentObject private var authStore: FireFLYAuthStore
+    private let startsAuthObservation: Bool
+
+    init(startsAuthObservation: Bool = true) {
+        self.startsAuthObservation = startsAuthObservation
+    }
 
     var body: some View {
         Group {
@@ -22,7 +27,9 @@ struct AppRootView: View {
             }
         }
         .task {
-            authStore.start()
+            if startsAuthObservation {
+                authStore.start()
+            }
         }
         .onOpenURL { url in
             FireFLYSupabase.client.handle(url)
@@ -293,3 +300,20 @@ private extension View {
             )
     }
 }
+
+#if DEBUG
+#Preview("Signed Out") {
+    AppRootView(startsAuthObservation: false)
+        .environmentObject(FireFLYAuthStore.preview(phase: .signedOut))
+}
+
+#Preview("Restoring") {
+    AppRootView(startsAuthObservation: false)
+        .environmentObject(FireFLYAuthStore.preview(phase: .restoring))
+}
+
+#Preview("Signed In") {
+    AppRootView(startsAuthObservation: false)
+        .environmentObject(FireFLYAuthStore.preview(phase: .signedIn))
+}
+#endif

@@ -212,3 +212,23 @@ final class FireFLYAuthStore: ObservableObject {
         return error.localizedDescription
     }
 }
+
+#if DEBUG
+extension FireFLYAuthStore {
+    static func preview(phase: Phase, fullName: String = "FireFLY Operator") -> FireFLYAuthStore {
+        let store = FireFLYAuthStore()
+        store.phase = phase
+
+        if phase == .signedIn {
+            store.profile = FireFLYProfile(
+                id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+                fullName: fullName,
+                createdAt: "2026-05-15T00:00:00Z",
+                updatedAt: "2026-05-15T00:00:00Z"
+            )
+        }
+
+        return store
+    }
+}
+#endif

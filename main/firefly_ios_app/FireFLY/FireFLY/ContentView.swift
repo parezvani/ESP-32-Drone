@@ -329,3 +329,10 @@ private extension View {
             .padding(.top, 2)
     }
 }
+
+#if DEBUG
+#Preview("Provisioning") {
+    ContentView()
+        .environmentObject(FireFLYAuthStore.preview(phase: .signedIn))
+}
+#endif
