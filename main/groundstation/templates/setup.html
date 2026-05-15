@@ -4,970 +4,362 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FireFly — Setup</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='colors_and_type.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0c0c0e; color: #f5f5f5; margin: 0; padding: 24px;
+           font-family: system-ui, sans-serif; min-height: 100vh; box-sizing: border-box; }
+    .container { max-width: 720px; margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between;
+             padding-bottom: 16px; border-bottom: 1px solid #2a2a2e; margin-bottom: 24px; }
+    h1 { color: #ff7a3a; margin: 0; font-size: 22px; }
+    nav a { color: #f5f5f5; text-decoration: none; margin-left: 16px; font-size: 13px; }
+    nav a:hover { color: #ff7a3a; }
 
-    :root {
-      --fire:      #ff4a1c;
-      --ember:     #ff7a3a;
-      --night:     #07070a;
-      --panel:     #111116;
-      --surface:   #18181f;
-      --surface-2: #1d1d20;
-      --border:    #25252f;
-      --border-2:  #2a2a2e;
-      --text:      #f0f0f5;
-      --smoke:     #b0b0b8;
-      --muted:     #888897;
-      --info:      #4aa3ff;
-      --ok:        #4ade80;
-      --mono:      'JetBrains Mono', ui-monospace, monospace;
-      --display:   'Bebas Neue', sans-serif;
-      --body:      'DM Sans', system-ui, sans-serif;
-    }
-
-    html { scroll-behavior: smooth; }
-    body {
-      background: var(--night);
-      color: var(--text);
-      font-family: var(--body);
-      font-size: 14px;
-      line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-
-    body::before {
-      content: '';
-      position: fixed; inset: 0; pointer-events: none; z-index: 0;
-      background-image:
-        linear-gradient(rgba(255,74,28,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,74,28,0.03) 1px, transparent 1px);
-      background-size: 48px 48px;
-    }
-    body::after {
-      content: '';
-      position: fixed;
-      bottom: -200px; left: 50%; transform: translateX(-50%);
-      width: 900px; height: 500px;
-      background: radial-gradient(ellipse, rgba(255,74,28,0.09) 0%, transparent 70%);
-      pointer-events: none; z-index: 0;
-    }
-
-    /* ── NAV ── */
-    nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 32px;
-      background: rgba(7,7,10,0.88);
-      backdrop-filter: blur(20px) saturate(150%);
-      border-bottom: 1px solid var(--border);
-    }
-    .nav-brand {
-      font-family: var(--display);
-      font-size: 24px; letter-spacing: 4px;
-      color: var(--ember); text-decoration: none;
-    }
-    .nav-links { display: flex; align-items: center; gap: 8px; }
-    .nav-link {
-      padding: 7px 14px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border-2);
-      border-radius: 999px;
-      color: var(--smoke); font-size: 12px; font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s;
-      font-family: var(--body);
-    }
-    .nav-link:hover { color: var(--text); border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.07); }
-    .nav-link.active { color: var(--ember); border-color: rgba(255,122,58,0.35); background: rgba(255,122,58,0.07); }
-
-    /* ── LAYOUT ── */
-    .page {
-      position: relative; z-index: 1;
-      max-width: 760px; margin: 0 auto;
-      padding: 100px 24px 80px;
-    }
-
-    /* ── PAGE HEADER ── */
-    .page-header { margin-bottom: 40px; }
-    .page-eyebrow {
-      font-size: 11px; font-weight: 600; letter-spacing: 4px;
-      text-transform: uppercase; color: var(--fire);
-      margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
-    }
-    .page-eyebrow::before {
-      content: '';
-      display: inline-block; width: 20px; height: 1px;
-      background: var(--fire); opacity: 0.7;
-    }
-    .page-title {
-      font-family: var(--display);
-      font-size: clamp(38px, 5.5vw, 56px);
-      letter-spacing: 3px; line-height: 1;
-      margin-bottom: 12px;
-    }
-    .page-sub {
-      font-size: 14px; color: var(--smoke); font-weight: 300;
-      max-width: 520px; line-height: 1.65;
-    }
-    .skip-row {
-      display: flex; align-items: center; gap: 12px; margin-top: 20px;
-    }
-    .btn-skip {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 18px;
-      border: 1px solid var(--border-2); border-radius: 999px;
-      background: transparent;
-      color: var(--muted); font-size: 12px; font-weight: 600;
-      text-decoration: none; transition: all 0.15s; font-family: var(--body);
-    }
-    .btn-skip:hover { color: var(--text); border-color: rgba(255,255,255,0.18); background: rgba(255,255,255,0.05); }
-    .skip-hint { font-size: 11px; color: var(--muted); }
-
-    /* ── PROGRESS RAIL ── */
-    .progress-rail {
-      display: flex; align-items: flex-start;
-      margin-bottom: 36px;
-    }
-    .step-dot-wrap {
-      display: flex; flex-direction: column; align-items: center; gap: 6px;
-      cursor: pointer; flex: 0 0 auto;
-    }
-    .step-dot {
-      width: 30px; height: 30px; border-radius: 50%;
-      border: 2px solid var(--border-2);
-      background: var(--panel);
+    /* ── Progress rail ── */
+    .rail { display: flex; align-items: flex-start; margin-bottom: 24px; }
+    .rail-step { display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; }
+    .rail-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid #2a2a2e; background: #131316;
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--mono); font-size: 11px; font-weight: 500;
-      color: var(--muted);
-      transition: all 0.25s; position: relative;
+      font-size: 11px; color: #666; font-family: ui-monospace, monospace;
+      transition: all 0.2s; position: relative;
     }
-    .step-dot.active {
-      border-color: var(--ember);
-      background: rgba(255,122,58,0.12);
-      color: var(--ember);
-      box-shadow: 0 0 0 4px rgba(255,122,58,0.1);
-    }
-    .step-dot.done {
-      border-color: var(--ok);
-      background: rgba(74,222,128,0.1);
-      color: transparent;
-    }
-    .step-dot.done::after {
+    .rail-dot.active { border-color: #ff7a3a; background: rgba(255,122,58,0.12); color: #ff7a3a; box-shadow: 0 0 0 3px rgba(255,122,58,0.1); }
+    .rail-dot.done   { border-color: #4ade80; background: rgba(74,222,128,0.1); color: transparent; }
+    .rail-dot.done::after {
       content: '';
       position: absolute; inset: 5px;
       background: url("data:image/svg+xml,%3Csvg viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2 6l3 3 5-5' stroke='%234ade80' stroke-width='1.8' stroke-linecap='round' fill='none'/%3E%3C/svg%3E") center/contain no-repeat;
     }
-    .step-label {
-      font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
-      text-transform: uppercase; color: var(--muted);
-      white-space: nowrap; transition: color 0.2s;
-    }
-    .step-dot-wrap.active .step-label { color: var(--ember); }
-    .step-dot-wrap.done   .step-label { color: var(--ok); }
-    .step-connector {
-      flex: 1; height: 1px; background: var(--border);
-      margin: 0 4px;
-      position: relative; top: 14px;
-      transition: background 0.4s;
-    }
-    .step-connector.done { background: rgba(74,222,128,0.35); }
+    .rail-label { font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; transition: color 0.2s; }
+    .rail-step.active .rail-label { color: #ff7a3a; }
+    .rail-step.done   .rail-label { color: #4ade80; }
+    .rail-conn { flex: 1; height: 1px; background: #2a2a2e; margin: 0 2px; position: relative; top: -18px; transition: background 0.35s; }
+    .rail-conn.done { background: rgba(74,222,128,0.35); }
 
-    /* ── STEP CARDS ── */
-    .step-card {
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      display: none;
-      animation: cardIn 0.28s ease both;
-    }
+    /* ── Section cards ── */
+    .section { background: rgba(18, 18, 20, 0.95); padding: 20px; border-radius: 10px; margin-bottom: 16px; }
+    .section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #aaa; margin: 0 0 16px; }
+
+    .step-card { display: none; }
     .step-card.visible { display: block; }
-    @keyframes cardIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .card-head {
-      padding: 20px 24px 16px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: flex-start; gap: 16px;
-    }
-    .card-num {
-      font-family: var(--display);
-      font-size: 44px; letter-spacing: 2px; line-height: 1;
-      color: var(--fire); opacity: 0.22; flex-shrink: 0; user-select: none;
-    }
-    .card-meta { flex: 1; }
-    .card-title {
-      font-family: var(--display);
-      font-size: 24px; letter-spacing: 2px; line-height: 1.1;
-      margin-bottom: 5px;
-    }
-    .card-desc { font-size: 13px; color: var(--smoke); font-weight: 300; line-height: 1.6; }
-
-    .card-body { padding: 22px 24px; display: flex; flex-direction: column; gap: 16px; }
 
     /* ── Instruction rows ── */
     .instr {
-      display: flex; gap: 14px;
-      padding: 13px 15px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 10px 12px; background: #131316;
+      border: 1px solid #2a2a2e; border-radius: 6px; margin-bottom: 10px;
     }
-    .instr-num {
-      flex-shrink: 0;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: rgba(255,74,28,0.12);
-      border: 1px solid rgba(255,74,28,0.3);
-      color: var(--ember); font-size: 10px; font-weight: 700;
+    .instr-n {
+      flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(255,74,28,0.12); border: 1px solid rgba(255,74,28,0.25);
+      color: #ff7a3a; font-size: 9px; font-weight: 700;
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--mono); margin-top: 1px;
+      font-family: ui-monospace, monospace; margin-top: 1px;
     }
-    .instr-text { font-size: 13px; color: var(--smoke); line-height: 1.65; }
-    .instr-text strong { color: var(--text); font-weight: 600; }
-    .instr-text a { color: var(--ember); text-decoration: none; }
-    .instr-text a:hover { text-decoration: underline; }
-    code.ic {
-      font-family: var(--mono); font-size: 11px; color: var(--info);
-      background: rgba(74,163,255,0.08); border: 1px solid rgba(74,163,255,0.18);
-      border-radius: 4px; padding: 1px 5px;
-    }
+    .instr-t { font-size: 13px; color: #b0b0b8; line-height: 1.6; }
+    .instr-t strong { color: #f5f5f5; }
+    .instr-t a { color: #ff7a3a; text-decoration: none; }
+    .instr-t a:hover { text-decoration: underline; }
+    .instr-t code { font-family: ui-monospace, monospace; font-size: 12px; color: #4aa3ff; background: rgba(74,163,255,0.07); padding: 1px 5px; border-radius: 3px; }
 
     /* ── Code blocks ── */
-    .code-block {
-      background: rgba(0,0,0,0.45);
-      border: 1px solid var(--border-2);
-      border-radius: 8px; overflow: hidden;
-    }
-    .code-block-head {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 7px 14px;
-      background: rgba(255,255,255,0.025);
-      border-bottom: 1px solid var(--border);
-    }
-    .code-lang {
-      font-family: var(--mono); font-size: 10px; font-weight: 500;
-      color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
-    }
-    .copy-btn {
-      background: transparent; border: 1px solid var(--border-2);
-      border-radius: 4px; color: var(--muted);
-      font-size: 10px; font-weight: 600; font-family: var(--body);
-      padding: 3px 8px; cursor: pointer; transition: all 0.15s;
-    }
-    .copy-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
-    .copy-btn.copied { color: var(--ok); border-color: rgba(74,222,128,0.4); }
-    pre {
-      padding: 13px 16px;
-      font-family: var(--mono); font-size: 12px; line-height: 1.7;
-      color: var(--smoke); overflow-x: auto; margin: 0;
-    }
-    pre .kw  { color: var(--ember); }
-    pre .str { color: #9de8a0; }
-    pre .cmt { color: var(--muted); font-style: italic; }
-    pre .val { color: var(--info); }
+    .code-block { background: #0c0c0e; border: 1px solid #2a2a2e; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+    .code-head { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid #2a2a2e; }
+    .code-lang { font-family: ui-monospace, monospace; font-size: 10px; color: #555; text-transform: uppercase; letter-spacing: 0.08em; }
+    .copy-btn { background: transparent; border: 1px solid #2a2a2e; border-radius: 3px; color: #555; font-size: 10px; font-weight: 600; padding: 2px 7px; cursor: pointer; transition: all 0.15s; }
+    .copy-btn:hover { color: #f5f5f5; border-color: #444; }
+    .copy-btn.copied { color: #4ade80; border-color: rgba(74,222,128,0.35); }
+    pre { padding: 12px; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.7; color: #b0b0b8; overflow-x: auto; margin: 0; }
+    pre .kw  { color: #ff7a3a; }
+    pre .str { color: #8ecf8e; }
+    pre .cmt { color: #555; font-style: italic; }
+    pre .hl  { color: #4aa3ff; }
 
     /* ── Config table ── */
-    .config-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .config-table th {
-      text-align: left; padding: 8px 14px;
-      color: var(--muted); font-weight: 600; font-size: 10px;
-      letter-spacing: 0.08em; text-transform: uppercase;
-      background: rgba(255,255,255,0.02);
-      border-bottom: 1px solid var(--border);
-      font-family: var(--body);
-    }
-    .config-table td {
-      padding: 10px 14px; border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    .config-table tr:last-child td { border-bottom: none; }
-    .config-table .key { font-family: var(--mono); color: var(--info); }
-    .config-table .val { font-family: var(--mono); color: #9de8a0; }
-    .config-table .desc { color: var(--smoke); font-size: 12px; }
+    .cfg-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+    .cfg-table th { text-align: left; padding: 6px 12px; color: #555; font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; background: rgba(255,255,255,0.02); border-bottom: 1px solid #2a2a2e; }
+    .cfg-table td { padding: 8px 12px; border-bottom: 1px solid #1a1a1e; vertical-align: middle; }
+    .cfg-table tr:last-child td { border-bottom: none; }
+    .cfg-table .k { color: #4aa3ff; font-family: ui-monospace, monospace; }
+    .cfg-table .v { color: #8ecf8e; font-family: ui-monospace, monospace; font-weight: 500; }
+    .cfg-table .d { color: #888; font-size: 11px; }
 
-    /* ── Tip / warn callouts ── */
-    .tip, .warn {
-      display: flex; gap: 12px;
-      padding: 12px 15px; border-radius: 8px;
-    }
-    .tip {
-      background: rgba(255,122,58,0.06);
-      border: 1px solid rgba(255,122,58,0.2);
-      border-left: 3px solid var(--ember);
-    }
-    .warn {
-      background: rgba(255,74,28,0.06);
-      border: 1px solid rgba(255,74,28,0.2);
-      border-left: 3px solid var(--fire);
-    }
-    .tip-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-    .tip-text, .warn-text { font-size: 12px; color: var(--smoke); line-height: 1.6; }
-    .tip-text strong, .warn-text strong { color: var(--text); }
-    .tip-text a { color: var(--ember); text-decoration: none; }
-
-    /* ── Pill badge ── */
-    .pill {
-      display: inline-flex; align-items: center;
-      padding: 2px 8px; border-radius: 999px;
-      font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
-      background: rgba(255,122,58,0.12); color: var(--ember);
-      border: 1px solid rgba(255,122,58,0.25); vertical-align: middle;
-    }
-    .pill.ok   { background: rgba(74,222,128,0.1); color: var(--ok);   border-color: rgba(74,222,128,0.25); }
-    .pill.info { background: rgba(74,163,255,0.1); color: var(--info); border-color: rgba(74,163,255,0.25); }
-
-    /* ── Register form (step 0) ── */
-    .register-form {
-      display: flex; flex-direction: column; gap: 12px;
-      padding: 16px;
-      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    }
-    .register-form label {
-      font-size: 12px; font-weight: 600; color: var(--smoke);
-      margin-bottom: 4px; display: block;
-    }
-    .field-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
-    .field-row { display: flex; gap: 8px; }
-
-    .text-input {
-      flex: 1; padding: 10px 13px;
-      background: var(--surface-2); border: 1px solid var(--border-2);
-      border-radius: 8px; color: var(--text);
-      font-family: var(--mono); font-size: 13px;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .text-input:focus { outline: none; border-color: var(--ember); box-shadow: 0 0 0 3px rgba(255,122,58,0.12); }
-    .text-input::placeholder { color: var(--muted); }
-    .text-input:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .btn-register {
-      padding: 10px 20px; border-radius: 8px; border: none;
-      background: linear-gradient(180deg, var(--ember) 0%, var(--fire) 100%);
-      color: #1a0800; font-size: 13px; font-weight: 700;
-      font-family: var(--body); cursor: pointer; white-space: nowrap;
-      box-shadow: 0 3px 12px rgba(255,74,28,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
-      transition: all 0.15s;
-    }
-    .btn-register:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
-    .btn-register:disabled { opacity: 0.45; cursor: not-allowed; filter: none; transform: none; }
-
-    .register-err {
-      font-size: 12px; color: var(--fire); display: none;
-      padding: 8px 12px;
-      background: rgba(255,74,28,0.07); border: 1px solid rgba(255,74,28,0.2);
-      border-radius: 6px;
-    }
-    .register-err.show { display: block; }
-
-    /* ── API key reveal ── */
-    .key-reveal {
-      display: none; flex-direction: column; gap: 10px;
-      padding: 16px;
-      background: rgba(74,222,128,0.05);
-      border: 1px solid rgba(74,222,128,0.25); border-radius: 8px;
-      animation: cardIn 0.25s ease both;
-    }
-    .key-reveal.show { display: flex; }
-    .key-reveal-head {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; font-weight: 700; color: var(--ok);
-      flex-wrap: wrap;
-    }
-    .key-box { display: flex; align-items: stretch; gap: 8px; }
-    .key-value {
-      flex: 1; padding: 10px 13px;
-      background: rgba(0,0,0,0.5); border: 1px solid rgba(74,222,128,0.25);
-      border-radius: 8px; font-family: var(--mono); font-size: 11px;
-      color: var(--ok); word-break: break-all; user-select: all; line-height: 1.5;
-    }
-    .btn-copy-key {
-      flex-shrink: 0; padding: 9px 14px; border-radius: 8px;
-      border: 1px solid rgba(74,222,128,0.35);
-      background: rgba(74,222,128,0.08); color: var(--ok);
-      font-size: 11px; font-weight: 700; font-family: var(--body);
-      cursor: pointer; transition: all 0.15s; white-space: nowrap;
-    }
-    .btn-copy-key:hover { background: rgba(74,222,128,0.14); }
-    .btn-copy-key.copied { background: rgba(74,222,128,0.2); }
-    .key-warn { font-size: 11px; color: #f59e0b; display: flex; align-items: flex-start; gap: 6px; }
-    .key-name-display {
-      font-family: var(--mono); font-size: 11px; color: var(--info);
-      background: rgba(74,163,255,0.08); border: 1px solid rgba(74,163,255,0.18);
-      border-radius: 4px; padding: 1px 6px;
-    }
-
-    /* ── Verify ── */
-    .verify-row { display: flex; gap: 8px; align-items: center; }
-    .verify-status { display: none; }
-    .verify-status.ok   { display: flex; align-items: center; gap: 6px; color: var(--ok);  font-size: 12px; font-weight: 600; }
-    .verify-status.fail { display: flex; align-items: center; gap: 6px; color: var(--fire); font-size: 12px; }
-    .btn-verify {
-      padding: 10px 16px; border-radius: 8px;
-      border: 1px solid var(--border-2);
-      background: rgba(255,255,255,0.05); color: var(--text);
-      font-size: 12px; font-weight: 600; font-family: var(--body);
-      cursor: pointer; white-space: nowrap; transition: all 0.15s;
-    }
-    .btn-verify:hover { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.2); }
-
-    /* ── Checklist ── */
-    .checklist {
-      padding: 16px;
-      background: rgba(74,222,128,0.05);
-      border: 1px solid rgba(74,222,128,0.18); border-radius: 8px;
-    }
-    .checklist-title { font-size: 12px; color: var(--ok); font-weight: 700; margin-bottom: 10px; }
-    .checklist label {
-      display: flex; align-items: center; gap: 10px;
-      cursor: pointer; font-size: 13px; color: var(--smoke); padding: 4px 0;
-    }
-    .checklist input[type=checkbox] { accent-color: var(--ok); width: 14px; height: 14px; cursor: pointer; }
+    /* ── Tip callout ── */
+    .tip { display: flex; gap: 10px; padding: 10px 12px; background: rgba(255,122,58,0.06); border: 1px solid rgba(255,122,58,0.18); border-left: 2px solid #ff7a3a; border-radius: 6px; font-size: 13px; color: #b0b0b8; line-height: 1.6; margin-bottom: 10px; }
+    .tip strong { color: #f5f5f5; }
 
     /* ── Card footer ── */
-    .card-foot {
-      padding: 14px 24px;
-      border-top: 1px solid var(--border);
-      display: flex; justify-content: space-between; align-items: center;
-    }
-    .step-hint { font-size: 11px; color: var(--muted); }
-    .btn-prev {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 8px 18px; border-radius: 8px;
-      border: 1px solid var(--border-2); background: transparent;
-      color: var(--muted); font-size: 13px; font-weight: 600;
-      font-family: var(--body); cursor: pointer; transition: all 0.15s;
-    }
-    .btn-prev:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
-    .btn-next {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 9px 20px; border-radius: 8px; border: none;
-      background: linear-gradient(180deg, var(--ember) 0%, var(--fire) 100%);
-      color: #1a0800; font-size: 13px; font-weight: 700;
-      font-family: var(--body); cursor: pointer;
-      box-shadow: 0 3px 12px rgba(255,74,28,0.28), inset 0 1px 0 rgba(255,255,255,0.18);
-      transition: all 0.15s;
-    }
-    .btn-next:hover:not(:disabled) { filter: brightness(1.07); transform: translateY(-1px); }
-    .btn-next:disabled { opacity: 0.4; cursor: not-allowed; filter: none; transform: none; }
-    .btn-finish {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 10px 22px; border-radius: 8px; border: none;
-      background: var(--ok); color: #061a0e;
-      font-size: 13px; font-weight: 700; font-family: var(--body);
-      cursor: pointer; text-decoration: none;
-      box-shadow: 0 3px 12px rgba(74,222,128,0.22);
-      transition: all 0.15s;
-    }
-    .btn-finish:hover { filter: brightness(1.07); transform: translateY(-1px); }
+    .card-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid #1a1a1e; }
+    .step-hint { font-size: 11px; color: #555; }
+    .btn-prev { padding: 7px 14px; background: transparent; border: 1px solid #2a2a2e; border-radius: 6px; color: #888; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+    .btn-prev:hover { color: #f5f5f5; border-color: #444; }
+    .btn-next { padding: 8px 18px; background: #ff7a3a; color: #111; border: 0; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; transition: background 0.15s; }
+    .btn-next:hover { background: #ff8f50; }
+    .btn-next:disabled { opacity: 0.35; cursor: not-allowed; background: #ff7a3a; }
+    .btn-finish { padding: 8px 18px; background: #4ade80; color: #061a0e; border: 0; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; transition: background 0.15s; }
+    .btn-finish:hover { background: #5fe890; }
   </style>
 </head>
 <body>
+  <div class="container">
+    <header>
+      <h1>FireFly Setup</h1>
+      <nav>
+        <a href="/">Map</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/logout">Logout</a>
+      </nav>
+    </header>
 
-<nav>
-  <a class="nav-brand" href="/">FIREFLY</a>
-  <div class="nav-links">
-    <a class="nav-link" href="/">Map</a>
-    <a class="nav-link" href="/dashboard">Dashboard</a>
-    <a class="nav-link active" href="/setup">Setup</a>
-    <a class="nav-link" href="/logout">Logout</a>
-  </div>
-</nav>
-
-<div class="page">
-
-  <div class="page-header">
-    <div class="page-eyebrow">One-time setup</div>
-    <h1 class="page-title">Get your drone online.</h1>
-    <p class="page-sub">Register a drone and get your API key, flash the GPS firmware, connect the camera.</p>
-    <div class="skip-row">
-      <a class="btn-skip" href="/" id="skip-btn">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        Skip — go to map
-      </a>
-      <span class="skip-hint">You can always return from the Dashboard.</span>
-    </div>
-  </div>
-
-  <!-- Progress rail: 4 steps -->
-  <div class="progress-rail">
-    <div class="step-dot-wrap active" data-step="0" onclick="goToStep(0)">
-      <div class="step-dot active"><span>1</span></div>
-      <div class="step-label">Register</div>
-    </div>
-    <div class="step-connector" id="conn-0"></div>
-    <div class="step-dot-wrap" data-step="1" onclick="goToStep(1)">
-      <div class="step-dot"><span>2</span></div>
-      <div class="step-label">Firmware</div>
-    </div>
-    <div class="step-connector" id="conn-1"></div>
-    <div class="step-dot-wrap" data-step="2" onclick="goToStep(2)">
-      <div class="step-dot"><span>3</span></div>
-      <div class="step-label">Camera</div>
-    </div>
-    <div class="step-connector" id="conn-2"></div>
-    <div class="step-dot-wrap" data-step="3" onclick="goToStep(3)">
-      <div class="step-dot"><span>4</span></div>
-      <div class="step-label">Verify</div>
-    </div>
-  </div>
-
-  <!-- ─── STEP 0: Register & get API key ────────────────────── -->
-  <div class="step-card visible" id="step-0">
-    <div class="card-head">
-      <div class="card-num">01</div>
-      <div class="card-meta">
-        <div class="card-title">Register your drone</div>
-        <div class="card-desc">Give your drone a name and get the API key that authorizes your ESP32 to send telemetry.</div>
+    <div class="rail" id="rail">
+      <div class="rail-step active" data-step="0">
+        <div class="rail-dot active"><span>1</span></div>
+        <div class="rail-label">Register</div>
+      </div>
+      <div class="rail-conn" id="rc0"></div>
+      <div class="rail-step" data-step="1">
+        <div class="rail-dot"><span>2</span></div>
+        <div class="rail-label">Firmware</div>
+      </div>
+      <div class="rail-conn" id="rc1"></div>
+      <div class="rail-step" data-step="2">
+        <div class="rail-dot"><span>3</span></div>
+        <div class="rail-label">Camera</div>
+      </div>
+      <div class="rail-conn" id="rc2"></div>
+      <div class="rail-step" data-step="3">
+        <div class="rail-dot"><span>4</span></div>
+        <div class="rail-label">Done</div>
       </div>
     </div>
-    <div class="card-body">
 
-      <div class="register-form">
-        <div>
-          <label for="drone-name-input">Drone name</label>
-          <div class="field-row">
-            <input class="text-input" id="drone-name-input" type="text"
-                   placeholder="e.g. kenny_drone"
-                   autocomplete="off" spellcheck="false" />
-            <button class="btn-register" id="register-btn" onclick="registerDrone()">Register</button>
+    <div class="step-card visible" id="card-0">
+      <div class="section">
+        <h2>How to register your drone</h2>
+
+        <div class="instr">
+          <div class="instr-n">1</div>
+          <div class="instr-t">Navigate to your <strong><a href="/dashboard">Dashboard</a></strong> via the top navigation bar.</div>
+        </div>
+
+        <div class="instr">
+          <div class="instr-n">2</div>
+          <div class="instr-t">Locate the registration area, enter a unique identifier for your quadcopter (e.g., <code>drone_1</code>), and click <strong>Register</strong>.</div>
+        </div>
+
+        <div class="instr">
+          <div class="instr-n">3</div>
+          <div class="instr-t">Copy the newly generated <strong>API Key</strong> immediately. Make sure to save it safely (like in a password manager), as it won't be displayed again.</div>
+        </div>
+
+        <div class="tip">
+          <span>💡</span>
+          <div>You will need this API key and your chosen drone name during Step 2 (Firmware Configuration) to link the telemetry endpoints properly.</div>
+        </div>
+
+        <div class="card-foot">
+          <span class="step-hint">Step 1 of 4</span>
+          <button class="btn-next" id="step0-next">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="step-card" id="card-1">
+      <div class="section">
+        <h2>Flash GPS firmware</h2>
+
+        <div class="instr">
+          <div class="instr-n">1</div>
+          <div class="instr-t">Navigate to the GPS firmware directory:</div>
+        </div>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="code-lang">shell</span>
+            <button class="copy-btn" onclick="copyPre(this)">Copy</button>
           </div>
-          <div class="field-hint">Lowercase letters, numbers, and underscores only — must match exactly what you enter in firmware menuconfig.</div>
+          <pre>cd main/firmware/gps_telemetry</pre>
         </div>
-        <div class="register-err" id="register-err"></div>
-      </div>
 
-      <!-- API key reveal — hidden until registered -->
-      <div class="key-reveal" id="key-reveal">
-        <div class="key-reveal-head">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Drone <span id="key-drone-name" class="key-name-display"></span> registered — copy your API key now
+        <div class="instr">
+          <div class="instr-n">2</div>
+          <div class="instr-t">Open menuconfig and set the values below under <strong>FireFly GPS Broadcaster</strong>:</div>
         </div>
-        <div class="key-box">
-          <div class="key-value" id="key-value">—</div>
-          <button class="btn-copy-key" id="copy-key-btn" onclick="copyKey()">Copy</button>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="code-lang">shell</span>
+            <button class="copy-btn" onclick="copyPre(this)">Copy</button>
+          </div>
+          <pre>idf.py menuconfig</pre>
         </div>
-        <div class="key-warn">⚠️ This key is shown exactly once. It's hashed in the database and cannot be recovered — save it in your password manager before continuing.</div>
-      </div>
 
-      <div class="tip">
-        <div class="tip-icon">🔑</div>
-        <div class="tip-text">The same API key authorizes both your <strong>ESP32 GPS chip</strong> and your <strong>laptop's cam relay</strong> to POST data to this drone's row. Keep it secret.</div>
-      </div>
-
-    </div>
-    <div class="card-foot">
-      <span class="step-hint">Step 1 of 4</span>
-      <button class="btn-next" id="next-0" onclick="next()" disabled>Flash firmware →</button>
-    </div>
-  </div>
-
-  <!-- ─── STEP 1: Firmware ──────────────────────────────────── -->
-  <div class="step-card" id="step-1">
-    <div class="card-head">
-      <div class="card-num">02</div>
-      <div class="card-meta">
-        <div class="card-title">Flash GPS firmware</div>
-        <div class="card-desc">ESP32-C3 running ESP-IDF. Broadcasts GPS over UDP locally and HTTPS to the cloud.</div>
-      </div>
-    </div>
-    <div class="card-body">
-
-      <div class="instr">
-        <div class="instr-num">1</div>
-        <div class="instr-text">Navigate to the firmware directory and open menuconfig:</div>
-      </div>
-      <div class="code-block">
-        <div class="code-block-head">
-          <span class="code-lang">shell</span>
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <div class="code-block">
+          <div class="code-head"><span class="code-lang">menuconfig — FireFly GPS Broadcaster</span></div>
+          <table class="cfg-table">
+            <thead><tr><th>Key</th><th>Value</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td class="k">Drone ID</td>                   <td class="v">&lt;your drone name&gt;</td>  <td class="d">The name you registered in step 1</td></tr>
+              <tr><td class="k">WiFi SSID</td>                  <td class="v">&lt;your network&gt;</td>     <td class="d">2.4 GHz only — ESP32-C3 does not support 5 GHz</td></tr>
+              <tr><td class="k">WiFi Password</td>              <td class="v">&lt;your password&gt;</td>    <td class="d">Stored encrypted in NVS flash</td></tr>
+              <tr><td class="k">Enable HTTPS POST to cloud</td> <td class="v">y</td>                        <td class="d">Required for the ground station to receive telemetry</td></tr>
+              <tr><td class="k">API key for cloud endpoint</td> <td class="v">&lt;your API key&gt;</td>     <td class="d">The key you copied in step 1</td></tr>
+            </tbody>
+          </table>
         </div>
-        <pre>cd main/firmware/gps_telemetry
-idf.py menuconfig</pre>
-      </div>
 
-      <div class="instr">
-        <div class="instr-num">2</div>
-        <div class="instr-text">Under <strong>FireFly GPS Broadcaster</strong>, enter these values. Your drone name and API key are pre-filled from step 1:</div>
-      </div>
-      <div class="code-block">
-        <div class="code-block-head"><span class="code-lang">menuconfig — FireFly GPS Broadcaster</span></div>
-        <table class="config-table">
-          <thead>
-            <tr><th>Setting</th><th>Value</th><th>Notes</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="key">Drone ID</td>
-              <td class="val" id="fw-drone-id">kenny_drone</td>
-              <td class="desc">Must match what you registered exactly</td>
-            </tr>
-            <tr>
-              <td class="key">WiFi SSID</td>
-              <td class="val">YourNetworkName</td>
-              <td class="desc">2.4 GHz only — ESP32-C3 doesn't support 5 GHz</td>
-            </tr>
-            <tr>
-              <td class="key">WiFi Password</td>
-              <td class="val">••••••••</td>
-              <td class="desc">Stored in NVS, encrypted at rest</td>
-            </tr>
-            <tr>
-              <td class="key">Enable HTTPS POST</td>
-              <td class="val">y</td>
-              <td class="desc">Required for cloud telemetry</td>
-            </tr>
-            <tr>
-              <td class="key">API key</td>
-              <td class="val" id="fw-api-key">ff_live_…</td>
-              <td class="desc">Paste the key you copied in step 1</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="instr">
-        <div class="instr-num">3</div>
-        <div class="instr-text">Save, exit menuconfig, build, and flash:</div>
-      </div>
-      <div class="code-block">
-        <div class="code-block-head">
-          <span class="code-lang">shell</span>
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <div class="instr">
+          <div class="instr-n">3</div>
+          <div class="instr-t">Save, exit menuconfig, then build and flash:</div>
         </div>
-        <pre>idf.py build flash monitor</pre>
-      </div>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="code-lang">shell</span>
+            <button class="copy-btn" onclick="copyPre(this)">Copy</button>
+          </div>
+          <pre>idf.py build flash monitor</pre>
+        </div>
 
-      <div class="tip">
-        <div class="tip-icon">📡</div>
-        <div class="tip-text">The serial monitor prints <strong>GPS fix acquired</strong> and <strong>POST 200</strong> when it's live. Your drone should appear on the <a href="/">map</a> within a few seconds.</div>
-      </div>
+        <div class="tip">
+          <span>📡</span>
+          <div>Watch the serial monitor for <code>GPS fix acquired</code> and <code>POST 200</code>. Your drone will appear on the map within a few seconds.</div>
+        </div>
 
-    </div>
-    <div class="card-foot">
-      <button class="btn-prev" onclick="prev()">← Back</button>
-      <button class="btn-next" onclick="next()">Set up camera →</button>
-    </div>
-  </div>
-
-  <!-- ─── STEP 2: Camera ────────────────────────────────────── -->
-  <div class="step-card" id="step-2">
-    <div class="card-head">
-      <div class="card-num">03</div>
-      <div class="card-meta">
-        <div class="card-title">Flash ESP32-CAM</div>
-        <div class="card-desc">Stock Arduino CameraWebServer example — no custom firmware needed.</div>
+        <div class="card-foot">
+          <button class="btn-prev" id="step1-prev">← Back</button>
+          <button class="btn-next" id="step1-next">Next →</button>
+        </div>
       </div>
     </div>
-    <div class="card-body">
 
-      <div class="instr">
-        <div class="instr-num">1</div>
-        <div class="instr-text">In Arduino IDE open <strong>File → Examples → ESP32 → Camera → CameraWebServer</strong>. Set your WiFi credentials in the sketch:</div>
-      </div>
-      <div class="code-block">
-        <div class="code-block-head">
-          <span class="code-lang">arduino (cpp)</span>
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    <div class="step-card" id="card-2">
+      <div class="section">
+        <h2>Set up the camera</h2>
+
+        <div class="instr">
+          <div class="instr-n">1</div>
+          <div class="instr-t">In Arduino IDE open <strong>File → Examples → ESP32 → Camera → CameraWebServer</strong>. Set your WiFi credentials, select <strong>AI-Thinker ESP32-CAM</strong> as your board, and flash it. Open the Serial Monitor at 115200 baud — it will print the camera's IP address.</div>
         </div>
-        <pre><span class="kw">const char</span>* ssid     = <span class="str">"YourNetworkName"</span>;
-<span class="kw">const char</span>* password = <span class="str">"YourPassword"</span>;</pre>
-      </div>
 
-      <div class="instr">
-        <div class="instr-num">2</div>
-        <div class="instr-text">Select <span class="pill info">AI-Thinker ESP32-CAM</span> as your board, flash, then open Serial Monitor at <strong>115200 baud</strong> to get the assigned IP address.</div>
-      </div>
-
-      <div class="instr">
-        <div class="instr-num">3</div>
-        <div class="instr-text">Confirm the stream is live in your browser at:</div>
-      </div>
-      <div class="code-block">
-        <div class="code-block-head"><span class="code-lang">url</span></div>
-        <pre>http://&lt;cam-ip&gt;:81/stream</pre>
-      </div>
-
-      <div class="instr">
-        <div class="instr-num">4</div>
-        <div class="instr-text">Start the relay on your laptop. Your drone name and key are pre-filled — just replace <code class="ic">&lt;cam-ip&gt;</code>:</div>
-      </div>
-      <div class="code-block">
-        <div class="code-block-head">
-          <span class="code-lang">shell</span>
-          <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <div class="instr">
+          <div class="instr-n">2</div>
+          <div class="instr-t">Confirm the stream is live in your browser:</div>
         </div>
-        <pre>python3 main/groundstation/cam_relay.py \
-  --drone <span id="cam-drone-id" class="val">kenny_drone</span> \
+        <div class="code-block">
+          <div class="code-head"><span class="code-lang">url</span></div>
+          <pre>http://&lt;cam-ip&gt;:81/stream</pre>
+        </div>
+
+        <div class="instr">
+          <div class="instr-n">3</div>
+          <div class="instr-t">On your laptop, run the relay script to proxy the stream into the operator map:</div>
+        </div>
+        <div class="code-block">
+          <div class="code-head">
+            <span class="code-lang">shell</span>
+            <button class="copy-btn" onclick="copyPre(this)">Copy</button>
+          </div>
+          <pre>python3 main/groundstation/cam_relay.py \
+  --drone <span class="hl">&lt;your drone name&gt;</span> \
   --src   <span class="str">"http://&lt;cam-ip&gt;:81/stream"</span> \
-  --key   <span id="cam-api-key" class="str">"ff_live_…"</span></pre>
-      </div>
+  --key   <span class="str">"&lt;your API key&gt;"</span></pre>
+        </div>
 
-      <div class="tip">
-        <div class="tip-icon">🎥</div>
-        <div class="tip-text">Once the relay is running the <strong>Open camera</strong> button on the map shows a live feed. The drone card gets a <span class="pill ok">cam</span> indicator.</div>
-      </div>
+        <div class="tip">
+          <span>🎥</span>
+          <div>Once the relay is running, click <strong>Open camera</strong> on the map to see the live feed.</div>
+        </div>
 
-    </div>
-    <div class="card-foot">
-      <button class="btn-prev" onclick="prev()">← Back</button>
-      <button class="btn-next" onclick="next()">Verify connection →</button>
-    </div>
-  </div>
-
-  <!-- ─── STEP 3: Verify ────────────────────────────────────── -->
-  <div class="step-card" id="step-3">
-    <div class="card-head">
-      <div class="card-num">04</div>
-      <div class="card-meta">
-        <div class="card-title">Verify &amp; launch</div>
-        <div class="card-desc">Confirm your drone is posting before going to the field.</div>
+        <div class="card-foot">
+          <button class="btn-prev" id="step2-prev">← Back</button>
+          <button class="btn-next" id="step2-next">Next →</button>
+        </div>
       </div>
     </div>
-    <div class="card-body">
 
-      <div class="instr">
-        <div class="instr-num">1</div>
-        <div class="instr-text">Open the <a href="/">operator map</a>. Your drone should appear within seconds of the ESP32 booting with a GPS fix — the panel shows <span class="pill ok">live</span> with a blinking green dot.</div>
-      </div>
+    <div class="step-card" id="card-3">
+      <div class="section">
+        <h2>You're all set</h2>
 
-      <div class="instr">
-        <div class="instr-num">2</div>
-        <div class="instr-text">Check telemetry status right now:</div>
-      </div>
-      <div class="verify-row">
-        <input class="text-input" id="verify-input" type="text"
-               placeholder="e.g. kenny_drone" style="font-size:12px" />
-        <button class="btn-verify" onclick="verifyDrone()">Check live status</button>
-      </div>
-      <div class="verify-status" id="verify-ok">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-        <span id="verify-ok-text">Drone is live</span>
-      </div>
-      <div class="verify-status" id="verify-fail">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        <span id="verify-fail-text">No telemetry received yet</span>
-      </div>
+        <div class="instr">
+          <div class="instr-n">✓</div>
+          <div class="instr-t">Your drone is registered and your firmware is configured. Head to the map — your drone should appear with a <strong>live</strong> badge once it has a GPS fix and is posting telemetry.</div>
+        </div>
 
-      <div class="instr">
-        <div class="instr-num">3</div>
-        <div class="instr-text">Test detection: point the camera at a lit candle from ~2 m. Within 2–3 seconds the alert banner should flip to <strong style="color:var(--ember)">Fire detected</strong> and a bearing line appears on the map.</div>
-      </div>
+        <div class="instr">
+          <div class="instr-n">✓</div>
+          <div class="instr-t">To test fire detection, point the camera at a lighter or candle for a few seconds. The alert banner will pulse <strong>Fire detected</strong> and a bearing line will appear on the map.</div>
+        </div>
 
-      <div class="tip">
-        <div class="tip-icon">🔺</div>
-        <div class="tip-text"><strong>Triangulation test:</strong> with two drones live and both detecting the same source, hit <strong>Trigger triangulation</strong> on the map. A fire pin appears at the computed GPS coordinate.</div>
-      </div>
+        <div class="instr">
+          <div class="instr-n">✓</div>
+          <div class="instr-t">With two drones live, click <strong>Trigger triangulation</strong> on the map to compute a GPS fire coordinate from both bearing rays.</div>
+        </div>
 
-      <div class="checklist">
-        <div class="checklist-title">✓ Pre-flight checklist</div>
-        <label><input type="checkbox"> Drone registered and API key saved in password manager</label>
-        <label><input type="checkbox"> GPS firmware flashed — serial shows POST 200</label>
-        <label><input type="checkbox"> Camera stream live at <code class="ic">/stream</code></label>
-        <label><input type="checkbox"> cam_relay.py running — map shows camera feed</label>
-        <label><input type="checkbox"> Drone card shows <span class="pill ok">live</span> on the map</label>
+        <div class="card-foot">
+          <button class="btn-prev" id="step3-prev">← Back</button>
+          <a class="btn-finish" href="/">Open the map →</a>
+        </div>
       </div>
-
     </div>
-    <div class="card-foot">
-      <button class="btn-prev" onclick="prev()">← Back</button>
-      <a class="btn-finish" href="/" onclick="markSetupDone()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        Open the map
-      </a>
-    </div>
-  </div>
 
-</div><!-- /page -->
+  </div><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const SUPABASE_URL = "{{ supabase_url }}";
+    const SUPABASE_KEY = "{{ supabase_key }}";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = "{{ supabase_url }}";
-  const SUPABASE_KEY = "{{ supabase_key }}";
-  const sb = (typeof window.supabase !== 'undefined' && SUPABASE_URL && SUPABASE_KEY)
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-    : null;
-
-  async function getAuthHeader() {
-    if (sb) {
+    async function getAuthHeader() {
       const { data: { session } } = await sb.auth.getSession();
-      if (session) return { "Authorization": `Bearer ${session.access_token}` };
-    }
-    return {};
-  }
-
-  // ── State ─────────────────────────────────────────────────────
-  let registeredDroneName = "";
-  let registeredApiKey    = "";
-  let currentStep = 0;
-  const TOTAL = 4;
-
-  // ── Step navigation ───────────────────────────────────────────
-  function goToStep(n) {
-    if (n < 0 || n >= TOTAL) return;
-    document.getElementById(`step-${currentStep}`)?.classList.remove('visible');
-
-    for (let i = 0; i < TOTAL; i++) {
-      const wrap = document.querySelector(`[data-step="${i}"]`);
-      const dot  = wrap?.querySelector('.step-dot');
-      wrap?.classList.remove('active', 'done');
-      dot?.classList.remove('active', 'done');
-      if      (i < n)  { wrap?.classList.add('done');   dot?.classList.add('done');   }
-      else if (i === n){ wrap?.classList.add('active'); dot?.classList.add('active'); }
-    }
-    for (let i = 0; i < TOTAL - 1; i++) {
-      document.getElementById(`conn-${i}`)?.classList.toggle('done', i < n);
+      return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
     }
 
-    currentStep = n;
-    document.getElementById(`step-${n}`)?.classList.add('visible');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+    // ── Step nav ──────────────────────────────────────────────────
+    let cur = 0;
+    const STEPS = 4;
 
-  function next() { goToStep(currentStep + 1); }
-  function prev() { goToStep(currentStep - 1); }
-
-  // ── Register drone ────────────────────────────────────────────
-  async function registerDrone() {
-    const nameEl  = document.getElementById('drone-name-input');
-    const errEl   = document.getElementById('register-err');
-    const btn     = document.getElementById('register-btn');
-    const name    = nameEl.value.trim().toLowerCase().replace(/\s+/g, '_');
-
-    errEl.classList.remove('show');
-    if (!name) { showRegErr('Please enter a drone name.'); return; }
-    if (!/^[a-z0-9_-]+$/.test(name)) {
-      showRegErr('Use lowercase letters, numbers, underscores, or hyphens only.');
-      return;
-    }
-
-    btn.disabled  = true;
-    btn.textContent = 'Registering…';
-    nameEl.disabled = true;
-
-    try {
-      const r = await fetch('/api/dashboard/drones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(await getAuthHeader()) },
-        body: JSON.stringify({ name }),
+    function goTo(n) {
+      if (n < 0 || n >= STEPS) return;
+      document.getElementById(`card-${cur}`).classList.remove('visible');
+      cur = n;
+      document.getElementById(`card-${cur}`).classList.add('visible');
+      document.querySelectorAll('.rail-step').forEach((el, i) => {
+        const dot = el.querySelector('.rail-dot');
+        el.classList.remove('active', 'done');
+        dot.classList.remove('active', 'done');
+        if (i < n)        { el.classList.add('done');   dot.classList.add('done');   }
+        else if (i === n) { el.classList.add('active'); dot.classList.add('active'); }
       });
-
-      if (r.status === 401) { location.href = '/login'; return; }
-      if (!r.ok) {
-        const j = await r.json().catch(() => ({}));
-        throw new Error(j.error || `Server error ${r.status}`);
-      }
-
-      const { api_key } = await r.json();
-      registeredDroneName = name;
-      registeredApiKey    = api_key;
-
-      // Pre-fill downstream steps
-      setText('fw-drone-id',  name);
-      setText('fw-api-key',   api_key);
-      setText('cam-drone-id', name);
-      setText('cam-api-key',  `"${api_key}"`);
-      setVal( 'verify-input', name);
-
-      // Show key
-      setText('key-drone-name', name);
-      setText('key-value',      api_key);
-      document.getElementById('key-reveal')?.classList.add('show');
-
-      // Unlock Next
-      document.getElementById('next-0').disabled = false;
-      btn.textContent = 'Registered ✓';
-
-    } catch (e) {
-      showRegErr(e.message || String(e));
-      btn.disabled = false;
-      btn.textContent = 'Register';
-      nameEl.disabled = false;
+      for (let i = 0; i < STEPS - 1; i++)
+        document.getElementById(`rc${i}`).classList.toggle('done', i < n);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-  }
+    function next() { goTo(cur + 1); }
+    function prev() { goTo(cur - 1); }
 
-  function showRegErr(msg) {
-    const el = document.getElementById('register-err');
-    el.textContent = msg;
-    el.classList.add('show');
-  }
-  function setText(id, val) { const el = document.getElementById(id); if (el) el.textContent = val; }
-  function setVal(id,  val) { const el = document.getElementById(id); if (el) el.value       = val; }
-
-  // ── Copy API key ──────────────────────────────────────────────
-  function copyKey() {
-    const key = document.getElementById('key-value').textContent;
-    navigator.clipboard.writeText(key).then(() => {
-      const btn = document.getElementById('copy-key-btn');
-      btn.textContent = 'Copied!';
-      btn.classList.add('copied');
-      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+    // Rail dot clicks (Allows free jumping anywhere)
+    document.querySelectorAll('.rail-step').forEach(el => {
+      el.addEventListener('click', () => goTo(Number(el.dataset.step)));
     });
-  }
 
-  // ── Copy code blocks ──────────────────────────────────────────
-  function copyCode(btn) {
-    const pre = btn.closest('.code-block').querySelector('pre');
-    navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
-      btn.textContent = 'Copied!';
-      btn.classList.add('copied');
+    // Card button clicks
+    document.getElementById('step0-next').addEventListener('click', next);
+    document.getElementById('step1-prev').addEventListener('click', prev);
+    document.getElementById('step1-next').addEventListener('click', next);
+    document.getElementById('step2-prev').addEventListener('click', prev);
+    document.getElementById('step2-next').addEventListener('click', next);
+    document.getElementById('step3-prev').addEventListener('click', prev);
+
+    // ── Copy helpers ──────────────────────────────────────────────
+    function copyPre(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      navigator.clipboard.writeText(pre.innerText.trim()).then(() => flash(btn));
+    }
+    function flash(btn) {
+      btn.textContent = 'Copied!'; btn.classList.add('copied');
       setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1800);
-    });
-  }
-
-  // ── Verify drone telemetry ────────────────────────────────────
-  async function verifyDrone() {
-    const name   = document.getElementById('verify-input').value.trim();
-    const okEl   = document.getElementById('verify-ok');
-    const failEl = document.getElementById('verify-fail');
-    okEl.classList.remove('ok');
-    failEl.classList.remove('fail');
-    if (!name) return;
-
-    try {
-      const r = await fetch('/api/state', { headers: await getAuthHeader() });
-      if (!r.ok) throw new Error();
-      const s   = await r.json();
-      const now = s.server_ts;
-      const entry = Object.entries(s.drones || {}).find(([id, d]) =>
-        id === name || (d.name && d.name === name)
-      );
-      if (entry) {
-        const age = now - (entry[1].ts || 0);
-        if (age < 30) {
-          setText('verify-ok-text', `✓ ${name} is live — last seen ${age.toFixed(0)}s ago`);
-          okEl.classList.add('ok');
-        } else {
-          setText('verify-fail-text', `${name} found but last seen ${age.toFixed(0)}s ago — check firmware`);
-          failEl.classList.add('fail');
-        }
-      } else {
-        setText('verify-fail-text', `"${name}" not found — check drone name and that firmware is running`);
-        failEl.classList.add('fail');
-      }
-    } catch {
-      setText('verify-fail-text', 'Could not reach the server — are you signed in?');
-      failEl.classList.add('fail');
     }
-  }
-
-  document.getElementById('verify-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') verifyDrone();
-  });
-  document.getElementById('drone-name-input')?.addEventListener('keydown', e => {
-    if (e.key === 'Enter') registerDrone();
-  });
-
-  // ── Mark setup done (suppresses first-login redirect) ─────────
-  function markSetupDone() {
-    try { localStorage.setItem('ff_setup_done', '1'); } catch {}
-  }
-
-  document.getElementById('skip-btn')?.addEventListener('click', markSetupDone);
-</script>
+  </script>
 </body>
 </html>
