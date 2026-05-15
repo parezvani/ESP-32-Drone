@@ -690,3 +690,30 @@ body { background: var(--bg); color: var(--ink); }
   color: var(--ink-3);
   word-break: break-all;
 }
+
+/* ── Fire alert banner ────────────────────────────────────────────*/
+#ff-fire-banner {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-12px);
+  z-index: 2000;
+  padding: 12px 22px;
+  background: rgba(10, 8, 6, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 74, 28, 0.5);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(255, 74, 28, 0.22), 0 2px 8px rgba(0,0,0,0.5);
+  font: 600 13px 'Inter', system-ui, sans-serif;
+  color: var(--warn);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#ff-fire-banner.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
