@@ -22,35 +22,26 @@ struct ContentView: View {
     var body: some View {
         ScrollView {
             GlassEffectContainer(spacing: 18) {
-                VStack(alignment: .leading, spacing: 30) {
-                    accountSection
+                VStack(alignment: .leading, spacing: 28) {
+                    appHeader
                     credentialsSection
                     esp32Section
                     provisionSection
                 }
-                .padding(.horizontal, 24)
-                .padding(.top, 48)
+                .padding(.horizontal, 22)
+                .padding(.top, 24)
                 .padding(.bottom, 32)
                 .frame(maxWidth: 620, alignment: .leading)
             }
         }
+        .scrollIndicators(.hidden)
         .frame(maxWidth: .infinity, alignment: .top)
         .background {
-            LinearGradient(
-                colors: [
-                    Color(uiColor: .systemBackground),
-                    Color.blue.opacity(0.08),
-                    Color.green.opacity(0.06),
-                    Color(uiColor: .systemBackground)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            FireFLYBackground()
         }
     }
 
-    private var accountSection: some View {
+    private var appHeader: some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: "person.crop.circle.fill")
                 .font(.system(size: 24))
@@ -97,28 +88,19 @@ struct ContentView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .frame(minHeight: 60)
-        .glassEffect(
-            .regular.tint(Color.white.opacity(0.16)).interactive(),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.28), lineWidth: 1)
-        )
+        .fireFLYGlassPanel(cornerRadius: 16, isInteractive: true)
     }
 
     private var credentialsSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("WiFi Credentials")
-                .font(.largeTitle.weight(.bold))
-                .foregroundStyle(.primary)
+        VStack(alignment: .leading, spacing: 16) {
+            FireFLYSectionHeader(title: "WiFi Credentials", systemImage: "wifi", tint: .blue)
 
             TextField("Network name", text: $ssid)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .textContentType(.username)
                 .submitLabel(.next)
-                .fieldChrome()
+                .fireFLYFieldChrome()
 
             HStack(spacing: 10) {
                 Group {
@@ -144,7 +126,7 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .accessibilityLabel(isPasswordVisible ? "Hide password" : "Show password")
             }
-            .fieldChrome()
+            .fireFLYFieldChrome()
 
             Button {
                 restoreSavedCredentials()
@@ -157,16 +139,22 @@ struct ContentView: View {
             .tint(.blue)
 
             if !restoreMessage.isEmpty {
-                Text(restoreMessage)
-                    .statusGlass()
+                FireFLYStatusNote(
+                    message: restoreMessage,
+                    systemImage: "key.fill",
+                    tint: .blue
+                )
             }
         }
     }
 
     private var esp32Section: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ESP32")
-                .font(.title.weight(.bold))
+            FireFLYSectionHeader(
+                title: "ESP32",
+                systemImage: "antenna.radiowaves.left.and.right",
+                tint: .green
+            )
 
             Button {
                 bluetooth.isScanning ? bluetooth.stopScanning() : bluetooth.startScanning()
@@ -179,7 +167,7 @@ struct ContentView: View {
             }
             .buttonStyle(.glass)
             .controlSize(.large)
-            .tint(.blue)
+            .tint(bluetooth.isScanning ? .orange : .green)
             .disabled(!bluetooth.isBluetoothReady)
 
             if !bluetooth.devices.isEmpty {
@@ -195,23 +183,27 @@ struct ContentView: View {
                         }
                         .buttonStyle(.glass)
                         .controlSize(.large)
-                        .tint(.blue)
+                        .tint(device.isLikelyProvisioningDevice ? .green : .blue)
                         .disabled(bluetooth.selectedDeviceID == device.id)
                     }
                 }
             }
 
             if bluetooth.devices.isEmpty {
-                Text(bluetooth.bluetoothStateMessage)
-                    .statusGlass()
+                FireFLYInlineStatus(
+                    message: bluetooth.bluetoothStateMessage,
+                    systemImage: bluetooth.isBluetoothReady
+                        ? "antenna.radiowaves.left.and.right"
+                        : "exclamationmark.triangle.fill",
+                    tint: bluetooth.isBluetoothReady ? .green : .blue
+                )
             }
         }
     }
 
     private var provisionSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Provision")
-                .font(.title.weight(.bold))
+            FireFLYSectionHeader(title: "Provision", systemImage: "paperplane.fill", tint: .orange)
 
             Button {
                 sendCredentials()
@@ -221,11 +213,14 @@ struct ContentView: View {
             }
             .buttonStyle(.glassProminent)
             .controlSize(.large)
-            .tint(.blue)
+            .tint(.orange)
             .disabled(!canSend)
 
-            Text(bluetooth.statusMessage)
-                .statusGlass()
+            FireFLYInlineStatus(
+                message: bluetooth.statusMessage,
+                systemImage: canSend ? "checkmark.circle.fill" : "info.circle.fill",
+                tint: canSend ? .green : .orange
+            )
         }
     }
 
@@ -268,21 +263,25 @@ private struct DeviceRow: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
-            Image(systemName: "cpu")
-                .font(.title2)
-                .foregroundStyle(.blue)
-                .frame(width: 32)
+            Image(systemName: device.isLikelyProvisioningDevice ? "cpu.fill" : "cpu")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(device.isLikelyProvisioningDevice ? .green : .blue)
+                .frame(width: 34, height: 34)
+                .glassEffect(
+                    .regular.tint((device.isLikelyProvisioningDevice ? Color.green : Color.blue).opacity(0.10)),
+                    in: RoundedRectangle(cornerRadius: 11, style: .continuous)
+                )
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(device.name)
                     .font(.title2)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
 
                 Text(device.detailText)
                     .font(.subheadline)
-                    .foregroundStyle(.blue.opacity(0.35))
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -297,36 +296,11 @@ private struct DeviceRow: View {
                 }
 
                 Text(device.signalText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(device.rssi > -70 ? .green : .secondary)
             }
         }
         .contentShape(Rectangle())
-    }
-}
-
-private extension View {
-    func fieldChrome() -> some View {
-        self
-            .font(.title2)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 62)
-            .glassEffect(
-                .regular.tint(Color.white.opacity(0.18)).interactive(),
-                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.35), lineWidth: 1)
-            )
-    }
-
-    func statusGlass() -> some View {
-        self
-            .font(.body.weight(.medium))
-            .foregroundStyle(.secondary)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.top, 2)
     }
 }
 

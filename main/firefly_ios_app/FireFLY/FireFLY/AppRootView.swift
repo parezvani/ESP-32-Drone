@@ -40,7 +40,7 @@ struct AppRootView: View {
 private struct AuthRestoreView: View {
     var body: some View {
         ZStack {
-            FireFLYAuthBackground()
+            FireFLYBackground()
 
             VStack(spacing: 16) {
                 ProgressView()
@@ -50,11 +50,8 @@ private struct AuthRestoreView: View {
                     .font(.headline.weight(.medium))
                     .foregroundStyle(.secondary)
             }
-            .padding(28)
-            .glassEffect(
-                .regular.tint(Color.white.opacity(0.16)),
-                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-            )
+            .padding(30)
+            .fireFLYGlassPanel(cornerRadius: 22)
         }
     }
 }
@@ -79,15 +76,8 @@ private struct FireFLYAuthView: View {
     var body: some View {
         ScrollView {
             GlassEffectContainer(spacing: 18) {
-                VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("FireFLY")
-                            .font(.system(size: 38, weight: .bold, design: .rounded))
-
-                        Text(mode == .signIn ? "Sign in to continue" : "Create your FireFLY account")
-                            .font(.headline.weight(.medium))
-                            .foregroundStyle(.secondary)
-                    }
+                VStack(alignment: .leading, spacing: 24) {
+                    authHeader
 
                     Picker("Authentication mode", selection: $mode) {
                         ForEach(Mode.allCases) { mode in
@@ -99,7 +89,7 @@ private struct FireFLYAuthView: View {
                     if mode == .signUp {
                         TextField("Full name", text: $fullName)
                             .textContentType(.name)
-                            .fieldChrome()
+                            .fireFLYFieldChrome()
                     }
 
                     TextField("Email", text: $email)
@@ -107,20 +97,20 @@ private struct FireFLYAuthView: View {
                         .autocorrectionDisabled()
                         .keyboardType(.emailAddress)
                         .textContentType(.emailAddress)
-                        .fieldChrome()
+                        .fireFLYFieldChrome()
 
                     SecureField("Password", text: $password)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .textContentType(mode == .signIn ? .password : .newPassword)
-                        .fieldChrome()
+                        .fireFLYFieldChrome()
 
                     if mode == .signUp {
                         SecureField("Confirm password", text: $confirmPassword)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .textContentType(.newPassword)
-                            .fieldChrome()
+                            .fireFLYFieldChrome()
                     }
 
                     Button {
@@ -135,7 +125,7 @@ private struct FireFLYAuthView: View {
                     }
                     .buttonStyle(.glassProminent)
                     .controlSize(.large)
-                    .tint(.blue)
+                    .tint(mode == .signIn ? .blue : .orange)
                     .disabled(authStore.isWorking)
 
                     OAuthDivider()
@@ -162,24 +152,36 @@ private struct FireFLYAuthView: View {
                     .disabled(authStore.isWorking)
 
                     if !statusText.isEmpty {
-                        Text(statusText)
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                        FireFLYStatusNote(message: statusText)
                     }
                 }
-                .padding(.horizontal, 24)
-                .padding(.vertical, 28)
-                .frame(maxWidth: 620, alignment: .leading)
+                .padding(.horizontal, 22)
+                .padding(.vertical, 26)
+                .frame(maxWidth: 560, alignment: .leading)
             }
-            .padding(.top, 48)
+            .padding(.top, 42)
             .padding(.bottom, 32)
         }
+        .scrollIndicators(.hidden)
         .background {
-            FireFLYAuthBackground()
+            FireFLYBackground()
         }
         .onChange(of: mode) { _, _ in
             localMessage = ""
+        }
+    }
+
+    private var authHeader: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("FireFLY")
+                .font(.system(size: 40, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+
+            Text(mode == .signIn ? "Sign in to continue" : "Create your account")
+                .font(.headline.weight(.medium))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -257,10 +259,10 @@ private struct OAuthProviderButton: View {
                 .frame(width: 28, height: 28)
 
                 Text(title)
-                    .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
             }
-                .frame(maxWidth: .infinity)
+            .font(.title3.weight(.semibold))
+            .frame(maxWidth: .infinity)
         }
         .buttonStyle(.glassProminent)
         .controlSize(.large)
@@ -268,42 +270,9 @@ private struct OAuthProviderButton: View {
     }
 }
 
-private struct FireFLYAuthBackground: View {
-    var body: some View {
-        LinearGradient(
-            colors: [
-                Color(uiColor: .systemBackground),
-                Color.blue.opacity(0.08),
-                Color.green.opacity(0.06),
-                Color(uiColor: .systemBackground)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        .ignoresSafeArea()
-    }
-}
-
-private extension View {
-    func fieldChrome() -> some View {
-        self
-            .font(.title2)
-            .padding(.horizontal, 16)
-            .frame(minHeight: 62)
-            .glassEffect(
-                .regular.tint(Color.white.opacity(0.18)).interactive(),
-                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Color.white.opacity(0.35), lineWidth: 1)
-            )
-    }
-}
-
 #if DEBUG
-#Preview("Signed Out") {
-    AppRootView(startsAuthObservation: false)
+#Preview("Login / Sign Up") {
+    FireFLYAuthView()
         .environmentObject(FireFLYAuthStore.preview(phase: .signedOut))
 }
 
