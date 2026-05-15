@@ -716,7 +716,12 @@ def dashboard_page():
     return render_template("dashboard.html",
                            supabase_url=SUPABASE_URL,
                            supabase_key=SUPABASE_PUBLISHABLE_KEY)
-
+@app.get("/setup")
+@require_jwt
+def setup_page():
+    return render_template("setup.html",
+                           supabase_url=SUPABASE_URL,
+                           supabase_key=SUPABASE_PUBLISHABLE_KEY)
 
 @app.get("/api/dashboard/drones")
 @require_jwt
