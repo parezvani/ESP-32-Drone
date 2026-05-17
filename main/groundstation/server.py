@@ -858,7 +858,6 @@ def get_state():
     })
 
 def _send_fire_alert(fire: dict) -> None:
-    """POST a push notification to ntfy.sh — free, no account needed."""
     lat = fire.get("lat", 0)
     lon = fire.get("lon", 0)
     conf = fire.get("confidence")
@@ -866,9 +865,9 @@ def _send_fire_alert(fire: dict) -> None:
     try:
         requests.post(
             f"https://ntfy.sh/{NTFY_TOPIC}",
-            data=f"Fire detected @ ({lat:.5f}, {lon:.5f})\nConfidence: {conf_str}\nMaps: https://maps.google.com/?q={lat},{lon}",
+            data=f"Fire detected @ ({lat:.5f}, {lon:.5f})\nConfidence: {conf_str}\nMaps: https://maps.google.com/?q={lat},{lon}".encode("utf-8"),
             headers={
-                "Title": "🔥 FireFly Alert",
+                "Title": "FireFly Alert",
                 "Priority": "urgent",
                 "Tags": "fire,warning",
             },
