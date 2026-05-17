@@ -6,6 +6,7 @@ import secrets
 import socket
 import threading
 import time
+import requests
 from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlparse
@@ -20,6 +21,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
 CAMERA_API_TOKEN = os.environ.get("FIREFLY_CAMERA_TOKEN", "").strip()
 MAX_CAMERA_URL_LEN = 2048
+NTFY_TOPIC = "firefly-alerts-team6"
 
 _db_engine = None
 _db_session_maker = None
@@ -402,6 +404,12 @@ def _run_health_check_loop(interval_s: float = 10.0):
 # Start background health thread
 threading.Thread(target=_run_health_check_loop, args=(), daemon=True).start()
 
+def _user_ntfy_topic(user_id: str | None) -> str:
+    if not user_id:
+        return NTFY_TOPIC  # local dev fallback
+    # Short hash — unguessable but stable across restarts
+    h = hashlib.sha256(user_id.encode()).hexdigest()[:16]
+    return f"firefly-{h}"
 
 def _user_owns_drone(user_id: str | None, drone_id: str) -> bool:
     """True if the user owns this drone, or in local dev (no auth)."""
@@ -853,8 +861,27 @@ def get_state():
         "camera_url": _camera_url,
         "server_ts": time.time(),
         "health": _health,
+        "ntfy_topic": _user_ntfy_topic(uid),
     })
 
+def _send_fire_alert(fire: dict, topic: str) -> None:
+    lat = fire.get("lat", 0)
+    lon = fire.get("lon", 0)
+    conf = fire.get("confidence")
+    conf_str = f"{conf*100:.0f}%" if conf else "unknown"
+    try:
+        requests.post(
+            f"https://ntfy.sh/{topic}",
+            data=f"Fire detected @ ({lat:.5f}, {lon:.5f})\nConfidence: {conf_str}\nMaps: https://maps.google.com/?q={lat},{lon}".encode("utf-8"),
+            headers={
+                "Title": "FireFly Alert",
+                "Priority": "urgent",
+                "Tags": "fire,warning",
+            },
+            timeout=3.0,
+        )
+    except Exception as e:
+        print(f"[alert] ntfy push failed: {e}")
 
 @app.post("/api/fire")
 def post_fire():
@@ -922,6 +949,7 @@ def post_fire():
                 match["confidence"] = max(match.get("confidence") or 0.0, new_conf)
             match["ts"] = now
             fire = match
+            is_new = False
         else:
             _fire_id += 1
             fire = {
@@ -936,6 +964,11 @@ def post_fire():
                 "observations": 1,
             }
             user_fires.append(fire)
+            is_new = True
+
+    if is_new:
+        topic = _user_ntfy_topic(uid)
+        threading.Thread(target=_send_fire_alert, args=(fire, topic), daemon=True).start()
 
     return jsonify(fire)
 
