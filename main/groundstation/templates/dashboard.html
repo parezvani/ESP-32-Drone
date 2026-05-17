@@ -121,16 +121,7 @@
 
     async function loadAlertTopic() {
       try {
-        // Wait for Supabase to restore the session before fetching
-        const { data: { session } } = await sb.auth.getSession();
-        if (!session && "{{ supabase_url }}" !== "") {
-          document.getElementById("ntfy-topic-url").textContent = "not logged in";
-          return;
-        }
-    
-        const headers = session
-          ? { "Authorization": `Bearer ${session.access_token}` }
-          : {};
+        const headers = await getAuthHeader();  // already null-safe
     
         const r = await fetch("/api/state", { headers });
         if (!r.ok) {
@@ -140,8 +131,6 @@
         }
     
         const data = await r.json();
-        console.log("api/state response:", data);  // remove after debugging
-    
         const topic = data.ntfy_topic;
         if (!topic) {
           document.getElementById("ntfy-topic-url").textContent = "no topic in response";
