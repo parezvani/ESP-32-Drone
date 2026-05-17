@@ -943,6 +943,7 @@ def post_fire():
                 match["confidence"] = max(match.get("confidence") or 0.0, new_conf)
             match["ts"] = now
             fire = match
+            is_new = False
         else:
             _fire_id += 1
             fire = {
@@ -957,6 +958,7 @@ def post_fire():
                 "observations": 1,
             }
             user_fires.append(fire)
+            is_new = True
 
     if is_new:
         threading.Thread(target=_send_fire_alert, args=(fire,), daemon=True).start()
