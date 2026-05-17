@@ -118,17 +118,30 @@
 
     async function loadAlertTopic() {
       try {
-        const headers = await getAuthHeader();
-        const r = await fetch("/api/state", { headers });
-        if (!r.ok) {
-          document.getElementById("ntfy-topic-url").textContent = `error: HTTP ${r.status}`;
+        // Wait for Supabase to restore the session before fetching
+        const { data: { session } } = await sb.auth.getSession();
+        if (!session && "{{ supabase_url }}" !== "") {
+          document.getElementById("ntfy-topic-url").textContent = "not logged in";
           return;
         }
+    
+        const headers = session
+          ? { "Authorization": `Bearer ${session.access_token}` }
+          : {};
+    
+        const r = await fetch("/api/state", { headers });
+        if (!r.ok) {
+          document.getElementById("ntfy-topic-url").textContent = `error ${r.status}`;
+          console.error("api/state failed:", r.status, await r.text());
+          return;
+        }
+    
         const data = await r.json();
+        console.log("api/state response:", data);  // remove after debugging
+    
         const topic = data.ntfy_topic;
         if (!topic) {
-          document.getElementById("ntfy-topic-url").textContent = "no topic returned";
-          console.log("api/state response:", data);
+          document.getElementById("ntfy-topic-url").textContent = "no topic in response";
           return;
         }
     
