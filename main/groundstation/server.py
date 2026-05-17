@@ -6,6 +6,7 @@ import secrets
 import socket
 import threading
 import time
+import requests
 from datetime import datetime, timezone
 from functools import wraps
 from urllib.parse import urlparse
@@ -20,6 +21,7 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_PUBLISHABLE_KEY = os.environ.get("SUPABASE_PUBLISHABLE_KEY", "")
 CAMERA_API_TOKEN = os.environ.get("FIREFLY_CAMERA_TOKEN", "").strip()
 MAX_CAMERA_URL_LEN = 2048
+NTFY_TOPIC = "firefly-alerts-team6"
 
 _db_engine = None
 _db_session_maker = None
@@ -855,6 +857,25 @@ def get_state():
         "health": _health,
     })
 
+def _send_fire_alert(fire: dict) -> None:
+    """POST a push notification to ntfy.sh — free, no account needed."""
+    lat = fire.get("lat", 0)
+    lon = fire.get("lon", 0)
+    conf = fire.get("confidence")
+    conf_str = f"{conf*100:.0f}%" if conf else "unknown"
+    try:
+        requests.post(
+            f"https://ntfy.sh/{NTFY_TOPIC}",
+            data=f"Fire detected @ ({lat:.5f}, {lon:.5f})\nConfidence: {conf_str}\nMaps: https://maps.google.com/?q={lat},{lon}",
+            headers={
+                "Title": "🔥 FireFly Alert",
+                "Priority": "urgent",
+                "Tags": "fire,warning",
+            },
+            timeout=3.0,
+        )
+    except Exception as e:
+        print(f"[alert] ntfy push failed: {e}")
 
 @app.post("/api/fire")
 def post_fire():
@@ -936,6 +957,9 @@ def post_fire():
                 "observations": 1,
             }
             user_fires.append(fire)
+
+    if is_new:
+        threading.Thread(target=_send_fire_alert, args=(fire,), daemon=True).start()
 
     return jsonify(fire)
 
