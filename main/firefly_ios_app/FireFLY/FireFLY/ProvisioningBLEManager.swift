@@ -41,7 +41,7 @@ struct DiscoveredBLEDevice: Identifiable, Equatable {
 final class ProvisioningBLEManager: NSObject, ObservableObject {
     // Prototype BLE contract from the repo's NimBLE scratch example:
     // service AB00, writeable credential characteristic AB01.
-    // AB02/AB03/AB04 are supported for split SSID/password/command firmware.
+    // AB01 accepts one JSON payload containing SSID, password, and API key.
     private static let provisioningServiceUUID = CBUUID(string: "AB00")
     private static let combinedCredentialCharacteristicUUID = CBUUID(string: "AB01")
     private static let ssidCharacteristicUUID = CBUUID(string: "AB02")
@@ -115,11 +115,17 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
     }
 
     @discardableResult
-    func sendCredentials(ssid: String, password: String) -> Bool {
+    func sendCredentials(ssid: String, password: String, apiKey: String) -> Bool {
         let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard !trimmedSSID.isEmpty else {
             statusMessage = "SSID is required."
+            return false
+        }
+
+        guard !trimmedAPIKey.isEmpty else {
+            statusMessage = "API key is required."
             return false
         }
 
@@ -132,18 +138,12 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         activeWrite = nil
         sentCompletionMessage = "Credentials sent to \(peripheral.displayName)."
 
-        if let ssidCharacteristic, let passwordCharacteristic {
-            guard queueWrite(trimmedSSID, to: ssidCharacteristic, on: peripheral),
-                  queueWrite(password, to: passwordCharacteristic, on: peripheral) else {
-                statusMessage = "Credential channel is not writeable."
-                return false
-            }
-
-            if let commandCharacteristic {
-                _ = queueWrite("CONNECT", to: commandCharacteristic, on: peripheral)
-            }
-        } else if let combinedCharacteristic = combinedCredentialCharacteristic ?? fallbackWritableCharacteristic {
-            let payload = WiFiProvisioningPayload(ssid: trimmedSSID, password: password)
+        if let combinedCharacteristic = combinedCredentialCharacteristic ?? fallbackWritableCharacteristic {
+            let payload = ProvisioningPayload(
+                ssid: trimmedSSID,
+                password: password,
+                apiKey: trimmedAPIKey
+            )
 
             guard var payloadData = try? JSONEncoder().encode(payload) else {
                 statusMessage = "Could not encode credentials."
@@ -157,7 +157,7 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
                 return false
             }
         } else {
-            statusMessage = "Connected, but no credential channel was found."
+            statusMessage = "Connected, but no API key credential channel was found."
             return false
         }
 
@@ -180,12 +180,13 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
     }
 
     private func updateReadyState() {
-        let hasSplitCredentials = ssidCharacteristic != nil && passwordCharacteristic != nil
         let hasCombinedCredentials = combinedCredentialCharacteristic != nil || fallbackWritableCharacteristic != nil
-        canSendCredentials = connectedPeripheral != nil && (hasSplitCredentials || hasCombinedCredentials)
+        canSendCredentials = connectedPeripheral != nil && hasCombinedCredentials
 
         if canSendCredentials {
             statusMessage = "Connected. Send credentials."
+        } else if connectedPeripheral != nil && ssidCharacteristic != nil && passwordCharacteristic != nil {
+            statusMessage = "Connected, but API key provisioning requires the AB01 channel."
         }
     }
 
@@ -417,7 +418,11 @@ extension ProvisioningBLEManager: CBPeripheralDelegate {
         defer {
             pendingServiceDiscoveries.remove(service.uuid.uuidString)
             if pendingServiceDiscoveries.isEmpty && !canSendCredentials {
-                statusMessage = "Connected, but no writable credential channel was found."
+                if ssidCharacteristic != nil && passwordCharacteristic != nil {
+                    statusMessage = "Connected, but API key provisioning requires the AB01 channel."
+                } else {
+                    statusMessage = "Connected, but no writable credential channel was found."
+                }
             }
         }
 
@@ -444,9 +449,16 @@ extension ProvisioningBLEManager: CBPeripheralDelegate {
     }
 }
 
-private struct WiFiProvisioningPayload: Encodable {
+private struct ProvisioningPayload: Encodable {
     let ssid: String
     let password: String
+    let apiKey: String
+
+    private enum CodingKeys: String, CodingKey {
+        case ssid
+        case password
+        case apiKey = "api_key"
+    }
 }
 
 private struct WriteRequest {

@@ -36,6 +36,34 @@ static struct sockaddr_in s_bcast_addr;
 
 static bool s_ble_provisioning_active = false;
 static bool s_wifi_connected = false;
+static char s_api_key[GPS_API_KEY_MAX_LEN] = {0};
+
+static bool provisioned_credentials_available(void)
+{
+    char ssid[32] = {0};
+    char password[64] = {0};
+    char api_key[GPS_API_KEY_MAX_LEN] = {0};
+    size_t ssid_len = sizeof(ssid);
+    size_t pwd_len = sizeof(password);
+    size_t api_key_len = sizeof(api_key);
+
+    nvs_handle_t nvs_h;
+    esp_err_t err = nvs_open("wifi", NVS_READONLY, &nvs_h);
+    if (err != ESP_OK) {
+        return false;
+    }
+
+    esp_err_t ssid_err = nvs_get_str(nvs_h, "ssid", ssid, &ssid_len);
+    esp_err_t pwd_err = nvs_get_str(nvs_h, "password", password, &pwd_len);
+    esp_err_t api_key_err = nvs_get_str(nvs_h, "api_key", api_key, &api_key_len);
+    nvs_close(nvs_h);
+
+    return ssid_err == ESP_OK &&
+           pwd_err == ESP_OK &&
+           api_key_err == ESP_OK &&
+           ssid[0] != '\0' &&
+           api_key[0] != '\0';
+}
 
 static void wifi_event_handler(void *arg, esp_event_base_t base,
                                int32_t id, void *data)
@@ -83,34 +111,44 @@ static void wifi_init_sta(void)
     ESP_ERROR_CHECK(esp_event_handler_instance_register(
         IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL));
 
-    /* Try to load WiFi credentials from NVS first (set via BLE provisioning) */
+    /* Try to load provisioning credentials from NVS first (set via BLE provisioning). */
     char ssid[32] = {0};
     char password[64] = {0};
-    size_t ssid_len = sizeof(ssid) - 1;
-    size_t pwd_len = sizeof(password) - 1;
+    size_t ssid_len = sizeof(ssid);
+    size_t pwd_len = sizeof(password);
+    size_t api_key_len = sizeof(s_api_key);
+    s_api_key[0] = '\0';
 
     nvs_handle_t nvs_h;
     esp_err_t err = nvs_open("wifi", NVS_READONLY, &nvs_h);
     if (err == ESP_OK) {
         esp_err_t ssid_err = nvs_get_str(nvs_h, "ssid", ssid, &ssid_len);
         esp_err_t pwd_err = nvs_get_str(nvs_h, "password", password, &pwd_len);
-        ESP_LOGI(TAG, "NVS read results: ssid_err=%s pwd_err=%s (ssid_len=%d pwd_len=%d)",
-                 esp_err_to_name(ssid_err), esp_err_to_name(pwd_err), (int)ssid_len, (int)pwd_len);
+        esp_err_t api_key_err = nvs_get_str(nvs_h, "api_key", s_api_key, &api_key_len);
+        ESP_LOGI(TAG, "NVS read results: ssid_err=%s pwd_err=%s api_key_err=%s (ssid_len=%d pwd_len=%d api_key_len=%d)",
+                 esp_err_to_name(ssid_err), esp_err_to_name(pwd_err),
+                 esp_err_to_name(api_key_err), (int)ssid_len, (int)pwd_len,
+                 (int)api_key_len);
         nvs_close(nvs_h);
 
-        if (ssid_err == ESP_OK && pwd_err == ESP_OK) {
-            ESP_LOGI(TAG, "Loaded WiFi credentials from NVS: SSID='%s' (len=%d), password_len=%d",
-                     ssid, (int)ssid_len, (int)pwd_len);
+        if (ssid_err == ESP_OK && pwd_err == ESP_OK && api_key_err == ESP_OK &&
+            ssid[0] != '\0' && s_api_key[0] != '\0') {
+            ESP_LOGI(TAG, "Loaded provisioning credentials from NVS: SSID='%s' (len=%d), password_len=%d, api_key_len=%d",
+                     ssid, (int)ssid_len, (int)pwd_len, (int)api_key_len);
         } else {
-            /* Fall back to hardcoded credentials from Kconfig */
+            /* Fall back to hardcoded WiFi only. API keys must be provisioned over BLE. */
             strncpy(ssid, CONFIG_GPS_WIFI_SSID, sizeof(ssid) - 1);
             strncpy(password, CONFIG_GPS_WIFI_PASSWORD, sizeof(password) - 1);
+            s_api_key[0] = '\0';
+            ESP_LOGW(TAG, "Provisioned API key missing; cloud uplink will stay disabled until BLE provisioning completes");
             ESP_LOGI(TAG, "Using hardcoded WiFi credentials: SSID='%s'", ssid);
         }
     } else {
-        /* Fall back to hardcoded credentials */
+        /* Fall back to hardcoded WiFi only. API keys must be provisioned over BLE. */
         strncpy(ssid, CONFIG_GPS_WIFI_SSID, sizeof(ssid) - 1);
         strncpy(password, CONFIG_GPS_WIFI_PASSWORD, sizeof(password) - 1);
+        s_api_key[0] = '\0';
+        ESP_LOGW(TAG, "No provisioning credentials found; cloud uplink will stay disabled until BLE provisioning completes");
         ESP_LOGI(TAG, "Using hardcoded WiFi credentials: SSID='%s'", ssid);
     }
 
@@ -266,24 +304,11 @@ void app_main(void)
         ESP_ERROR_CHECK(nvs_flash_init());
     }
 
-    /* Check if WiFi credentials exist; if not, start BLE provisioning */
-    char ssid[32] = {0};
-    size_t ssid_len = sizeof(ssid) - 1;
-    nvs_handle_t nvs_h;
-    esp_err_t err = nvs_open("wifi", NVS_READONLY, &nvs_h);
-    bool has_credentials = false;
-    if (err == ESP_OK) {
-        if (nvs_get_str(nvs_h, "ssid", ssid, &ssid_len) == ESP_OK && ssid_len > 0) {
-            has_credentials = true;
-        }
-        nvs_close(nvs_h);
-    }
-
-    if (!has_credentials) {
-        ESP_LOGI(TAG, "No WiFi credentials found, starting BLE provisioning");
+    if (!provisioned_credentials_available()) {
+        ESP_LOGI(TAG, "No complete provisioning credentials found, starting BLE provisioning");
         ESP_ERROR_CHECK(ble_provision_init());
         s_ble_provisioning_active = true;
-        ESP_LOGI(TAG, "Open iOS app and select 'FireFly-C3' to configure WiFi");
+        ESP_LOGI(TAG, "Open iOS app and select 'FireFly-C3' to configure WiFi and API key");
 
         while (!ble_provision_credentials_updated()) {
             vTaskDelay(pdMS_TO_TICKS(250));
@@ -294,7 +319,7 @@ void app_main(void)
 
     wifi_init_sta();
     udp_init();
-    cloud_uplink_init();
+    cloud_uplink_init(s_api_key);
 
     uart_config_t cfg = {
         .baud_rate  = GPS_BAUD_RATE,

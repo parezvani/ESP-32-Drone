@@ -1,18 +1,18 @@
-# ESP32-C3 GPS Firmware with BLE WiFi Provisioning
+# ESP32-C3 GPS Firmware with BLE Provisioning
 
 ## Overview
 
-This GPS telemetry firmware now supports **BLE (Bluetooth Low Energy) WiFi provisioning**, allowing you to configure WiFi credentials directly from an iOS app without needing to hardcode them during compilation.
+This GPS telemetry firmware now supports **BLE (Bluetooth Low Energy) provisioning**, allowing you to configure WiFi credentials and the drone API key directly from an iOS app without needing to hardcode them during compilation.
 
 ## How It Works
 
 ### Boot Flow
 
-1. **Firmware boots** and checks NVS flash for saved WiFi credentials
-2. **If credentials found**: Uses saved credentials to connect to WiFi (skips BLE)
-3. **If NO credentials found**: Starts BLE advertising as "FireFly-C3" and waits for iOS app to send credentials
-4. **iOS app connects** via BLE and sends WiFi SSID + password as JSON
-5. **Firmware saves** credentials to NVS flash
+1. **Firmware boots** and checks NVS flash for saved WiFi credentials and API key
+2. **If complete credentials are found**: Uses saved credentials to connect to WiFi and authenticate cloud POSTs (skips BLE)
+3. **If credentials are incomplete**: Starts BLE advertising as "FireFly-C3" and waits for iOS app to send credentials
+4. **iOS app connects** via BLE and sends WiFi SSID + password + API key as JSON
+5. **Firmware saves** credentials and API key to NVS flash
 6. **Firmware connects** to WiFi using the new credentials
 7. **BLE advertising stops** once WiFi connects successfully
 8. **Future boots** use the saved credentials automatically
@@ -31,7 +31,7 @@ cd /path/to/FireFly/main/firmware/gps_telemetry
 ### Build Steps
 
 ```bash
-# Configure (optional, if you want to customize WiFi or other settings)
+# Configure (optional, if you want to customize drone ID or other settings)
 idf.py menuconfig
 
 # Build
@@ -47,13 +47,13 @@ After flashing, you should see:
 
 ```
 [gps] BLE provisioning initialized
-[gps] Open iOS app and select 'FireFly-C3' to configure WiFi
+[gps] Open iOS app and select 'FireFly-C3' to configure WiFi and API key
 ```
 
 If credentials were already saved:
 
 ```
-[gps] Loaded WiFi credentials from NVS: SSID='MyNetwork'
+[gps] Loaded provisioning credentials from NVS: SSID='MyNetwork'
 [gps] connecting to SSID 'MyNetwork'
 [gps] wifi got ip: 192.168.1.100
 [ble_prov] BLE advertising stopped
@@ -62,9 +62,9 @@ If credentials were already saved:
 ## Using the iOS App
 
 1. **Open the FireFly provisioning app** on your iPhone
-2. **Tap "Scan for Arduino"** (it discovers BLE devices)
+2. **Tap "Scan for ESP32"** (it discovers BLE devices)
 3. **Select "FireFly-C3"** from the list
-4. **Enter WiFi SSID and password**
+4. **Enter WiFi SSID, password, and API key**
 5. **Tap "Send Credentials"**
 6. **Wait** for the serial monitor to show: `wifi got ip: X.X.X.X`
 
@@ -111,8 +111,8 @@ Then recompile and flash.
 - **`ble_provision.h`** — Header with BLE provisioning API
 - **`ble_provision.c`** — BLE GATT server implementation
   - Advertises service `AB00` with characteristic `AB01`
-  - Receives JSON: `{"ssid":"Network","password":"Pass"}`
-  - Saves to NVS under namespace `"wifi"` with keys `"ssid"` and `"password"`
+  - Receives JSON: `{"ssid":"Network","password":"Pass","api_key":"Key"}`
+  - Saves to NVS under namespace `"wifi"` with keys `"ssid"`, `"password"`, and `"api_key"`
 
 ### Modified Files
 
@@ -125,7 +125,6 @@ Then recompile and flash.
 - **`CMakeLists.txt`** — Build configuration
   - Added `ble_provision.c` to sources
   - Added `bt` component (Bluetooth stack)
-  - Added `cjson` component (for JSON parsing)
 
 ## NVS Storage Format
 
@@ -135,6 +134,7 @@ Credentials are stored in NVS under:
 - **Keys**:
   - `"ssid"` → WiFi network name (string, max 31 chars)
   - `"password"` → WiFi password (string, max 63 chars)
+  - `"api_key"` → drone API key (string, max 191 chars)
 
 ## JSON Payload Format
 
@@ -143,7 +143,8 @@ The iOS app sends credentials as:
 ```json
 {
   "ssid": "Your WiFi Network",
-  "password": "Your WiFi Password"
+  "password": "Your WiFi Password",
+  "api_key": "Your Drone API Key"
 }
 ```
 
@@ -158,17 +159,17 @@ The payload is sent as a write operation to BLE characteristic `AB01`.
 - [ ] Power cycle the ESP32 and retry
 - [ ] Check that the firmware compiled with BLE support (`bt` component)
 
-### "No WiFi credentials found, starting BLE provisioning" but WiFi never connects
+### "No complete provisioning credentials found, starting BLE provisioning" but WiFi never connects
 
-- [ ] Verify the SSID and password are correct in the iOS app
+- [ ] Verify the SSID, password, and API key are correct in the iOS app
 - [ ] Check the serial monitor for errors in credential parsing
 - [ ] Try manually setting hardcoded credentials in `Kconfig` and compare
 
 ### Firmware keeps asking for BLE credentials
 
 - [ ] Check that NVS is not full: `idf.py erase_flash && idf.py flash`
-- [ ] Verify the iOS app shows `"OK"` response after sending credentials
-- [ ] Check serial monitor for `"WiFi credentials saved to NVS"` message
+- [ ] Verify the iOS app shows `"Credentials sent"` after sending credentials
+- [ ] Check serial monitor for `"Provisioning credentials saved to NVS"` message
 
 ### "esp_ble_gap_register_callback failed" during build
 
@@ -197,8 +198,8 @@ CONFIG_GPS_CLOUD_ENABLED  # Enable HTTPS cloud uplink (optional)
 ⚠️ **This is a development/lab feature**. For production:
 
 - [ ] Add BLE authentication (passkey or OOB pairing)
-- [ ] Encrypt WiFi credentials in transit (use BLE secure connections)
+- [ ] Encrypt WiFi credentials and API keys in transit (use BLE secure connections)
 - [ ] Implement rate limiting on credential attempts
 - [ ] Add certificate pinning for HTTPS cloud uplink
 
-Currently, any iOS app can provision WiFi credentials to any "FireFly-C3" device.
+Currently, any iOS app can provision WiFi credentials and API keys to any "FireFly-C3" device.

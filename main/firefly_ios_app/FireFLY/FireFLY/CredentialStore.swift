@@ -8,9 +8,29 @@
 import Foundation
 import Security
 
-struct WiFiCredentials: Codable, Equatable {
+nonisolated struct WiFiCredentials: Codable, Equatable {
     let ssid: String
     let password: String
+    let apiKey: String
+
+    init(ssid: String, password: String, apiKey: String = "") {
+        self.ssid = ssid
+        self.password = password
+        self.apiKey = apiKey
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case ssid
+        case password
+        case apiKey = "api_key"
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        ssid = try container.decode(String.self, forKey: .ssid)
+        password = try container.decode(String.self, forKey: .password)
+        apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
+    }
 }
 
 final class CredentialStore {

@@ -27,7 +27,7 @@ menu "FireFly GPS Broadcaster"
         help
             When enabled, every GPS fix is also POSTed to the cloud server
             in addition to being broadcast over UDP. Requires GPS_CLOUD_URL
-            and GPS_API_KEY to be set.
+            to be set. The drone API key is provisioned over BLE.
 
     config GPS_CLOUD_URL
         string "Cloud HTTPS endpoint"
@@ -35,13 +35,5 @@ menu "FireFly GPS Broadcaster"
         default "https://firefly-team6.onrender.com/api/drone"
         help
             Full HTTPS URL the firmware POSTs telemetry to.
-
-    config GPS_API_KEY
-        string "API key for cloud endpoint"
-        depends on GPS_CLOUD_ENABLED
-        default ""
-        help
-            Long random string registered in the cloud dashboard. Sent in
-            the X-API-Key header. Treat as a secret.
 
 endmenu

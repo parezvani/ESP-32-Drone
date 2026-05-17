@@ -157,7 +157,7 @@
 
         <div class="tip">
           <span>💡</span>
-          <div>You will need this API key and your chosen drone name during Step 2 (Firmware Configuration) to link the telemetry endpoints properly.</div>
+          <div>You will need this API key in the FireFLY iOS app after flashing the GPS firmware.</div>
         </div>
 
         <div class="card-foot">
@@ -185,7 +185,7 @@
 
         <div class="instr">
           <div class="instr-n">2</div>
-          <div class="instr-t">Open menuconfig and set the values below under <strong>FireFly GPS Broadcaster</strong>:</div>
+          <div class="instr-t">Open menuconfig and set the build-time values below under <strong>FireFly GPS Broadcaster</strong>:</div>
         </div>
         <div class="code-block">
           <div class="code-head">
@@ -201,10 +201,8 @@
             <thead><tr><th>Key</th><th>Value</th><th>Notes</th></tr></thead>
             <tbody>
               <tr><td class="k">Drone ID</td>                   <td class="v">&lt;your drone name&gt;</td>  <td class="d">The name you registered in step 1</td></tr>
-              <tr><td class="k">WiFi SSID</td>                  <td class="v">&lt;your network&gt;</td>     <td class="d">2.4 GHz only — ESP32-C3 does not support 5 GHz</td></tr>
-              <tr><td class="k">WiFi Password</td>              <td class="v">&lt;your password&gt;</td>    <td class="d">Stored encrypted in NVS flash</td></tr>
               <tr><td class="k">Enable HTTPS POST to cloud</td> <td class="v">y</td>                        <td class="d">Required for the ground station to receive telemetry</td></tr>
-              <tr><td class="k">API key for cloud endpoint</td> <td class="v">&lt;your API key&gt;</td>     <td class="d">The key you copied in step 1</td></tr>
+              <tr><td class="k">WiFi and API key</td>            <td class="v">FireFLY iOS app</td>          <td class="d">Sent over Bluetooth after flashing</td></tr>
             </tbody>
           </table>
         </div>
@@ -223,7 +221,7 @@
 
         <div class="tip">
           <span>📡</span>
-          <div>Watch the serial monitor for <code>GPS fix acquired</code> and <code>POST 200</code>. Your drone will appear on the map within a few seconds.</div>
+          <div>After flashing, open the FireFLY iOS app, scan for <code>FireFly-C3</code>, and send WiFi plus the API key over Bluetooth. Then watch the serial monitor for a WiFi IP and successful cloud POSTs.</div>
         </div>
 
         <div class="card-foot">

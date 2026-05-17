@@ -14,6 +14,7 @@ struct ContentView: View {
 
     @State private var ssid = ""
     @State private var password = ""
+    @State private var apiKey = ""
     @State private var restoreMessage = ""
     @State private var isPasswordVisible = false
 
@@ -128,6 +129,13 @@ struct ContentView: View {
             }
             .fireFLYFieldChrome()
 
+            SecureField("API Key", text: $apiKey)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textContentType(.password)
+                .privacySensitive()
+                .fireFLYFieldChrome()
+
             Button {
                 restoreSavedCredentials()
             } label: {
@@ -225,7 +233,9 @@ struct ContentView: View {
     }
 
     private var canSend: Bool {
-        bluetooth.canSendCredentials && !ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        bluetooth.canSendCredentials &&
+        !ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func restoreSavedCredentials() {
@@ -237,6 +247,7 @@ struct ContentView: View {
 
             ssid = credentials.ssid
             password = credentials.password
+            apiKey = credentials.apiKey
             restoreMessage = "Saved credentials restored."
         } catch {
             restoreMessage = "Could not restore saved credentials."
@@ -245,12 +256,19 @@ struct ContentView: View {
 
     private func sendCredentials() {
         let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard bluetooth.sendCredentials(ssid: trimmedSSID, password: password) else {
+        let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard bluetooth.sendCredentials(ssid: trimmedSSID, password: password, apiKey: trimmedAPIKey) else {
             return
         }
 
         do {
-            try credentialStore.save(WiFiCredentials(ssid: trimmedSSID, password: password))
+            try credentialStore.save(
+                WiFiCredentials(
+                    ssid: trimmedSSID,
+                    password: password,
+                    apiKey: trimmedAPIKey
+                )
+            )
         } catch {
             restoreMessage = "Credentials sent, but not saved."
         }

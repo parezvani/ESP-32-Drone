@@ -143,9 +143,9 @@ Python process on your laptop, viewing on the cloud site.
    ESP32-C3. Before flashing, run `idf.py menuconfig` → "FireFly GPS
    Broadcaster" and set:
    - `Drone ID` → the name you used in step 2
-   - `WiFi SSID` / `WiFi Password` → your home WiFi
    - `Enable HTTPS POST to cloud server` → **y**
-   - `API key for cloud endpoint` → paste the key from step 2
+   After flashing, open the FireFLY iOS app and send your WiFi credentials
+   plus the API key from step 2 over Bluetooth.
 4. **Flash a generic MJPEG source onto your ESP32-CAM** (stock Arduino
    `CameraWebServer` example) and configure it for your WiFi. Confirm
    the cam shows live video at `http://<cam-ip>:81/stream` in your
@@ -159,7 +159,7 @@ Python process on your laptop, viewing on the cloud site.
 2. **Open the FireFly website** and check the drone panel — your drone
    should show **LIVE** with GPS coordinates and a marker on the map.
    *If it shows OFFLINE, the chip isn't reaching the cloud. Check
-   power, WiFi range, and that the API key in sdkconfig matches.*
+   power, WiFi range, and that the API key sent from the iOS app matches.*
 3. **Plug in the ESP32-CAM** to a wall charger (not laptop USB — too
    weak, causes brownouts). Wait ~15 s.
 4. **Verify the cam in your browser**: open `http://<cam-ip>:81/stream`.
@@ -232,7 +232,7 @@ on their own — unplug whenever.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Drone shows OFFLINE on dashboard | Chip not POSTing | Check power; check WiFi credentials in sdkconfig; check API key matches the dashboard |
+| Drone shows OFFLINE on dashboard | Chip not POSTing | Check power; check WiFi credentials and API key sent from the iOS app |
 | `Error: could not open video` | Cam URL is wrong, or cam crashed | Open `http://<cam-ip>:81/stream` in browser; power-cycle if hung |
 | `/api/fire returned 401` | API key invalid or revoked | Check `FIREFLY_API_KEY` matches one in the dashboard; rotate if needed |
 | `/api/fire returned 400 lat and lon must be numeric` | Bearing math failed AND drone has no GPS | Wait for the chip to acquire a fix; check the `[debug]` log line |

@@ -34,9 +34,19 @@ static esp_err_t _http_event_handler(esp_http_client_event_t *evt)
 #endif
 
 
-void cloud_uplink_init(void)
+void cloud_uplink_init(const char *api_key)
 {
 #if CONFIG_GPS_CLOUD_ENABLED
+    if (!api_key || api_key[0] == '\0') {
+        ESP_LOGE(TAG, "cloud API key is not provisioned");
+        return;
+    }
+
+    if (s_client) {
+        esp_http_client_cleanup(s_client);
+        s_client = NULL;
+    }
+
     esp_http_client_config_t cfg = {
         .url = CONFIG_GPS_CLOUD_URL,
         .method = HTTP_METHOD_POST,
@@ -51,9 +61,10 @@ void cloud_uplink_init(void)
         return;
     }
     esp_http_client_set_header(s_client, "Content-Type", "application/json");
-    esp_http_client_set_header(s_client, "X-API-Key", CONFIG_GPS_API_KEY);
+    esp_http_client_set_header(s_client, "X-API-Key", api_key);
     ESP_LOGI(TAG, "cloud uplink ready -> %s", CONFIG_GPS_CLOUD_URL);
 #else
+    (void)api_key;
     ESP_LOGI(TAG, "cloud uplink disabled at build time (CONFIG_GPS_CLOUD_ENABLED=n)");
 #endif
 }

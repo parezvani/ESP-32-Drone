@@ -23,7 +23,8 @@ static const char *TAG = "ble_prov";
 #define PROV_DEVICE_NAME        "FireFly-C3"
 #define PROV_SERVICE_UUID       0xAB00
 #define PROV_CHAR_UUID          0xAB01
-#define PROV_MAX_JSON_LEN       160
+#define PROV_MAX_JSON_LEN       384
+#define PROV_MAX_API_KEY_LEN    192
 
 static const ble_uuid16_t s_service_uuid = BLE_UUID16_INIT(PROV_SERVICE_UUID);
 static const ble_uuid16_t s_char_uuid = BLE_UUID16_INIT(PROV_CHAR_UUID);
@@ -87,7 +88,9 @@ static bool parse_json_string_field(const char *json, const char *key,
     return len > 0;
 }
 
-static bool save_wifi_credentials(const char *ssid, const char *password)
+static bool save_provisioning_credentials(const char *ssid,
+                                          const char *password,
+                                          const char *api_key)
 {
     nvs_handle_t nvs_h;
     esp_err_t err = nvs_open("wifi", NVS_READWRITE, &nvs_h);
@@ -101,20 +104,24 @@ static bool save_wifi_credentials(const char *ssid, const char *password)
         err = nvs_set_str(nvs_h, "password", password);
     }
     if (err == ESP_OK) {
+        err = nvs_set_str(nvs_h, "api_key", api_key);
+    }
+    if (err == ESP_OK) {
         err = nvs_commit(nvs_h);
     }
 
     nvs_close(nvs_h);
 
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "saving WiFi credentials failed: %s", esp_err_to_name(err));
+        ESP_LOGE(TAG, "saving provisioning credentials failed: %s", esp_err_to_name(err));
         return false;
     }
 
-    ESP_LOGI(TAG, "WiFi credentials saved to NVS (SSID=%s)", ssid);
-    /* Log masked password length for diagnostics (do not print raw password) */
+    ESP_LOGI(TAG, "Provisioning credentials saved to NVS (SSID=%s)", ssid);
     size_t pwd_len = password ? strlen(password) : 0;
+    size_t api_key_len = api_key ? strlen(api_key) : 0;
     ESP_LOGI(TAG, "Saved password length=%d (masked)", (int)pwd_len);
+    ESP_LOGI(TAG, "Saved API key length=%d (masked)", (int)api_key_len);
     s_credentials_updated = true;
     return true;
 }
@@ -143,17 +150,19 @@ static int prov_access_cb(uint16_t conn_handle, uint16_t attr_handle,
     }
     payload[payload_len] = '\0';
 
-    ESP_LOGI(TAG, "received provisioning payload: %s", payload);
+    ESP_LOGI(TAG, "received provisioning payload (%d bytes)", payload_len);
 
     char ssid[32];
     char password[64];
+    char api_key[PROV_MAX_API_KEY_LEN];
     if (!parse_json_string_field(payload, "ssid", ssid, sizeof(ssid)) ||
-        !parse_json_string_field(payload, "password", password, sizeof(password))) {
-        ESP_LOGE(TAG, "payload missing ssid or password");
+        !parse_json_string_field(payload, "password", password, sizeof(password)) ||
+        !parse_json_string_field(payload, "api_key", api_key, sizeof(api_key))) {
+        ESP_LOGE(TAG, "payload missing ssid, password, or api_key");
         return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
     }
 
-    if (!save_wifi_credentials(ssid, password)) {
+    if (!save_provisioning_credentials(ssid, password, api_key)) {
         return BLE_ATT_ERR_UNLIKELY;
     }
 
