@@ -117,22 +117,36 @@
     }
 
     async function loadAlertTopic() {
-      const r = await fetch("/api/state", { headers: await getAuthHeader() });
-      if (!r.ok) return;
-      const { ntfy_topic } = await r.json();
-      if (!ntfy_topic) return;
+      try {
+        const headers = await getAuthHeader();
+        const r = await fetch("/api/state", { headers });
+        if (!r.ok) {
+          document.getElementById("ntfy-topic-url").textContent = `error: HTTP ${r.status}`;
+          return;
+        }
+        const data = await r.json();
+        const topic = data.ntfy_topic;
+        if (!topic) {
+          document.getElementById("ntfy-topic-url").textContent = "no topic returned";
+          console.log("api/state response:", data);
+          return;
+        }
     
-      const url = `https://ntfy.sh/${ntfy_topic}`;
-      document.getElementById("ntfy-topic-url").textContent = url;
-      document.getElementById("ntfy-open-btn").href = url;
+        const url = `https://ntfy.sh/${topic}`;
+        document.getElementById("ntfy-topic-url").textContent = url;
+        document.getElementById("ntfy-open-btn").href = url;
     
-      document.getElementById("ntfy-copy-btn").addEventListener("click", () => {
-        navigator.clipboard.writeText(url).then(() => {
-          const btn = document.getElementById("ntfy-copy-btn");
-          btn.textContent = "Copied!";
-          setTimeout(() => btn.textContent = "Copy", 2000);
+        document.getElementById("ntfy-copy-btn").addEventListener("click", () => {
+          navigator.clipboard.writeText(url).then(() => {
+            const btn = document.getElementById("ntfy-copy-btn");
+            btn.textContent = "Copied!";
+            setTimeout(() => btn.textContent = "Copy", 2000);
+          });
         });
-      });
+      } catch (e) {
+        document.getElementById("ntfy-topic-url").textContent = `error: ${e.message}`;
+        console.error("loadAlertTopic failed:", e);
+      }
     }
 
     async function loadDrones() {
