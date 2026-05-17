@@ -70,6 +70,24 @@
       </div>
     </div>
 
+    <div class="section" id="alerts-section">
+      <h2>Fire Alerts</h2>
+      <p style="font-size:13px; color:#aaa; margin: 0 0 10px;">
+        Subscribe to get push notifications when a fire is detected. 
+        Install the <a href="https://ntfy.sh" target="_blank" style="color:#ff7a3a;">ntfy app</a>, then tap your topic link below.
+      </p>
+      <div id="ntfy-topic-box" style="background:#0c0c0e; border:1px solid #2a2a2e; border-radius:6px; padding:12px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+        <code id="ntfy-topic-url" style="font-size:12px; word-break:break-all; color:#f5f5f5;">loading…</code>
+        <div style="display:flex; gap:8px; flex-shrink:0;">
+          <button id="ntfy-copy-btn" style="padding:6px 12px; background:#2a2a2e; border:1px solid #3a3a3e; color:#f5f5f5; border-radius:6px; cursor:pointer; font-size:12px;">Copy</button>
+          <a id="ntfy-open-btn" href="#" target="_blank"
+             style="padding:6px 12px; background:#ff7a3a; color:#111; border-radius:6px; font-weight:600; font-size:12px; text-decoration:none;">
+            Open in ntfy
+          </a>
+        </div>
+      </div>
+    </div>
+    
     <div class="section">
       <h2>My Drones</h2>
       <div id="drone-list"><div class="empty">loading…</div></div>
@@ -96,6 +114,25 @@
     async function getAuthHeader() {
       const { data: { session } } = await sb.auth.getSession();
       return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
+    }
+
+    async function loadAlertTopic() {
+      const r = await fetch("/api/state", { headers: await getAuthHeader() });
+      if (!r.ok) return;
+      const { ntfy_topic } = await r.json();
+      if (!ntfy_topic) return;
+    
+      const url = `https://ntfy.sh/${ntfy_topic}`;
+      document.getElementById("ntfy-topic-url").textContent = url;
+      document.getElementById("ntfy-open-btn").href = url;
+    
+      document.getElementById("ntfy-copy-btn").addEventListener("click", () => {
+        navigator.clipboard.writeText(url).then(() => {
+          const btn = document.getElementById("ntfy-copy-btn");
+          btn.textContent = "Copied!";
+          setTimeout(() => btn.textContent = "Copy", 2000);
+        });
+      });
     }
 
     async function loadDrones() {
@@ -154,6 +191,7 @@
     });
 
     loadDrones();
+    loadAlertTopic();
   </script>
 </body>
 </html>
