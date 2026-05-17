@@ -404,6 +404,12 @@ def _run_health_check_loop(interval_s: float = 10.0):
 # Start background health thread
 threading.Thread(target=_run_health_check_loop, args=(), daemon=True).start()
 
+def _user_ntfy_topic(user_id: str | None) -> str:
+    if not user_id:
+        return NTFY_TOPIC  # local dev fallback
+    # Short hash — unguessable but stable across restarts
+    h = hashlib.sha256(user_id.encode()).hexdigest()[:16]
+    return f"firefly-{h}"
 
 def _user_owns_drone(user_id: str | None, drone_id: str) -> bool:
     """True if the user owns this drone, or in local dev (no auth)."""
@@ -855,16 +861,17 @@ def get_state():
         "camera_url": _camera_url,
         "server_ts": time.time(),
         "health": _health,
+        "ntfy_topic": _user_ntfy_topic(uid),
     })
 
-def _send_fire_alert(fire: dict) -> None:
+def _send_fire_alert(fire: dict, topic: str) -> None:
     lat = fire.get("lat", 0)
     lon = fire.get("lon", 0)
     conf = fire.get("confidence")
     conf_str = f"{conf*100:.0f}%" if conf else "unknown"
     try:
         requests.post(
-            f"https://ntfy.sh/{NTFY_TOPIC}",
+            f"https://ntfy.sh/{topic}",
             data=f"Fire detected @ ({lat:.5f}, {lon:.5f})\nConfidence: {conf_str}\nMaps: https://maps.google.com/?q={lat},{lon}".encode("utf-8"),
             headers={
                 "Title": "FireFly Alert",
@@ -960,7 +967,8 @@ def post_fire():
             is_new = True
 
     if is_new:
-        threading.Thread(target=_send_fire_alert, args=(fire,), daemon=True).start()
+        topic = _user_ntfy_topic(uid)
+        threading.Thread(target=_send_fire_alert, args=(fire, topic), daemon=True).start()
 
     return jsonify(fire)
 
