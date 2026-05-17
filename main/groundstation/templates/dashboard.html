@@ -109,9 +109,12 @@
   <script>
     const SUPABASE_URL = "{{ supabase_url }}";
     const SUPABASE_KEY = "{{ supabase_key }}";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+    const sb = (SUPABASE_URL && SUPABASE_KEY)
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+      : null;
+    
     async function getAuthHeader() {
+      if (!sb) return {};
       const { data: { session } } = await sb.auth.getSession();
       return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
     }
