@@ -596,9 +596,8 @@ threading.Thread(target=_drone_reaper, daemon=True).start()
 
 @app.get("/")
 def index():
-    # Unauthenticated visitors see the redesigned landing (v2). Authenticated
-    # operators land straight on the live map. The old landing.html stays
-    # reachable at /landing-old as a fallback if v2 misbehaves.
+    # Unauthenticated visitors see the landing page. Authenticated
+    # operators land straight on the live map.
     if JWT_SECRET and "jwt" not in session:
         return render_template("landing_v2.html")
     return render_template("index.html")
@@ -606,12 +605,6 @@ def index():
 @app.get("/landing")
 def landing_page():
     return render_template("landing_v2.html")
-
-@app.get("/landing-old")
-def landing_old_page():
-    """Original pre-redesign landing — kept as a fallback in case
-    landing_v2 needs to be reverted quickly."""
-    return render_template("landing.html")
 
 @app.get("/login")
 def login_page():
