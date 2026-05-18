@@ -1,162 +1,949 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FireFly — Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='colors_and_type.css') }}" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <style>
-    body { background: #0c0c0e; color: #f5f5f5; margin: 0; padding: 24px;
-           font-family: system-ui, sans-serif; min-height: 100vh; box-sizing: border-box; }
-    .container { max-width: 720px; margin: 0 auto; }
-    header { display: flex; align-items: center; justify-content: space-between;
-             padding-bottom: 16px; border-bottom: 1px solid #2a2a2e; margin-bottom: 24px; }
-    h1 { color: #ff7a3a; margin: 0; font-size: 22px; }
-    nav a { color: #f5f5f5; text-decoration: none; margin-left: 16px; font-size: 13px; }
-    nav a:hover { color: #ff7a3a; }
-    .section { background: rgba(18, 18, 20, 0.95); padding: 20px;
-               border-radius: 10px; margin-bottom: 16px; }
-    .section h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 1px;
-                  color: #aaa; margin: 0 0 12px; }
-    .add-form { display: flex; gap: 8px; }
-    .add-form input { flex: 1; padding: 8px 12px; background: #0c0c0e;
-                      border: 1px solid #2a2a2e; border-radius: 6px;
-                      color: #f5f5f5; font-size: 14px; }
-    .add-form button { padding: 8px 16px; background: #ff7a3a; color: #111;
-                       border: 0; border-radius: 6px; font-weight: 600; cursor: pointer; }
-    .drone-row { background: #1d1d20; padding: 12px 14px; border-radius: 6px;
-                 margin-bottom: 8px; display: flex; justify-content: space-between;
-                 align-items: center; transition: border-color 0.15s; }
-    .drone-row .name { font-weight: 600; }
-    .drone-row .meta { font-size: 11px; color: #888; font-family: ui-monospace, monospace;
-                       margin-top: 4px; }
-    .drone-row button { background: transparent; border: 1px solid #553a3a;
-                        color: #c97070; padding: 4px 10px; border-radius: 4px;
-                        cursor: pointer; font-size: 12px; }
-    .drone-row button:hover { background: #2a1a1a; }
-    .empty { color: #666; font-style: italic; font-size: 13px; }
-    .key-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-                 display: none; align-items: center; justify-content: center; }
-    .key-modal.show { display: flex; }
-    .key-card { background: #1d1d20; padding: 24px; border-radius: 10px;
-                width: 480px; max-width: 90vw; }
-    .key-card h3 { color: #ff7a3a; margin: 0 0 12px; }
-    .key-card .warn { color: #ff7a3a; font-size: 12px; margin-bottom: 12px; }
-    .key-card code { display: block; padding: 12px; background: #0c0c0e;
-                     border-radius: 6px; word-break: break-all; font-size: 12px;
-                     margin-bottom: 12px; user-select: all; }
-    .key-card .actions { display: flex; gap: 8px; justify-content: flex-end; }
-    .key-card .actions button { padding: 8px 16px; border-radius: 6px; border: 0;
-                                font-weight: 600; cursor: pointer; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1>FireFly Dashboard</h1>
-      <nav>
-        <a href="/setup">Setup</a>
-        <a href="/">Map</a>
-        <a href="/logout">Logout</a>
-      </nav>
-    </header>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FireFly — Drone Fleet</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='colors_and_type.css') }}?v=5" />
+<style>
+  /* ═══════════════════════════════════════════════════════════════
+     RESET & PAGE FOUNDATION
+     Body is intentionally NOT a grid container. Sidebar is fixed,
+     main has margin-left. This pattern cannot be broken by any
+     external CSS in the cascade.
+     ═══════════════════════════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ff-night);
+    color: var(--ff-text);
+    font-family: var(--ff-font-app);
+    font-size: 13px; line-height: 1.5;
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Defeat the design system's bare h1/h2/h3 rules inside our chrome */
+  .ff-app h1, .ff-app h2, .ff-app h3, .ff-app h4 {
+    font-family: inherit; font-size: inherit; letter-spacing: 0;
+    line-height: inherit; margin: 0; font-weight: inherit;
+  }
 
-    <div class="section">
-      <h2>Add Drone</h2>
-      <div class="add-form">
-        <input id="new-drone-name" placeholder="e.g. drone_1" />
-        <button id="add-btn">Register</button>
-      </div>
-    </div>
+  /* ═══════════════════════════════════════════════════════════════
+     SIDEBAR — fixed to viewport, 240px wide
+     ═══════════════════════════════════════════════════════════════ */
+  .side {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 240px; z-index: 30;
+    background:
+      linear-gradient(180deg, rgba(255,74,28,0.025) 0%, transparent 40%),
+      var(--ff-night);
+    border-right: 1px solid var(--ff-border);
+    padding: 22px 0 0;
+    display: flex; flex-direction: column;
+    overflow-y: auto; overflow-x: hidden;
+  }
+  .side::after {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(180deg, transparent 0%, transparent 50%, rgba(255,255,255,0.015) 50%, rgba(255,255,255,0.015) 100%);
+    background-size: 100% 3px;
+    pointer-events: none; mix-blend-mode: overlay; opacity: 0.6;
+  }
+  .side > * { position: relative; z-index: 1; }
 
-    <div class="section">
-      <h2>My Drones</h2>
-      <div id="drone-list"><div class="empty">loading…</div></div>
-    </div>
-  </div>
+  .side-brand {
+    padding: 0 22px 20px;
+    border-bottom: 1px solid var(--ff-border);
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .side-brand::before {
+    content: ''; position: absolute; top: -4px; left: 14px;
+    width: 6px; height: 6px;
+    border-top: 1px solid var(--ff-fire);
+    border-left: 1px solid var(--ff-fire);
+  }
+  .side-brand .wordmark {
+    font-family: var(--ff-font-display); font-size: 24px;
+    letter-spacing: 5px; line-height: 1;
+    color: var(--ff-text); text-decoration: none; display: block;
+  }
+  .side-brand .wordmark span { color: var(--ff-fire); }
+  .side-brand .role {
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase;
+    letter-spacing: 2px; margin-top: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .side-brand .role::before {
+    content: ''; width: 4px; height: 4px; background: var(--ff-muted);
+    border-radius: 50%;
+  }
 
-  <div id="key-modal" class="key-modal">
-    <div class="key-card">
-      <h3>API Key Created</h3>
-      <div class="warn">Copy this key NOW. It won't be shown again.</div>
-      <code id="key-display"></code>
-      <div class="actions">
-        <button id="close-modal" style="background: #ff7a3a; color: #111;">I copied it</button>
-      </div>
-    </div>
-  </div>
+  .side-section { padding: 0 12px; margin-bottom: 22px; }
+  .side-section h4 {
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase;
+    letter-spacing: 2px; font-weight: 700;
+    padding: 0 10px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .side-section h4::after {
+    content: ''; flex: 1; height: 1px; background: var(--ff-border);
+  }
+  .side-nav { display: flex; flex-direction: column; gap: 1px; }
+  .side-nav a {
+    display: grid; grid-template-columns: 18px 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 9px 10px;
+    color: var(--ff-smoke); text-decoration: none;
+    font-size: 13px; border-radius: 3px;
+    transition: background 0.12s, color 0.12s;
+    position: relative;
+  }
+  .side-nav a:hover { color: var(--ff-text); background: var(--ff-surface); }
+  .side-nav a.active {
+    color: var(--ff-text);
+    background: linear-gradient(90deg, rgba(255,74,28,0.10), transparent 70%);
+  }
+  .side-nav a.active::before {
+    content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+    width: 2px; background: var(--ff-fire);
+  }
+  .side-nav a svg {
+    width: 16px; height: 16px; stroke: currentColor; fill: none;
+    stroke-width: 1.6;
+  }
+  .side-nav a .label { min-width: 0; }
+  .side-nav a .count {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted); padding: 1px 7px;
+    border: 1px solid var(--ff-border); border-radius: 2px;
+    min-width: 22px; text-align: center;
+  }
+  .side-nav a.active .count {
+    color: var(--ff-fire); border-color: var(--ff-fire);
+    background: rgba(255,74,28,0.06);
+  }
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const SUPABASE_URL = "{{ supabase_url }}";
-    const SUPABASE_KEY = "{{ supabase_key }}";
-    const sb = (SUPABASE_URL && SUPABASE_KEY)
-      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
-      : null;
-    
-    async function getAuthHeader() {
-      if (!sb) return {};
-      const { data: { session } } = await sb.auth.getSession();
-      return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
+  .side-foot {
+    margin-top: auto; padding: 14px 16px 16px;
+    border-top: 1px solid var(--ff-border);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .side-status {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--ff-surface);
+    border: 1px solid var(--ff-border);
+    font-family: var(--ff-font-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--ff-smoke);
+  }
+  .side-status .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #5cd09b;
+    box-shadow: 0 0 0 0 rgba(92,208,155,0.55);
+    animation: pulse-green 1.8s infinite;
+    flex: 0 0 auto;
+  }
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(92,208,155,0.55); }
+    70% { box-shadow: 0 0 0 8px rgba(92,208,155,0); }
+    100% { box-shadow: 0 0 0 0 rgba(92,208,155,0); }
+  }
+  .side-user {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 4px;
+  }
+  .side-user .avatar {
+    width: 30px; height: 30px;
+    background: var(--ff-surface);
+    border: 1px solid var(--ff-border-3);
+    display: grid; place-items: center;
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-ember); font-weight: 700;
+    flex: 0 0 auto;
+  }
+  .side-user .meta { line-height: 1.25; min-width: 0; }
+  .side-user .meta strong {
+    color: var(--ff-text); font-weight: 600; display: block; font-size: 12px;
+  }
+  .side-user .meta span {
+    font-family: var(--ff-font-mono); font-size: 9.5px; color: var(--ff-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MAIN COLUMN
+     ═══════════════════════════════════════════════════════════════ */
+  .main {
+    margin-left: 240px;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 32px;
+    background: rgba(7,7,10,0.88);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: 1px solid var(--ff-border);
+  }
+  .crumbs {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .crumbs a { color: var(--ff-muted); text-decoration: none; transition: color 0.12s; }
+  .crumbs a:hover { color: var(--ff-text); }
+  .crumbs .sep { color: var(--ff-border-3); }
+  .crumbs .here { color: var(--ff-text); font-weight: 600; }
+
+  .topbar-r { display: flex; align-items: center; gap: 8px; }
+  .topbar-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px; font-size: 11px; font-weight: 600;
+    font-family: var(--ff-font-body); letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--ff-border-3);
+    background: transparent; color: var(--ff-text);
+    border-radius: 2px; transition: all 0.12s;
+  }
+  .topbar-btn:hover { border-color: var(--ff-ember); color: var(--ff-ember); }
+  .topbar-btn.fire {
+    background: var(--ff-fire); border-color: var(--ff-fire); color: var(--ff-night);
+  }
+  .topbar-btn.fire:hover {
+    background: var(--ff-ember); border-color: var(--ff-ember);
+    box-shadow: 0 4px 18px rgba(255,74,28,0.32);
+  }
+  .topbar-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* PAGE HEAD */
+  .page-head {
+    padding: 36px 32px 28px;
+    border-bottom: 1px solid var(--ff-border);
+    position: relative;
+  }
+  .page-head::before {
+    content: 'DOC FF-FLEET-001';
+    position: absolute; top: 14px; right: 32px;
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted-2); letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .page-head .eyebrow {
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-fire); letter-spacing: 2.5px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+  }
+  .page-head .eyebrow::before {
+    content: ''; width: 24px; height: 1px; background: var(--ff-fire);
+  }
+  .page-head h1 {
+    font-family: var(--ff-font-display); font-size: 44px;
+    letter-spacing: 2px; line-height: 1;
+    color: var(--ff-text); font-weight: 400;
+    margin-bottom: 10px;
+  }
+  .page-head .sub {
+    font-size: 14px; color: var(--ff-smoke); font-weight: 300;
+    max-width: 68ch; line-height: 1.55;
+  }
+
+  /* STATS */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--ff-surface);
+    border-bottom: 1px solid var(--ff-border);
+  }
+  .stat-box {
+    padding: 22px 28px;
+    border-right: 1px solid var(--ff-border);
+    display: flex; flex-direction: column; gap: 7px;
+    position: relative;
+  }
+  .stat-box:last-child { border-right: none; }
+  .stat-box .lbl {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.8px;
+  }
+  .stat-box .val {
+    font-family: var(--ff-font-display); font-size: 40px;
+    letter-spacing: 1.5px; line-height: 1;
+    color: var(--ff-text); font-weight: 400;
+  }
+  .stat-box.live .val { color: #5cd09b; }
+  .stat-box .delta {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-smoke); letter-spacing: 0.6px;
+  }
+  .stat-box .delta.up { color: #5cd09b; }
+  .stat-box .delta.muted { color: var(--ff-muted); }
+  .stat-box.live::after {
+    content: ''; position: absolute; top: 14px; right: 22px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #5cd09b;
+    box-shadow: 0 0 0 0 rgba(92,208,155,0.6);
+    animation: pulse-green 1.8s infinite;
+  }
+
+  /* ADD-DRONE TOOLBAR */
+  .toolbar {
+    display: flex; align-items: center; gap: 14px;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--ff-border);
+    flex-wrap: wrap;
+  }
+  .add-form {
+    flex: 1; max-width: 480px;
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 4px 4px 14px;
+    border: 1px solid var(--ff-border-3);
+    background: var(--ff-surface);
+    border-radius: 2px;
+    transition: border-color 0.15s;
+  }
+  .add-form:focus-within { border-color: var(--ff-ember); }
+  .add-form svg {
+    width: 14px; height: 14px; stroke: var(--ff-muted); fill: none; stroke-width: 1.8;
+    flex: 0 0 auto;
+  }
+  .add-form input {
+    flex: 1; min-width: 0;
+    background: transparent; border: none; outline: none;
+    color: var(--ff-text); font-family: inherit;
+    font-size: 13px; padding: 4px 0;
+  }
+  .add-form input::placeholder {
+    color: var(--ff-muted); font-family: var(--ff-font-mono);
+    font-size: 11.5px; letter-spacing: 0.4px;
+  }
+  .add-form button {
+    padding: 7px 14px;
+    background: var(--ff-fire); border: 1px solid var(--ff-fire);
+    color: var(--ff-night);
+    font-family: var(--ff-font-body); font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-radius: 2px; cursor: pointer; transition: all 0.12s;
+  }
+  .add-form button:hover {
+    background: var(--ff-ember); border-color: var(--ff-ember);
+    box-shadow: 0 4px 14px rgba(255,74,28,0.32);
+  }
+  .toolbar-hint {
+    font-family: var(--ff-font-mono); font-size: 10.5px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.2px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toolbar-hint::before {
+    content: '!'; width: 14px; height: 14px;
+    border: 1px solid var(--ff-muted); border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 9px; font-weight: 700;
+  }
+
+  /* DRONE CARDS GRID */
+  .fleet-wrap { padding: 24px 32px 36px; }
+  .fleet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 14px;
+  }
+  .drone-card {
+    background: var(--ff-panel);
+    border: 1px solid var(--ff-border);
+    border-radius: 4px;
+    padding: 18px 20px 16px;
+    transition: border-color 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .drone-card:hover { border-color: var(--ff-border-3); }
+  .drone-card::before {
+    content: '';
+    position: absolute; left: 0; top: 14px; bottom: 14px; width: 2px;
+    background: var(--ff-border-3);
+    transition: background 0.2s;
+  }
+  .drone-card.live::before { background: #5cd09b; }
+  .drone-card.stale::before { background: var(--ff-warning); }
+  .drone-card.offline::before { background: var(--ff-muted-2, #5a5a66); }
+
+  .drone-card .corner-mark {
+    position: absolute; top: 0; right: 0;
+    width: 10px; height: 10px;
+    border-top: 1px solid var(--ff-border);
+    border-right: 1px solid var(--ff-border);
+  }
+
+  .dc-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; margin-bottom: 14px;
+  }
+  .dc-name {
+    font-family: var(--ff-font-display); font-size: 22px;
+    letter-spacing: 1.8px; line-height: 1; color: var(--ff-text);
+    text-transform: uppercase;
+    word-break: break-all;
+  }
+  .dc-status {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--ff-font-mono); font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    padding: 3px 9px; border: 1px solid currentColor;
+    border-radius: 2px;
+  }
+  .dc-status.live { color: #5cd09b; }
+  .dc-status.live::before {
+    content: ''; width: 5px; height: 5px; background: #5cd09b; border-radius: 50%;
+    animation: pulse-green 1.6s infinite;
+  }
+  .dc-status.stale { color: var(--ff-warning); }
+  .dc-status.offline { color: var(--ff-muted); }
+
+  .dc-body {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 12px 14px;
+    margin-bottom: 14px;
+  }
+  .dc-body .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .dc-body .lbl {
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .dc-body .val {
+    font-family: var(--ff-font-mono); font-size: 12px;
+    color: var(--ff-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .dc-body .val.muted { color: var(--ff-muted); }
+  .dc-body .val.coord { color: var(--ff-info); }
+
+  .dc-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 12px; border-top: 1px solid var(--ff-border);
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted); letter-spacing: 0.5px; text-transform: uppercase;
+    gap: 10px;
+  }
+  .dc-foot .id-chip {
+    font-size: 9px; padding: 2px 6px;
+    border: 1px solid var(--ff-border); border-radius: 2px;
+    color: var(--ff-smoke);
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .dc-delete {
+    background: transparent;
+    border: 1px solid var(--ff-border-3);
+    color: var(--ff-muted);
+    padding: 4px 10px;
+    font-family: var(--ff-font-mono); font-size: 9.5px;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-radius: 2px; cursor: pointer; transition: all 0.12s;
+    flex: 0 0 auto;
+  }
+  .dc-delete:hover {
+    border-color: var(--ff-fire); color: var(--ff-fire);
+  }
+
+  /* EMPTY STATE */
+  .empty {
+    grid-column: 1 / -1;
+    padding: 64px 32px 72px;
+    text-align: center;
+    color: var(--ff-muted);
+    border: 1px dashed var(--ff-border-3);
+    border-radius: 4px;
+    position: relative;
+  }
+  .empty::before, .empty::after {
+    content: ''; position: absolute; width: 24px; height: 24px;
+    border: 1px solid var(--ff-fire); opacity: 0.4;
+  }
+  .empty::before {
+    top: 14px; left: 14px;
+    border-right: none; border-bottom: none;
+  }
+  .empty::after {
+    bottom: 14px; right: 14px;
+    border-left: none; border-top: none;
+  }
+  .empty .arrow {
+    display: inline-grid; place-items: center;
+    width: 38px; height: 38px;
+    border: 1px dashed var(--ff-fire);
+    border-radius: 50%;
+    color: var(--ff-fire);
+    font-size: 18px; font-family: var(--ff-font-display);
+    margin-bottom: 14px;
+  }
+  .empty .e-title {
+    font-family: var(--ff-font-display); font-size: 20px;
+    letter-spacing: 2px; color: var(--ff-text);
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .empty .e-sub {
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-muted); letter-spacing: 0.5px;
+    max-width: 50ch; margin: 0 auto;
+    line-height: 1.6; text-transform: none;
+  }
+
+  /* ─── KEY MODAL ─────────────────────────────────────────────── */
+  .key-backdrop {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(0,0,0,0.65);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .key-backdrop.show { opacity: 1; pointer-events: auto; }
+  .key-modal {
+    position: fixed; left: 50%; top: 50%; z-index: 90;
+    transform: translate(-50%, -50%) scale(0.96);
+    opacity: 0; pointer-events: none;
+    width: 540px; max-width: 92vw;
+    background: var(--ff-panel);
+    border: 1px solid var(--ff-fire);
+    border-radius: 4px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6), 0 0 60px rgba(255,74,28,0.18);
+    transition: opacity 0.2s, transform 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+  .key-modal.show {
+    opacity: 1; pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  .key-head {
+    padding: 18px 22px; border-bottom: 1px solid var(--ff-border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .key-head .icon {
+    width: 30px; height: 30px; border-radius: 3px;
+    background: rgba(255,74,28,0.12);
+    border: 1px solid var(--ff-fire);
+    display: grid; place-items: center;
+    color: var(--ff-fire);
+  }
+  .key-head h3 {
+    font-family: var(--ff-font-display); font-size: 22px;
+    letter-spacing: 2.5px; line-height: 1; color: var(--ff-text);
+    font-weight: 400;
+  }
+  .key-body { padding: 22px; }
+  .key-warn {
+    font-family: var(--ff-font-mono); font-size: 10.5px;
+    color: var(--ff-fire); letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .key-warn::before {
+    content: '!'; width: 16px; height: 16px;
+    background: var(--ff-fire); color: var(--ff-night);
+    font-weight: 900; font-family: var(--ff-font-mono); font-size: 12px;
+    display: grid; place-items: center; border-radius: 2px;
+  }
+  .key-code {
+    display: block; padding: 14px 16px;
+    background: var(--ff-night);
+    border: 1px solid var(--ff-border-3);
+    border-radius: 2px;
+    font-family: var(--ff-font-mono); font-size: 12px;
+    color: var(--ff-ember);
+    word-break: break-all; user-select: all;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+  .key-actions {
+    display: flex; gap: 10px; justify-content: flex-end;
+  }
+  .key-actions button {
+    padding: 8px 16px;
+    font-family: var(--ff-font-body); font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+    border-radius: 2px; cursor: pointer; transition: all 0.12s;
+    border: 1px solid var(--ff-border-3);
+  }
+  .key-actions .copy {
+    background: transparent; color: var(--ff-text);
+  }
+  .key-actions .copy:hover { border-color: var(--ff-ember); color: var(--ff-ember); }
+  .key-actions .copy.copied { border-color: #5cd09b; color: #5cd09b; }
+  .key-actions .done {
+    background: var(--ff-fire); border-color: var(--ff-fire); color: var(--ff-night);
+  }
+  .key-actions .done:hover { background: var(--ff-ember); border-color: var(--ff-ember); }
+
+  @keyframes pulse-fire {
+    0% { box-shadow: 0 0 0 0 rgba(255,74,28,0.65); }
+    70% { box-shadow: 0 0 0 7px rgba(255,74,28,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,74,28,0); }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     RESPONSIVE
+     ═══════════════════════════════════════════════════════════════ */
+  @media (max-width: 1100px) {
+    .side { width: 64px; }
+    .main { margin-left: 64px; }
+    .side-brand { padding: 0 8px 16px; text-align: center; }
+    .side-brand::before { display: none; }
+    .side-brand .wordmark { font-size: 14px; letter-spacing: 2px; }
+    .side-brand .role { display: none; }
+    .side-section h4 { display: none; }
+    .side-nav a {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      padding: 10px 0;
     }
+    .side-nav a .label, .side-nav a .count { display: none; }
+    .side-nav a.active::before { left: 0; }
+    .side-foot { padding: 12px 8px 14px; }
+    .side-user .meta, .side-status { display: none; }
+    .side-user { justify-content: center; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat-box { border-bottom: 1px solid var(--ff-border); }
+    .stat-box:nth-child(2n) { border-right: none; }
+    .stat-box:nth-last-child(-n+2) { border-bottom: none; }
+  }
+  @media (max-width: 700px) {
+    .side { transform: translateX(-100%); }
+    .main { margin-left: 0; }
+    .page-head h1 { font-size: 32px; }
+    .page-head::before { display: none; }
+    .topbar, .page-head, .stats, .toolbar, .fleet-wrap {
+      padding-left: 16px; padding-right: 16px;
+    }
+    .add-form { max-width: none; }
+  }
+</style>
+</head>
+<body class="ff-app">
+
+<!-- ─── SIDEBAR ──────────────────────────────────────────────── -->
+<aside class="side">
+  <div class="side-brand">
+    <a class="wordmark" href="/">FIRE<span>FLY</span></a>
+    <div class="role">Operator Console</div>
+  </div>
+
+  <div class="side-section">
+    <h4>Live</h4>
+    <nav class="side-nav">
+      <a href="/" title="Map">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v16M15 6v16"/></svg>
+        <span class="label">Operator Map</span>
+        <span class="count" id="navMapCount">—</span>
+      </a>
+      <a href="/dashboard" class="active" title="Fleet">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 12L6 6M12 12l6-6M12 12l-6 6M12 12l6 6"/></svg>
+        <span class="label">Drone Fleet</span>
+        <span class="count" id="navFleetCount">0</span>
+      </a>
+      <a href="/dashboard/mission-log" title="Mission Log">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4M8 12h8M8 16h6M8 8h2"/></svg>
+        <span class="label">Mission Log</span>
+        <span class="count" id="navLogCount">—</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="side-section">
+    <h4>Configure</h4>
+    <nav class="side-nav">
+      <a href="/setup" title="Setup">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="label">Setup</span>
+      </a>
+      <a href="/dashboard" title="API Keys">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7.07 7.07 5 5 0 0 1 7.07-7.07zm0 0L15 8m0 0l3 3m-3-3l3-3 3 3-3 3"/></svg>
+        <span class="label">API Keys</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="side-foot">
+    <div class="side-status">
+      <span class="dot"></span> System nominal
+    </div>
+    <div class="side-user">
+      <div class="avatar">OP</div>
+      <div class="meta">
+        <strong>Operator</strong>
+        <span>FireFly · UCSC</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ─── MAIN ─────────────────────────────────────────────────── -->
+<main class="main">
+
+  <div class="topbar">
+    <div class="crumbs">
+      <a href="/dashboard">Dashboard</a>
+      <span class="sep">/</span>
+      <span class="here">Drone Fleet</span>
+    </div>
+    <div class="topbar-r">
+      <a class="topbar-btn" href="/dashboard/mission-log">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4M8 12h8M8 16h6M8 8h2"/></svg>
+        Mission Log
+      </a>
+      <a class="topbar-btn fire" href="/">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+        Live Map
+      </a>
+    </div>
+  </div>
+
+  <div class="page-head">
+    <div class="eyebrow">Drone Fleet</div>
+    <h1>Your registered drones.</h1>
+    <p class="sub">Manage the drones authorized to publish telemetry, fire detections, and camera frames to your operator console. Each drone gets its own API key issued once at registration.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box">
+      <div class="lbl">Total drones</div>
+      <div class="val" id="statTotal">0</div>
+      <div class="delta muted" id="statTotalSub">Register one to begin</div>
+    </div>
+    <div class="stat-box live">
+      <div class="lbl">Live now</div>
+      <div class="val" id="statLive">0</div>
+      <div class="delta up">Reporting within 30s</div>
+    </div>
+    <div class="stat-box">
+      <div class="lbl">Stale</div>
+      <div class="val" id="statStale">0</div>
+      <div class="delta muted">Last seen 30s – 10m</div>
+    </div>
+    <div class="stat-box">
+      <div class="lbl">Offline</div>
+      <div class="val" id="statOffline">0</div>
+      <div class="delta muted">No telemetry &gt;10m</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="add-form">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+      <input id="new-drone-name" placeholder="Register a new drone — e.g. drone_alpha" />
+      <button id="add-btn">Register</button>
+    </div>
+    <span class="toolbar-hint">API key is generated once and shown one time only.</span>
+  </div>
+
+  <div class="fleet-wrap">
+    <div class="fleet-grid" id="drone-list">
+      <div class="empty">Loading fleet…</div>
+    </div>
+  </div>
+</main>
+
+<!-- ─── KEY MODAL ────────────────────────────────────────────── -->
+<div class="key-backdrop" id="key-backdrop"></div>
+<div class="key-modal" id="key-modal">
+  <div class="key-head">
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+        <path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7.07 7.07 5 5 0 0 1 7.07-7.07zm0 0L15 8m0 0l3 3m-3-3l3-3 3 3-3 3"/>
+      </svg>
+    </div>
+    <h3>API KEY CREATED</h3>
+  </div>
+  <div class="key-body">
+    <div class="key-warn">Copy this key now. It won't be shown again.</div>
+    <code class="key-code" id="key-display"></code>
+    <div class="key-actions">
+      <button class="copy" id="copy-key">Copy</button>
+      <button class="done" id="close-modal">I copied it</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCRIPT ───────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "{{ supabase_url }}";
+const SUPABASE_KEY = "{{ supabase_key }}";
+const sb = (SUPABASE_URL && SUPABASE_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+async function getAuthHeader() {
+  if (!sb) return {};
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
+  } catch (_) { return {}; }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function classifyDrone(lastSeen) {
+  if (!lastSeen) return 'offline';
+  const ageSec = (Date.now() - new Date(lastSeen).getTime()) / 1000;
+  if (ageSec < 30) return 'live';
+  if (ageSec < 600) return 'stale';
+  return 'offline';
+}
+
+function statusLabel(state) {
+  return state === 'live' ? 'Live'
+       : state === 'stale' ? 'Stale'
+       : 'Offline';
+}
+
+function fmtLastSeen(lastSeen) {
+  if (!lastSeen) return 'Never';
+  const ageSec = (Date.now() - new Date(lastSeen).getTime()) / 1000;
+  if (ageSec < 60) return `${Math.floor(ageSec)}s ago`;
+  if (ageSec < 3600) return `${Math.floor(ageSec/60)}m ago`;
+  if (ageSec < 86400) return `${Math.floor(ageSec/3600)}h ago`;
+  return `${Math.floor(ageSec/86400)}d ago`;
+}
 
 async function loadDrones() {
-      const r = await fetch("/api/dashboard/drones", { headers: await getAuthHeader() });
-      if (r.status === 401) { location.href = "/login"; return; }
-      const { drones } = await r.json();
-      const list = document.getElementById("drone-list");
-      if (!drones.length) {
-        list.innerHTML = '<div class="empty">No drones yet. Add one above.</div>';
-        return;
-      }
-      list.innerHTML = drones.map(d => `
-        <div class="drone-row" data-id="${d.id}">
-          <div>
-            <div class="name">${d.name}</div>
-            <div class="meta">
-              ${d.last_seen ? `Last seen: ${new Date(d.last_seen).toLocaleString()}` : 'never connected'}
-              ${d.last_lat ? ` · ${d.last_lat.toFixed(5)}, ${d.last_lon.toFixed(5)}` : ''}
-            </div>
-          </div>
-          <button data-revoke="${d.id}">Delete</button>
-        </div>
-      `).join("");
-      list.querySelectorAll("[data-revoke]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          if (!confirm(`Delete drone "${btn.closest('.drone-row').querySelector('.name').textContent}"?`)) return;
-          await fetch(`/api/dashboard/drones/${btn.dataset.revoke}`, {
-            method: "DELETE", headers: await getAuthHeader(),
-          });
-          loadDrones();
-        });
-      });
-    }
+  const r = await fetch("/api/dashboard/drones", { headers: await getAuthHeader() });
+  if (r.status === 401) { location.href = "/login"; return; }
+  const { drones } = await r.json();
+  const list = document.getElementById("drone-list");
 
-    document.getElementById("add-btn").addEventListener("click", async () => {
-      const name = document.getElementById("new-drone-name").value.trim();
-      if (!name) return;
-      const r = await fetch("/api/dashboard/drones", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
-        body: JSON.stringify({ name }),
+  let live = 0, stale = 0, offline = 0;
+  for (const d of drones) {
+    const s = classifyDrone(d.last_seen);
+    if (s === 'live') live++;
+    else if (s === 'stale') stale++;
+    else offline++;
+  }
+  document.getElementById('statTotal').textContent = drones.length;
+  document.getElementById('statLive').textContent = live;
+  document.getElementById('statStale').textContent = stale;
+  document.getElementById('statOffline').textContent = offline;
+  document.getElementById('navFleetCount').textContent = drones.length;
+  document.getElementById('navMapCount').textContent = live;
+  document.getElementById('statTotalSub').textContent = drones.length === 0
+    ? 'Register one to begin'
+    : (drones.length === 1 ? '1 drone authorized' : `${drones.length} drones authorized`);
+
+  if (!drones.length) {
+    list.innerHTML = `
+      <div class="empty">
+        <div class="arrow">↑</div>
+        <div class="e-title">No drones registered</div>
+        <div class="e-sub">Register your first drone above to receive an API key. Drones use the key to publish telemetry, fire detections, and camera frames to your operator console.</div>
+      </div>`;
+    return;
+  }
+
+  list.innerHTML = drones.map(d => {
+    const state = classifyDrone(d.last_seen);
+    const coord = (d.last_lat != null && d.last_lon != null)
+      ? `${d.last_lat.toFixed(5)}, ${d.last_lon.toFixed(5)}`
+      : '—';
+    const heading = (d.last_heading_deg != null)
+      ? `${Math.round(d.last_heading_deg)}°`
+      : '—';
+    return `
+      <div class="drone-card ${state}" data-id="${escapeHtml(d.id)}">
+        <div class="corner-mark"></div>
+        <div class="dc-head">
+          <div class="dc-name">${escapeHtml(d.name)}</div>
+          <span class="dc-status ${state}">${statusLabel(state)}</span>
+        </div>
+        <div class="dc-body">
+          <div class="field">
+            <div class="lbl">Last seen</div>
+            <div class="val ${d.last_seen ? '' : 'muted'}">${fmtLastSeen(d.last_seen)}</div>
+          </div>
+          <div class="field">
+            <div class="lbl">Heading</div>
+            <div class="val ${heading === '—' ? 'muted' : ''}">${heading}</div>
+          </div>
+          <div class="field" style="grid-column: 1 / -1;">
+            <div class="lbl">Last fix</div>
+            <div class="val ${coord === '—' ? 'muted' : 'coord'}">${coord}</div>
+          </div>
+        </div>
+        <div class="dc-foot">
+          <span class="id-chip" title="${escapeHtml(d.id)}">ID · ${escapeHtml(d.id)}</span>
+          <button class="dc-delete" data-revoke="${escapeHtml(d.id)}" data-name="${escapeHtml(d.name)}">Delete</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  list.querySelectorAll("[data-revoke]").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      if (!confirm(`Delete drone "${btn.dataset.name}"? This revokes its API key.`)) return;
+      await fetch(`/api/dashboard/drones/${btn.dataset.revoke}`, {
+        method: "DELETE", headers: await getAuthHeader(),
       });
-      if (!r.ok) {
-        alert("Failed to create drone: " + (await r.text()));
-        return;
-      }
-      const { api_key } = await r.json();
-      document.getElementById("key-display").textContent = api_key;
-      document.getElementById("key-modal").classList.add("show");
-      document.getElementById("new-drone-name").value = "";
       loadDrones();
     });
+  });
+}
 
-    document.getElementById("close-modal").addEventListener("click", () => {
-      document.getElementById("key-modal").classList.remove("show");
-    });
+document.getElementById("add-btn").addEventListener("click", async () => {
+  const input = document.getElementById("new-drone-name");
+  const name = input.value.trim();
+  if (!name) { input.focus(); return; }
+  const r = await fetch("/api/dashboard/drones", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...(await getAuthHeader()) },
+    body: JSON.stringify({ name }),
+  });
+  if (!r.ok) {
+    alert("Failed to create drone: " + (await r.text()));
+    return;
+  }
+  const { api_key } = await r.json();
+  document.getElementById("key-display").textContent = api_key;
+  document.getElementById("key-modal").classList.add("show");
+  document.getElementById("key-backdrop").classList.add("show");
+  input.value = "";
+  loadDrones();
+});
 
-    loadDrones();
-  </script>
+document.getElementById("new-drone-name").addEventListener("keydown", e => {
+  if (e.key === 'Enter') document.getElementById("add-btn").click();
+});
+
+function closeKeyModal() {
+  document.getElementById("key-modal").classList.remove("show");
+  document.getElementById("key-backdrop").classList.remove("show");
+}
+document.getElementById("close-modal").addEventListener("click", closeKeyModal);
+document.getElementById("key-backdrop").addEventListener("click", closeKeyModal);
+document.addEventListener("keydown", e => { if (e.key === 'Escape') closeKeyModal(); });
+
+document.getElementById("copy-key").addEventListener("click", () => {
+  const text = document.getElementById("key-display").textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById("copy-key");
+    btn.textContent = "Copied";
+    btn.classList.add("copied");
+    setTimeout(() => {
+      btn.textContent = "Copy";
+      btn.classList.remove("copied");
+    }, 1800);
+  });
+});
+
+loadDrones();
+setInterval(loadDrones, 10000);
+</script>
+
 </body>
 </html>

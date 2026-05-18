@@ -1,0 +1,1197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>FireFly — Mission Log</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='colors_and_type.css') }}?v=5" />
+<style>
+  /* ═══════════════════════════════════════════════════════════════
+     RESET & PAGE FOUNDATION
+     Body is intentionally NOT a grid container. The sidebar is
+     position:fixed, the main is offset with padding/margin. This
+     pattern cannot be broken by any other CSS in the cascade —
+     it's the Stripe / Linear / Vercel approach for a reason.
+     ═══════════════════════════════════════════════════════════════ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ff-night);
+    color: var(--ff-text);
+    font-family: var(--ff-font-app);
+    font-size: 13px; line-height: 1.5;
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Defeat the design system's bare h1/h2/h3 rules inside our chrome */
+  .ff-app h1, .ff-app h2, .ff-app h3, .ff-app h4 {
+    font-family: inherit; font-size: inherit; letter-spacing: 0;
+    line-height: inherit; margin: 0; font-weight: inherit;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     SIDEBAR — fixed to the viewport, 240px wide
+     ═══════════════════════════════════════════════════════════════ */
+  .side {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: 240px; z-index: 30;
+    background:
+      linear-gradient(180deg, rgba(255,74,28,0.025) 0%, transparent 40%),
+      var(--ff-night);
+    border-right: 1px solid var(--ff-border);
+    padding: 22px 0 0;
+    display: flex; flex-direction: column;
+    overflow-y: auto; overflow-x: hidden;
+  }
+  .side::after {
+    /* Subtle vertical scan line texture for engineering-console vibe */
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(180deg, transparent 0%, transparent 50%, rgba(255,255,255,0.015) 50%, rgba(255,255,255,0.015) 100%);
+    background-size: 100% 3px;
+    pointer-events: none; mix-blend-mode: overlay; opacity: 0.6;
+  }
+  .side > * { position: relative; z-index: 1; }
+
+  .side-brand {
+    padding: 0 22px 20px;
+    border-bottom: 1px solid var(--ff-border);
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .side-brand::before {
+    /* corner registration mark */
+    content: ''; position: absolute; top: -4px; left: 14px;
+    width: 6px; height: 6px;
+    border-top: 1px solid var(--ff-fire);
+    border-left: 1px solid var(--ff-fire);
+  }
+  .side-brand .wordmark {
+    font-family: var(--ff-font-display); font-size: 24px;
+    letter-spacing: 5px; line-height: 1;
+    color: var(--ff-text); text-decoration: none; display: block;
+  }
+  .side-brand .wordmark span { color: var(--ff-fire); }
+  .side-brand .role {
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase;
+    letter-spacing: 2px; margin-top: 8px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .side-brand .role::before {
+    content: ''; width: 4px; height: 4px; background: var(--ff-muted);
+    border-radius: 50%;
+  }
+
+  .side-section { padding: 0 12px; margin-bottom: 22px; }
+  .side-section h4 {
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase;
+    letter-spacing: 2px; font-weight: 700;
+    padding: 0 10px 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .side-section h4::after {
+    content: ''; flex: 1; height: 1px; background: var(--ff-border);
+  }
+  .side-nav { display: flex; flex-direction: column; gap: 1px; }
+  .side-nav a {
+    display: grid; grid-template-columns: 18px 1fr auto;
+    align-items: center; gap: 12px;
+    padding: 9px 10px;
+    color: var(--ff-smoke); text-decoration: none;
+    font-size: 13px; border-radius: 3px;
+    transition: background 0.12s, color 0.12s;
+    position: relative;
+  }
+  .side-nav a:hover { color: var(--ff-text); background: var(--ff-surface); }
+  .side-nav a.active {
+    color: var(--ff-text);
+    background: linear-gradient(90deg, rgba(255,74,28,0.10), transparent 70%);
+  }
+  .side-nav a.active::before {
+    content: ''; position: absolute; left: 0; top: 6px; bottom: 6px;
+    width: 2px; background: var(--ff-fire);
+  }
+  .side-nav a svg {
+    width: 16px; height: 16px; stroke: currentColor; fill: none;
+    stroke-width: 1.6;
+  }
+  .side-nav a .label { min-width: 0; }
+  .side-nav a .count {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted); padding: 1px 7px;
+    border: 1px solid var(--ff-border); border-radius: 2px;
+    min-width: 22px; text-align: center;
+  }
+  .side-nav a.active .count {
+    color: var(--ff-fire); border-color: var(--ff-fire);
+    background: rgba(255,74,28,0.06);
+  }
+
+  .side-foot {
+    margin-top: auto; padding: 14px 16px 16px;
+    border-top: 1px solid var(--ff-border);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .side-status {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: var(--ff-surface);
+    border: 1px solid var(--ff-border);
+    font-family: var(--ff-font-mono); font-size: 10px;
+    text-transform: uppercase; letter-spacing: 1.5px; color: var(--ff-smoke);
+  }
+  .side-status .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #5cd09b;
+    box-shadow: 0 0 0 0 rgba(92,208,155,0.55);
+    animation: pulse-green 1.8s infinite;
+    flex: 0 0 auto;
+  }
+  @keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(92,208,155,0.55); }
+    70% { box-shadow: 0 0 0 8px rgba(92,208,155,0); }
+    100% { box-shadow: 0 0 0 0 rgba(92,208,155,0); }
+  }
+  .side-user {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 4px;
+  }
+  .side-user .avatar {
+    width: 30px; height: 30px;
+    background: var(--ff-surface);
+    border: 1px solid var(--ff-border-3);
+    display: grid; place-items: center;
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-ember); font-weight: 700;
+    flex: 0 0 auto;
+  }
+  .side-user .meta { line-height: 1.25; min-width: 0; }
+  .side-user .meta strong {
+    color: var(--ff-text); font-weight: 600; display: block; font-size: 12px;
+  }
+  .side-user .meta span {
+    font-family: var(--ff-font-mono); font-size: 9.5px; color: var(--ff-muted);
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════
+     MAIN COLUMN — offset by the sidebar width
+     ═══════════════════════════════════════════════════════════════ */
+  .main {
+    margin-left: 240px;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 32px;
+    background: rgba(7,7,10,0.88);
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    border-bottom: 1px solid var(--ff-border);
+  }
+  .crumbs {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .crumbs a { color: var(--ff-muted); text-decoration: none; transition: color 0.12s; }
+  .crumbs a:hover { color: var(--ff-text); }
+  .crumbs .sep { color: var(--ff-border-3); }
+  .crumbs .here { color: var(--ff-text); font-weight: 600; }
+
+  .topbar-r { display: flex; align-items: center; gap: 8px; }
+  .topbar-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 13px; font-size: 11px; font-weight: 600;
+    font-family: var(--ff-font-body); letter-spacing: 1px;
+    text-transform: uppercase; cursor: pointer; text-decoration: none;
+    border: 1px solid var(--ff-border-3);
+    background: transparent; color: var(--ff-text);
+    border-radius: 2px; transition: all 0.12s;
+  }
+  .topbar-btn:hover { border-color: var(--ff-ember); color: var(--ff-ember); }
+  .topbar-btn.fire {
+    background: var(--ff-fire); border-color: var(--ff-fire); color: var(--ff-night);
+  }
+  .topbar-btn.fire:hover {
+    background: var(--ff-ember); border-color: var(--ff-ember);
+    box-shadow: 0 4px 18px rgba(255,74,28,0.32);
+  }
+  .topbar-btn svg { width: 12px; height: 12px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* PAGE HEAD */
+  .page-head {
+    padding: 36px 32px 28px;
+    border-bottom: 1px solid var(--ff-border);
+    position: relative;
+  }
+  .page-head::before {
+    content: 'DOC FF-LOG-001';
+    position: absolute; top: 14px; right: 32px;
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted-2); letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .page-head .eyebrow {
+    font-family: var(--ff-font-mono); font-size: 11px;
+    color: var(--ff-fire); letter-spacing: 2.5px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+  }
+  .page-head .eyebrow::before {
+    content: ''; width: 24px; height: 1px; background: var(--ff-fire);
+  }
+  .page-head h1 {
+    font-family: var(--ff-font-display); font-size: 44px;
+    letter-spacing: 2px; line-height: 1;
+    color: var(--ff-text); font-weight: 400;
+    margin-bottom: 10px;
+  }
+  .page-head .sub {
+    font-size: 14px; color: var(--ff-smoke); font-weight: 300;
+    max-width: 68ch; line-height: 1.55;
+  }
+
+  /* STATS ROW */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    background: var(--ff-surface);
+    border-bottom: 1px solid var(--ff-border);
+  }
+  .stat-box {
+    padding: 22px 28px;
+    border-right: 1px solid var(--ff-border);
+    display: flex; flex-direction: column; gap: 7px;
+    position: relative;
+  }
+  .stat-box:last-child { border-right: none; }
+  .stat-box .lbl {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.8px;
+  }
+  .stat-box .val {
+    font-family: var(--ff-font-display); font-size: 40px;
+    letter-spacing: 1.5px; line-height: 1;
+    color: var(--ff-text); font-weight: 400;
+  }
+  .stat-box .val span {
+    color: var(--ff-fire); font-size: 18px; margin-left: 4px;
+    letter-spacing: 1px;
+  }
+  .stat-box.active .val { color: var(--ff-fire); }
+  .stat-box.active::after {
+    content: ''; position: absolute; top: 14px; right: 22px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ff-fire);
+    box-shadow: 0 0 0 0 rgba(255,74,28,0.6);
+    animation: pulse-fire 1.6s infinite;
+  }
+  .stat-box .delta {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-smoke); letter-spacing: 0.6px;
+  }
+  .stat-box .delta.up { color: #5cd09b; }
+  .stat-box .delta.down { color: var(--ff-info); }
+  @keyframes pulse-fire {
+    0% { box-shadow: 0 0 0 0 rgba(255,74,28,0.65); }
+    70% { box-shadow: 0 0 0 7px rgba(255,74,28,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,74,28,0); }
+  }
+
+  /* TOOLBAR */
+  .toolbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 32px;
+    border-bottom: 1px solid var(--ff-border);
+    flex-wrap: wrap;
+  }
+  .tb-search {
+    flex: 1; min-width: 240px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--ff-border-3);
+    background: var(--ff-surface);
+    border-radius: 2px; max-width: 380px;
+    transition: border-color 0.15s;
+  }
+  .tb-search:focus-within { border-color: var(--ff-ember); }
+  .tb-search svg {
+    width: 13px; height: 13px; stroke: var(--ff-muted);
+    fill: none; stroke-width: 1.8; flex: 0 0 auto;
+  }
+  .tb-search input {
+    background: transparent; border: none; outline: none;
+    color: var(--ff-text); font-family: inherit;
+    font-size: 13px; flex: 1; min-width: 0;
+  }
+  .tb-search input::placeholder {
+    color: var(--ff-muted); font-family: var(--ff-font-mono);
+    font-size: 11.5px; letter-spacing: 0.4px;
+  }
+  .tb-filter {
+    display: flex; align-items: center; gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--ff-border-3);
+    background: var(--ff-surface);
+    border-radius: 2px;
+  }
+  .tb-filter button {
+    padding: 6px 12px;
+    background: transparent; border: none; cursor: pointer;
+    font-family: var(--ff-font-mono); font-size: 10.5px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.2px;
+    border-radius: 1px; transition: all 0.12s;
+  }
+  .tb-filter button:hover { color: var(--ff-text); }
+  .tb-filter button.active {
+    background: var(--ff-night); color: var(--ff-text);
+    box-shadow: inset 0 0 0 1px var(--ff-border-3);
+  }
+  .tb-filter button .ct {
+    margin-left: 7px; color: var(--ff-muted-2); font-weight: 400;
+  }
+  .tb-filter button.active .ct { color: var(--ff-ember); font-weight: 600; }
+  .tb-select {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 11px;
+    border: 1px solid var(--ff-border-3);
+    background: var(--ff-surface);
+    border-radius: 2px;
+    font-family: var(--ff-font-mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--ff-smoke); cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .tb-select:hover { border-color: var(--ff-ember); color: var(--ff-text); }
+  .tb-select svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* TABLE */
+  .table-wrap { padding: 0 32px 32px; }
+  .det-table {
+    margin-top: 18px;
+    border: 1px solid var(--ff-border);
+    background: var(--ff-panel);
+    font-family: var(--ff-font-mono); font-size: 12px;
+    overflow: hidden;
+  }
+  .det-row {
+    display: grid;
+    grid-template-columns: 90px 130px 160px 130px 1fr 130px 110px 32px;
+    align-items: center; padding: 13px 22px;
+    border-bottom: 1px solid var(--ff-border);
+    transition: background 0.12s;
+  }
+  .det-row:last-child { border-bottom: none; }
+  .det-row:hover { background: rgba(255,74,28,0.04); cursor: default; }
+  .det-row.head {
+    color: var(--ff-muted); font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 1.8px;
+    padding: 12px 22px;
+    background: var(--ff-surface);
+  }
+  .det-row.head:hover { background: var(--ff-surface); }
+  .det-row.head span {
+    display: flex; align-items: center; gap: 5px; cursor: pointer;
+  }
+  .det-row.head span:hover { color: var(--ff-text); }
+  .det-row.head span svg { width: 9px; height: 9px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .det-row.head .sorted { color: var(--ff-text); }
+
+  .det-id { color: var(--ff-ember); font-weight: 600; letter-spacing: 0.5px; }
+  .det-time { color: var(--ff-muted); }
+  .det-coord { color: var(--ff-text); }
+  .det-drones { color: var(--ff-info); }
+  .det-loc { color: var(--ff-smoke); }
+  .det-conf {
+    color: var(--ff-text); display: flex; align-items: center; gap: 10px;
+  }
+  .det-conf .bar {
+    flex: 1; height: 3px; background: var(--ff-border);
+    position: relative; max-width: 64px;
+  }
+  .det-conf .bar::before {
+    content: ''; position: absolute; top: 0; left: 0; height: 100%;
+    background: var(--ff-fire);
+    width: var(--conf, 0%);
+  }
+  .det-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 9.5px; text-transform: uppercase; letter-spacing: 1.2px;
+    padding: 4px 10px; border: 1px solid currentColor;
+    border-radius: 2px;
+  }
+  .det-status.confirmed { color: #5cd09b; }
+  .det-status.cleared { color: var(--ff-muted); }
+  .det-status.active { color: var(--ff-fire); }
+  .det-status.false { color: var(--ff-info); }
+  .det-status.active::before {
+    content: ''; width: 5px; height: 5px; background: var(--ff-fire);
+    border-radius: 50%; animation: pulse-fire 1.5s infinite;
+  }
+  .det-more {
+    text-align: right; color: var(--ff-muted-2); cursor: pointer; padding: 4px;
+    transition: color 0.12s;
+  }
+  .det-row:hover .det-more { color: var(--ff-ember); }
+  .det-more svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* EMPTY STATE */
+  .det-empty {
+    padding: 72px 32px 80px;
+    text-align: center;
+    color: var(--ff-muted);
+    position: relative;
+  }
+  .det-empty::before, .det-empty::after {
+    content: ''; position: absolute; width: 24px; height: 24px;
+    border: 1px solid var(--ff-border);
+  }
+  .det-empty::before {
+    top: 18px; left: 18px;
+    border-right: none; border-bottom: none;
+  }
+  .det-empty::after {
+    bottom: 18px; right: 18px;
+    border-left: none; border-top: none;
+  }
+  .det-empty .de-icon {
+    width: 44px; height: 44px;
+    margin: 0 auto 16px;
+    color: var(--ff-fire);
+    opacity: 0.55;
+    display: grid; place-items: center;
+    border: 1px dashed var(--ff-fire);
+    border-radius: 50%;
+  }
+  .det-empty .de-icon svg { width: 22px; height: 22px; }
+  .det-empty .de-title {
+    font-family: var(--ff-font-display);
+    font-size: 20px;
+    letter-spacing: 2px;
+    color: var(--ff-text);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .det-empty .de-sub {
+    font-family: var(--ff-font-mono);
+    font-size: 11px;
+    color: var(--ff-muted);
+    letter-spacing: 0.5px;
+    max-width: 56ch;
+    margin: 0 auto;
+    line-height: 1.6;
+    text-transform: none;
+  }
+  .det-empty .de-meta {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 18px;
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted-2); letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 6px 12px; border: 1px solid var(--ff-border);
+  }
+  .det-empty .de-meta .dot {
+    width: 5px; height: 5px; border-radius: 50%; background: #5cd09b;
+    animation: pulse-green 1.6s infinite;
+  }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 22px;
+    border-top: 1px solid var(--ff-border);
+    background: var(--ff-surface);
+    font-family: var(--ff-font-mono); font-size: 10.5px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .pagination .info strong { color: var(--ff-text); }
+  .pagination .pages { display: flex; align-items: center; gap: 4px; }
+  .pagination .pages button {
+    background: transparent; border: 1px solid var(--ff-border-3);
+    color: var(--ff-smoke); padding: 5px 11px; cursor: pointer;
+    font-family: var(--ff-font-mono); font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 1px;
+    border-radius: 2px; transition: all 0.12s; min-width: 28px;
+  }
+  .pagination .pages button:hover:not(:disabled) {
+    border-color: var(--ff-ember); color: var(--ff-ember);
+  }
+  .pagination .pages button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .pagination .pages button.active {
+    background: var(--ff-fire); border-color: var(--ff-fire); color: var(--ff-night);
+  }
+
+  /* DRAWER */
+  .drawer-backdrop {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(0,0,0,0.6);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed; right: 0; top: 0; bottom: 0; z-index: 90;
+    width: 480px; max-width: 100vw;
+    background: var(--ff-panel);
+    border-left: 1px solid var(--ff-fire);
+    transform: translateX(100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex; flex-direction: column;
+    overflow-y: auto;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-head {
+    padding: 22px 26px; border-bottom: 1px solid var(--ff-border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; background: var(--ff-panel); z-index: 1;
+  }
+  .drawer-head h2 {
+    font-family: var(--ff-font-display); font-size: 22px;
+    letter-spacing: 2.5px; line-height: 1;
+    color: var(--ff-text); font-weight: 400;
+  }
+  .drawer-head h2 .id { color: var(--ff-ember); }
+  .drawer-close {
+    background: transparent; border: 1px solid var(--ff-border-3);
+    color: var(--ff-smoke); width: 30px; height: 30px;
+    display: grid; place-items: center; cursor: pointer;
+    border-radius: 2px; transition: all 0.12s;
+  }
+  .drawer-close:hover { color: var(--ff-fire); border-color: var(--ff-fire); }
+  .drawer-close svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .drawer-body { padding: 24px 26px; flex: 1; }
+  .drawer-section { margin-bottom: 28px; }
+  .drawer-section h3 {
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 2px;
+    margin-bottom: 12px; font-weight: 700;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .drawer-section h3::after {
+    content: ''; flex: 1; height: 1px; background: var(--ff-border);
+  }
+  .drawer-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 0;
+    border: 1px solid var(--ff-border);
+  }
+  .drawer-cell {
+    padding: 12px 14px;
+    border-right: 1px solid var(--ff-border);
+    border-bottom: 1px solid var(--ff-border);
+  }
+  .drawer-cell:nth-child(2n) { border-right: none; }
+  .drawer-cell:nth-last-child(-n+2) { border-bottom: none; }
+  .drawer-cell .lbl {
+    font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 5px;
+  }
+  .drawer-cell .val {
+    font-family: var(--ff-font-mono); font-size: 13px;
+    color: var(--ff-text); line-height: 1.3;
+  }
+  .drawer-cell .val.fire { color: var(--ff-fire); }
+  .drawer-map {
+    width: 100%; height: 200px;
+    background: linear-gradient(180deg, #0a0a10 0%, #0e0e16 100%);
+    border: 1px solid var(--ff-border);
+    position: relative; overflow: hidden;
+  }
+  .drawer-map::before {
+    content: ''; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(74,163,255,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,163,255,0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: radial-gradient(ellipse 110% 110% at 50% 50%, black 60%, transparent 100%);
+  }
+  .drawer-map .pin {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 24px; height: 24px;
+  }
+  .drawer-map .pin::before {
+    content: ''; position: absolute; inset: 0;
+    border-radius: 50%; background: var(--ff-fire); opacity: 0.4;
+    animation: fp-pulse 1.8s infinite;
+  }
+  @keyframes fp-pulse {
+    0% { transform: scale(0.4); opacity: 0.55; }
+    100% { transform: scale(1.8); opacity: 0; }
+  }
+  .drawer-map .core {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 8px; height: 8px; background: var(--ff-fire);
+    border-radius: 50%; box-shadow: 0 0 10px var(--ff-fire);
+  }
+  .drawer-map .ring {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 16px; height: 16px; border: 1.5px solid var(--ff-warning); border-radius: 50%;
+  }
+  .drawer-map .coord {
+    position: absolute; bottom: 10px; left: 14px;
+    font-family: var(--ff-font-mono); font-size: 10px;
+    color: var(--ff-smoke); letter-spacing: 0.5px;
+  }
+  .drawer-map .coord strong { color: var(--ff-text); }
+
+  .drawer-timeline {
+    display: flex; flex-direction: column; gap: 0;
+    border: 1px solid var(--ff-border);
+  }
+  .timeline-row {
+    display: grid; grid-template-columns: 80px 16px 1fr;
+    gap: 12px; padding: 10px 14px;
+    border-bottom: 1px solid var(--ff-border);
+    font-family: var(--ff-font-mono); font-size: 11.5px;
+    align-items: center;
+  }
+  .timeline-row:last-child { border-bottom: none; }
+  .timeline-row .t { color: var(--ff-muted); font-size: 10px; }
+  .timeline-row .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--ff-border-3);
+  }
+  .timeline-row.ok .dot { background: #5cd09b; }
+  .timeline-row.warn .dot { background: var(--ff-warning); }
+  .timeline-row.fire .dot { background: var(--ff-fire); }
+  .timeline-row.info .dot { background: var(--ff-info); }
+  .timeline-row .msg { color: var(--ff-smoke); }
+  .timeline-row.fire .msg { color: var(--ff-fire); }
+  .timeline-row.warn .msg { color: var(--ff-warning); }
+
+  /* ═══════════════════════════════════════════════════════════════
+     RESPONSIVE — collapse the sidebar at <1100px, hide at <700px
+     ═══════════════════════════════════════════════════════════════ */
+  @media (max-width: 1100px) {
+    .side { width: 64px; }
+    .main { margin-left: 64px; }
+    .side-brand { padding: 0 8px 16px; text-align: center; }
+    .side-brand::before { display: none; }
+    .side-brand .wordmark { font-size: 14px; letter-spacing: 2px; }
+    .side-brand .role { display: none; }
+    .side-section h4 { display: none; }
+    .side-nav a {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      padding: 10px 0;
+    }
+    .side-nav a .label, .side-nav a .count { display: none; }
+    .side-nav a.active::before { left: 0; }
+    .side-foot { padding: 12px 8px 14px; }
+    .side-user .meta, .side-status { display: none; }
+    .side-user { justify-content: center; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .stat-box {
+      border-bottom: 1px solid var(--ff-border);
+    }
+    .stat-box:nth-child(2n) { border-right: none; }
+    .stat-box:nth-last-child(-n+2) { border-bottom: none; }
+    .det-row {
+      grid-template-columns: 80px 110px 1fr 100px 32px;
+    }
+    .det-row > :nth-child(3),
+    .det-row > :nth-child(4),
+    .det-row > :nth-child(6) { display: none; }
+    .drawer { width: 100%; }
+  }
+  @media (max-width: 700px) {
+    .side { transform: translateX(-100%); }
+    .main { margin-left: 0; }
+    .page-head h1 { font-size: 32px; }
+    .page-head::before { display: none; }
+    .topbar, .page-head, .stats, .toolbar, .table-wrap {
+      padding-left: 16px; padding-right: 16px;
+    }
+    .det-row { grid-template-columns: 70px 1fr 100px; padding: 12px 14px; }
+    .det-row > :nth-child(2), .det-row > :nth-child(5),
+    .det-row > :nth-child(8) { display: none; }
+  }
+</style>
+</head>
+<body class="ff-app">
+
+<!-- ─── SIDEBAR ──────────────────────────────────────────────── -->
+<aside class="side">
+  <div class="side-brand">
+    <a class="wordmark" href="/">FIRE<span>FLY</span></a>
+    <div class="role">Operator Console</div>
+  </div>
+
+  <div class="side-section">
+    <h4>Live</h4>
+    <nav class="side-nav">
+      <a href="/" title="Map">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v16M15 6v16"/></svg>
+        <span class="label">Operator Map</span>
+        <span class="count" id="navMapCount">—</span>
+      </a>
+      <a href="/dashboard" title="Fleet">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><path d="M12 12L6 6M12 12l6-6M12 12l-6 6M12 12l6 6"/></svg>
+        <span class="label">Drone Fleet</span>
+        <span class="count" id="navFleetCount">—</span>
+      </a>
+      <a href="/dashboard/mission-log" class="active" title="Mission Log">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12l4 4v12H4z"/><path d="M16 4v4h4M8 12h8M8 16h6M8 8h2"/></svg>
+        <span class="label">Mission Log</span>
+        <span class="count" id="navLogCount">0</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="side-section">
+    <h4>Configure</h4>
+    <nav class="side-nav">
+      <a href="/setup" title="Setup">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        <span class="label">Setup</span>
+      </a>
+      <a href="/dashboard" title="API Keys">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.6 7.6a5 5 0 1 1-7.07 7.07 5 5 0 0 1 7.07-7.07zm0 0L15 8m0 0l3 3m-3-3l3-3 3 3-3 3"/></svg>
+        <span class="label">API Keys</span>
+      </a>
+    </nav>
+  </div>
+
+  <div class="side-foot">
+    <div class="side-status">
+      <span class="dot"></span> System nominal
+    </div>
+    <div class="side-user">
+      <div class="avatar">OP</div>
+      <div class="meta">
+        <strong>Operator</strong>
+        <span>FireFly · UCSC</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ─── MAIN ─────────────────────────────────────────────────── -->
+<main class="main">
+
+  <div class="topbar">
+    <div class="crumbs">
+      <a href="/dashboard">Dashboard</a>
+      <span class="sep">/</span>
+      <span class="here">Mission Log</span>
+    </div>
+    <div class="topbar-r">
+      <button class="topbar-btn" id="exportCsvBtn">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Export CSV
+      </button>
+      <a class="topbar-btn fire" href="/">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>
+        Live Map
+      </a>
+    </div>
+  </div>
+
+  <div class="page-head">
+    <div class="eyebrow">Mission Log</div>
+    <h1>All logged fire events.</h1>
+    <p class="sub">Every detection recorded by the operator console, with confidence, source drones, and full event timeline. Filter by status, search by location or coordinate.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box">
+      <div class="lbl">Total events</div>
+      <div class="val" id="statTotal">0</div>
+      <div class="delta">All time</div>
+    </div>
+    <div class="stat-box active">
+      <div class="lbl">Active alerts</div>
+      <div class="val" id="statActive">0</div>
+      <div class="delta up" id="statActiveSub">Awaiting first detection</div>
+    </div>
+    <div class="stat-box">
+      <div class="lbl">Confirmed (7d)</div>
+      <div class="val" id="statConfirmed">0</div>
+      <div class="delta up">—</div>
+    </div>
+    <div class="stat-box">
+      <div class="lbl">Avg. confidence</div>
+      <div class="val"><span id="statConfNum">0</span><span>%</span></div>
+      <div class="delta">No detections yet</div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tb-search">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <input id="searchInput" type="text" placeholder="Search ID, locale, coord…" />
+    </div>
+    <div class="tb-filter" id="statusFilter">
+      <button class="active" data-status="all">All <span class="ct" id="ct-all">0</span></button>
+      <button data-status="active">Active <span class="ct" id="ct-active">0</span></button>
+      <button data-status="confirmed">Confirmed <span class="ct" id="ct-confirmed">0</span></button>
+      <button data-status="cleared">Cleared <span class="ct" id="ct-cleared">0</span></button>
+      <button data-status="false">False positive <span class="ct" id="ct-false">0</span></button>
+    </div>
+    <div class="tb-select">
+      Range: Last 30 days
+      <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="tb-select">
+      Drone: All
+      <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="det-table">
+      <div class="det-row head">
+        <span class="sorted">ID <svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5"/></svg></span>
+        <span>Time (PT)</span>
+        <span>Coord</span>
+        <span>Drones</span>
+        <span>Locale</span>
+        <span>Confidence</span>
+        <span>Status</span>
+        <span></span>
+      </div>
+      <div id="rows"></div>
+      <div class="pagination">
+        <div class="info">Showing <strong id="shownCount">0</strong> of <strong id="totalCount">0</strong> events</div>
+        <div class="pages">
+          <button disabled>‹ Prev</button>
+          <button class="active">1</button>
+          <button>Next ›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ─── DETAIL DRAWER ────────────────────────────────────────── -->
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h2><span class="id" id="drawerId">FF-—</span> <span id="drawerSub" style="font-size:13px; color: var(--ff-smoke); font-family: var(--ff-font-mono); letter-spacing: 1px; text-transform: uppercase;"></span></h2>
+    <button class="drawer-close" id="drawerClose"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <h3>Coordinate fix</h3>
+      <div class="drawer-map">
+        <div class="pin"></div>
+        <div class="ring"></div>
+        <div class="core"></div>
+        <div class="coord">
+          <strong id="drawerCoord">—</strong><br />
+          <span id="drawerLocale">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Detection details</h3>
+      <div class="drawer-grid">
+        <div class="drawer-cell">
+          <div class="lbl">Source drones</div>
+          <div class="val" id="drawerDrones">—</div>
+        </div>
+        <div class="drawer-cell">
+          <div class="lbl">Confidence</div>
+          <div class="val fire" id="drawerConf">—</div>
+        </div>
+        <div class="drawer-cell">
+          <div class="lbl">Started</div>
+          <div class="val" id="drawerStart">—</div>
+        </div>
+        <div class="drawer-cell">
+          <div class="lbl">Duration</div>
+          <div class="val" id="drawerDur">—</div>
+        </div>
+        <div class="drawer-cell">
+          <div class="lbl">Bearing D1</div>
+          <div class="val" id="drawerBA">—</div>
+        </div>
+        <div class="drawer-cell">
+          <div class="lbl">Bearing D2</div>
+          <div class="val" id="drawerBB">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Event timeline</h3>
+      <div class="drawer-timeline" id="drawerTimeline">
+        <div class="timeline-row ok">
+          <span class="t">+0.0s</span><span class="dot"></span>
+          <span class="msg">Patrol · entering sector</span>
+        </div>
+        <div class="timeline-row warn">
+          <span class="t">+1.8s</span><span class="dot"></span>
+          <span class="msg">Smoke signal · candidate</span>
+        </div>
+        <div class="timeline-row warn">
+          <span class="t">+2.0s</span><span class="dot"></span>
+          <span class="msg">Sustained ≥2s · alert raised</span>
+        </div>
+        <div class="timeline-row info">
+          <span class="t">+2.1s</span><span class="dot"></span>
+          <span class="msg">Cross-bearing requested</span>
+        </div>
+        <div class="timeline-row fire">
+          <span class="t">+2.3s</span><span class="dot"></span>
+          <span class="msg">Triangulated coordinate</span>
+        </div>
+        <div class="timeline-row fire">
+          <span class="t">+2.3s</span><span class="dot"></span>
+          <span class="msg">Pin dispatched · operator notified</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── SCRIPT ───────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// EVENTS starts empty; loadLive() polls /api/state and populates this
+// with real fires from the operator console.
+let EVENTS = [];
+
+// ─── Supabase auth (mirrors dashboard.html pattern) ─────────────
+const SUPABASE_URL = "{{ supabase_url }}";
+const SUPABASE_KEY = "{{ supabase_key }}";
+const sb = (SUPABASE_URL && SUPABASE_KEY && window.supabase)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+async function getAuthHeader() {
+  if (!sb) return {};
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    return session ? { "Authorization": `Bearer ${session.access_token}` } : {};
+  } catch (_) { return {}; }
+}
+
+// ─── DOM refs ───────────────────────────────────────────────────
+const rowsEl = document.getElementById('rows');
+const searchInput = document.getElementById('searchInput');
+const statusFilter = document.getElementById('statusFilter');
+const shownCount = document.getElementById('shownCount');
+const totalCount = document.getElementById('totalCount');
+const drawer = document.getElementById('drawer');
+const drawerBackdrop = document.getElementById('drawerBackdrop');
+
+let currentStatus = 'all';
+let currentSearch = '';
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render() {
+  const filtered = EVENTS.filter(ev => {
+    if (currentStatus !== 'all' && ev.status !== currentStatus) return false;
+    if (currentSearch) {
+      const s = currentSearch.toLowerCase();
+      if (!ev.id.toLowerCase().includes(s) &&
+          !ev.locale.toLowerCase().includes(s) &&
+          !ev.coord.toLowerCase().includes(s) &&
+          !ev.drones.toLowerCase().includes(s)) return false;
+    }
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    if (EVENTS.length === 0) {
+      rowsEl.innerHTML = `
+        <div class="det-empty">
+          <div class="de-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2L2 19h20L12 2z"/><path d="M12 9v5"/><circle cx="12" cy="17" r="1"/>
+            </svg>
+          </div>
+          <div class="de-title">No fire events logged</div>
+          <div class="de-sub">When your operator console detects a fire, it will appear here automatically along with its confidence, source drones, and full event timeline.</div>
+          <div class="de-meta"><span class="dot"></span>Polling /api/state every 5s</div>
+        </div>`;
+    } else {
+      rowsEl.innerHTML = `
+        <div class="det-empty">
+          <div class="de-title">No events match your filter</div>
+          <div class="de-sub">Try a different status pill or clear the search box.</div>
+        </div>`;
+    }
+  } else {
+    rowsEl.innerHTML = filtered.map(ev => `
+      <div class="det-row" data-id="${ev.id}">
+        <span class="det-id">${ev.id}</span>
+        <span class="det-time">${ev.time}</span>
+        <span class="det-coord">${ev.coord}</span>
+        <span class="det-drones">${ev.drones}</span>
+        <span class="det-loc">${escapeHtml(ev.locale)}</span>
+        <span class="det-conf"><div class="bar" style="--conf: ${ev.conf}%"></div>${ev.conf}%</span>
+        <span><span class="det-status ${ev.status}">${ev.status === 'false' ? 'False positive' : ev.status}</span></span>
+        <span class="det-more">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+        </span>
+      </div>
+    `).join('');
+  }
+
+  shownCount.textContent = filtered.length;
+
+  rowsEl.querySelectorAll('.det-row').forEach(row => {
+    row.addEventListener('click', () => openDrawer(row.dataset.id));
+  });
+
+  // Update counts on filter pills and stats
+  const counts = { all: EVENTS.length, active: 0, confirmed: 0, cleared: 0, false: 0 };
+  let confSum = 0, confCount = 0;
+  for (const e of EVENTS) {
+    if (counts[e.status] != null) counts[e.status]++;
+    if (typeof e.conf === 'number') { confSum += e.conf; confCount++; }
+  }
+  document.getElementById('ct-all').textContent = counts.all;
+  document.getElementById('ct-active').textContent = counts.active;
+  document.getElementById('ct-confirmed').textContent = counts.confirmed;
+  document.getElementById('ct-cleared').textContent = counts.cleared;
+  document.getElementById('ct-false').textContent = counts.false;
+  document.getElementById('statTotal').textContent = counts.all;
+  document.getElementById('statActive').textContent = counts.active;
+  document.getElementById('statConfirmed').textContent = counts.confirmed;
+  document.getElementById('statConfNum').textContent = confCount ? Math.round(confSum / confCount) : 0;
+  document.getElementById('navLogCount').textContent = counts.all;
+  totalCount.textContent = counts.all;
+
+  const activeSub = document.getElementById('statActiveSub');
+  if (counts.active > 0) {
+    activeSub.textContent = `${counts.active} unresolved · ${EVENTS.filter(e=>e.status==='active')[0].locale}`;
+  } else {
+    activeSub.textContent = 'Awaiting first detection';
+  }
+}
+
+function openDrawer(id) {
+  const ev = EVENTS.find(e => e.id === id);
+  if (!ev) return;
+  document.getElementById('drawerId').textContent = ev.id;
+  document.getElementById('drawerSub').textContent = '· ' + (ev.sub || '');
+  document.getElementById('drawerCoord').textContent = ev.coord.replace(',', '° N ·') + '° W';
+  document.getElementById('drawerLocale').textContent = ev.locale;
+  document.getElementById('drawerDrones').textContent = ev.drones;
+  const confEl = document.getElementById('drawerConf');
+  confEl.textContent = ev.conf + '% · ' + ev.status;
+  confEl.className = 'val' + (ev.status === 'active' || ev.status === 'confirmed' ? ' fire' : '');
+  document.getElementById('drawerStart').textContent = ev.started;
+  document.getElementById('drawerDur').textContent = ev.duration;
+  document.getElementById('drawerBA').textContent = ev.bearA;
+  document.getElementById('drawerBB').textContent = ev.bearB;
+
+  drawer.classList.add('open');
+  drawerBackdrop.classList.add('open');
+}
+
+function closeDrawer() {
+  drawer.classList.remove('open');
+  drawerBackdrop.classList.remove('open');
+}
+
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+drawerBackdrop.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+statusFilter.addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  statusFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentStatus = btn.dataset.status;
+  render();
+});
+
+searchInput.addEventListener('input', e => {
+  currentSearch = e.target.value.trim();
+  render();
+});
+
+// CSV export
+document.getElementById('exportCsvBtn').addEventListener('click', () => {
+  const header = ['id','time','coord','drones','locale','confidence','status'];
+  const rows = EVENTS.map(e => [e.id, e.time, e.coord, e.drones, e.locale, e.conf + '%', e.status]);
+  const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `firefly-mission-log-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+});
+
+// ─── Live data: pull real fires from /api/state ──────────
+function fmtCoord(lat, lon) {
+  return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+}
+function fmtTime(ts) {
+  const d = new Date(ts * 1000);
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${d.getDate()} ${months[d.getMonth()]} · ${hh}:${mm}`;
+}
+function fmtDuration(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`;
+}
+
+async function loadLive() {
+  try {
+    const headers = await getAuthHeader();
+    const r = await fetch('/api/state', { headers });
+    if (!r.ok) return;
+    const data = await r.json();
+    const fires = (data.fires || []);
+    const now = Date.now() / 1000;
+
+    const sorted = fires.slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const liveEvents = sorted.map((f, idx) => {
+      const num = 1000 - idx;
+      const drones = f.observations > 1 ? 'D1 + D2' : (f.source === 'triangulation' ? 'D1 + D2' : 'D1');
+      const age = now - (f.ts || now);
+      const isActive = age < 300;
+      const conf = f.confidence != null ? Math.round(f.confidence * 100) : 85;
+      return {
+        id: `FF-${String(num).padStart(3, '0')}`,
+        time: fmtTime(f.ts || now),
+        iso: new Date((f.ts || now) * 1000).toISOString(),
+        coord: fmtCoord(f.lat, f.lon),
+        drones,
+        locale: f.source === 'triangulation' ? 'Running-fix triangulation' : (f.source || 'Live detection'),
+        conf,
+        status: isActive ? 'active' : 'confirmed',
+        sub: isActive ? 'Live · operator console' : 'Confirmed by operator console',
+        bearA: '—', bearB: '—',
+        started: fmtTime(f.ts || now) + ' PT',
+        duration: fmtDuration(age) + (isActive ? ' (live)' : '')
+      };
+    });
+
+    EVENTS = liveEvents;
+    render();
+
+    const droneCount = Object.keys(data.drones || {}).length;
+    document.getElementById('navMapCount').textContent = droneCount;
+    document.getElementById('navFleetCount').textContent = droneCount;
+  } catch (e) {
+    console.warn('[mission-log] live fires fetch failed:', e);
+  }
+}
+
+// First render with empty data, then attempt live augmentation
+render();
+loadLive();
+setInterval(loadLive, 5000);
+</script>
+</body>
+</html>

@@ -596,12 +596,21 @@ threading.Thread(target=_drone_reaper, daemon=True).start()
 
 @app.get("/")
 def index():
+    # Unauthenticated visitors see the redesigned landing (v2). Authenticated
+    # operators land straight on the live map. The old landing.html stays
+    # reachable at /landing-old as a fallback if v2 misbehaves.
     if JWT_SECRET and "jwt" not in session:
-        return render_template("landing.html")
+        return render_template("landing_v2.html")
     return render_template("index.html")
 
 @app.get("/landing")
 def landing_page():
+    return render_template("landing_v2.html")
+
+@app.get("/landing-old")
+def landing_old_page():
+    """Original pre-redesign landing — kept as a fallback in case
+    landing_v2 needs to be reverted quickly."""
     return render_template("landing.html")
 
 @app.get("/login")
@@ -730,6 +739,21 @@ def setup_page():
     return render_template("setup.html",
                            supabase_url=SUPABASE_URL,
                            supabase_key=SUPABASE_PUBLISHABLE_KEY)
+
+@app.get("/dashboard/mission-log")
+@require_jwt
+def mission_log_page():
+    return render_template("mission_log.html",
+                           supabase_url=SUPABASE_URL,
+                           supabase_key=SUPABASE_PUBLISHABLE_KEY)
+
+@app.get("/landing-v2")
+def landing_v2_page():
+    """Preview of the redesigned landing page. Public, no auth.
+    Does NOT replace the existing `/` route — additive only, so the
+    demo path is untouched. Promote by editing `/` to render this
+    template instead, once approved."""
+    return render_template("landing_v2.html")
 
 @app.get("/api/dashboard/drones")
 @require_jwt
