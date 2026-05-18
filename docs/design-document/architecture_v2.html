@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FireFly — System Architecture (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ─── FireFly design tokens (inlined so the page is standalone) ─── */
+  :root {
+    --ff-fire:    #ff4a1c;
+    --ff-ember:   #ff7a3a;
+    --ff-amber:   #ff8f5a;
+    --ff-warning: #ffeb3b;
+    --ff-night:   #07070a;
+    --ff-panel:   #111116;
+    --ff-surface: #18181f;
+    --ff-surface-2: #1d1d20;
+    --ff-border:  #25252f;
+    --ff-border-2:#2a2a2e;
+    --ff-border-3:#3a3a3e;
+    --ff-text:    #f0f0f5;
+    --ff-smoke:   #b0b0b8;
+    --ff-muted:   #888897;
+    --ff-info:    #4aa3ff;
+    --ff-font-display: 'Bebas Neue', 'Oswald', 'Impact', sans-serif;
+    --ff-font-body:    'DM Sans', system-ui, sans-serif;
+    --ff-font-mono:    'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  @page { size: 11in 8.5in; margin: 0; }
+  @media print {
+    html, body { margin: 0; padding: 0; background: var(--ff-night); }
+    .stage { padding: 0; background: var(--ff-night); }
+    .fit { width: 11in !important; height: 8.5in !important; }
+    .slide { margin: 0; box-shadow: none; transform: none !important; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  :root {
+    --green: #5cd09b;
+    --amber: #ffb454;
+    --blue: #4aa3ff;
+    --fire: var(--ff-fire);
+    --line: #2a2a37;
+    --line-2: #1f1f29;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; min-height: 100%;
+    background: #14141a; color: var(--ff-text);
+    font-family: var(--ff-font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.02;
+  }
+
+  .stage {
+    min-height: 100vh; display: flex; justify-content: center; align-items: center;
+    padding: 16px; overflow: hidden; position: relative; z-index: 1;
+  }
+  .fit { width: 11in; height: 8.5in; flex: 0 0 auto; }
+
+  .slide {
+    width: 11in; height: 8.5in; position: relative; overflow: hidden;
+    background:
+      linear-gradient(rgba(74,163,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,163,255,0.025) 1px, transparent 1px),
+      var(--ff-night);
+    background-size: 36px 36px;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55);
+    transform-origin: top left;
+    isolation: isolate;
+  }
+  .slide::before {
+    content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 50% 60% at 50% 100%, rgba(255,74,28,0.10), transparent 70%),
+      radial-gradient(ellipse 40% 40% at 90% 0%, rgba(74,163,255,0.05), transparent 60%);
+  }
+
+  /* corner registration marks */
+  .reg { position: absolute; width: 16px; height: 16px; z-index: 5; }
+  .reg.tl { top: 0.28in; left: 0.32in; border-top: 1px solid var(--fire); border-left: 1px solid var(--fire); }
+  .reg.tr { top: 0.28in; right: 0.32in; border-top: 1px solid var(--fire); border-right: 1px solid var(--fire); }
+  .reg.bl { bottom: 0.28in; left: 0.32in; border-bottom: 1px solid var(--fire); border-left: 1px solid var(--fire); }
+  .reg.br { bottom: 0.28in; right: 0.32in; border-bottom: 1px solid var(--fire); border-right: 1px solid var(--fire); }
+
+  /* ───── HEADER ───────────────────────────────────────────── */
+  header {
+    position: absolute; top: 0.45in; left: 0.55in; right: 0.55in;
+    display: grid; grid-template-columns: 1fr auto; gap: 32px; align-items: flex-start;
+    padding-bottom: 12px; border-bottom: 1px solid var(--line);
+    z-index: 2;
+  }
+  .header-l { display: flex; flex-direction: column; gap: 6px; }
+  .brand {
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--ff-font-display); line-height: 1;
+  }
+  .brand .wordmark {
+    font-size: 22px; letter-spacing: 3px;
+    color: var(--ff-text); line-height: 1;
+  }
+  .brand .wordmark span { color: var(--fire); }
+  .brand .sep { width: 1px; height: 22px; background: var(--line); }
+  .brand h1 {
+    margin: 0; font-family: var(--ff-font-display); font-size: 24px;
+    letter-spacing: 2px; color: var(--ff-text); font-weight: 400;
+    line-height: 1; white-space: nowrap;
+  }
+  .subtitle {
+    font-family: var(--ff-font-mono); font-size: 9.5px;
+    color: var(--ff-muted); letter-spacing: 1.8px; text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .subtitle b { color: var(--ff-text); font-weight: 600; }
+
+  .doc-meta {
+    text-align: right; font-family: var(--ff-font-mono); font-size: 9px;
+    color: var(--ff-muted); text-transform: uppercase; letter-spacing: 1.4px;
+    line-height: 1.6;
+  }
+  .doc-meta .doc-id {
+    font-size: 11px; color: var(--ff-text); font-weight: 600; margin-bottom: 4px;
+  }
+  .doc-meta .pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin-top: 4px; padding: 3px 8px;
+    border: 1px solid var(--fire); color: var(--fire);
+    font-weight: 600;
+  }
+  .doc-meta .pill::before {
+    content: ''; width: 5px; height: 5px; background: var(--fire); border-radius: 50%;
+  }
+
+  /* ───── MAIN STAGE ───────────────────────────────────────── */
+  main {
+    position: absolute; top: 1.25in; left: 0.55in; right: 0.55in; bottom: 0.6in;
+    z-index: 2;
+  }
+
+  /* swimlane headers */
+  .lanes {
+    display: grid; grid-template-columns: 31% 32% 1fr; gap: 16px;
+    margin-bottom: 14px;
+  }
+  .lane {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--ff-font-mono); font-size: 9.5px;
+    color: var(--ff-text); letter-spacing: 2px; text-transform: uppercase; font-weight: 700;
+  }
+  .lane .lnum {
+    display: inline-block; width: 22px; height: 22px;
+    border: 1px solid currentColor; line-height: 20px; text-align: center;
+    font-family: var(--ff-font-mono); font-size: 10px; font-weight: 800;
+  }
+  .lane.green { color: var(--green); }
+  .lane.amber { color: var(--amber); }
+  .lane.blue  { color: var(--blue); }
+  .lane .tag {
+    margin-left: auto; font-size: 8.5px; color: var(--ff-muted); letter-spacing: 1.5px; font-weight: 600;
+  }
+
+  /* canvas */
+  .canvas {
+    position: relative; width: 100%; height: calc(100% - 100px);
+  }
+
+  /* lane backdrops (subtle vertical bands) */
+  .lane-bg {
+    position: absolute; top: 0; bottom: 50px; width: 31%;
+    border: 1px dashed var(--line-2); border-radius: 6px;
+    background: rgba(255,255,255,0.012);
+  }
+  .lane-bg.b1 { left: 0; }
+  .lane-bg.b2 { left: 33%; width: 32%; }
+  .lane-bg.b3 { right: 0; width: 33%; }
+
+  /* arrow SVG sits between lanes */
+  .arrows {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    overflow: visible; pointer-events: none; z-index: 1;
+  }
+
+  /* nodes */
+  .node {
+    position: absolute; z-index: 3;
+    background: var(--ff-panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    overflow: hidden;
+  }
+  .node::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px; background: currentColor;
+  }
+  .node.green { color: var(--green); }
+  .node.amber { color: var(--amber); }
+  .node.blue  { color: var(--blue); }
+  .node.fire  { color: var(--fire); }
+
+  .node-inner {
+    height: 100%; padding: 14px 18px 14px 20px;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .node-head {
+    display: grid; grid-template-columns: 28px 1fr 24px; gap: 12px;
+    align-items: center; margin-bottom: 10px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--line-2);
+  }
+  .num {
+    width: 22px; height: 22px;
+    display: grid; place-items: center;
+    border-radius: 4px; background: currentColor;
+    color: var(--ff-night); font-family: var(--ff-font-mono);
+    font-weight: 800; font-size: 11px;
+  }
+  .title { min-width: 0; }
+  .title h2 {
+    margin: 0 0 6px;
+    font-family: var(--ff-font-display); font-size: 14.5px;
+    letter-spacing: 1.3px; line-height: 1.1;
+    color: var(--ff-text); font-weight: 400;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .title p {
+    margin: 0; font-family: var(--ff-font-mono); font-size: 8.5px;
+    color: var(--ff-muted); letter-spacing: 1.2px;
+    text-transform: uppercase; line-height: 1.2;
+  }
+  .glyph {
+    width: 22px; height: 22px; display: grid; place-items: center; color: currentColor;
+  }
+  .glyph svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+  ul {
+    margin: 0; padding: 0; list-style: none;
+    display: flex; flex-direction: column; gap: 4px;
+    color: var(--ff-smoke);
+    font-size: 10px; line-height: 1.4;
+  }
+  li { position: relative; padding-left: 11px; }
+  li::before {
+    content: ''; position: absolute; left: 0; top: 0.55em;
+    width: 5px; height: 1px; background: currentColor;
+  }
+  code {
+    font-family: var(--ff-font-mono); font-size: 9.3px;
+    color: var(--ff-text);
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 2px;
+    padding: 0px 4px;
+  }
+
+  /* node positions — explicit grid layout */
+  .n-gps    { left: 0; top: 0; width: 30%; height: 38%; }
+  .n-cam    { left: 0; top: 44%; width: 30%; height: 30%; }
+  .n-edge   { left: 35%; top: 14%; width: 30%; height: 56%; }
+  .n-cloud  { right: 0; top: 4%; width: 30%; height: 48%; }
+  .n-dash   { right: 0; top: 58%; width: 30%; height: 26%; }
+
+  /* edge labels (sit on the arrows) */
+  .edge-label {
+    position: absolute; z-index: 4; transform: translate(-50%, -50%);
+    padding: 5px 9px;
+    background: var(--ff-night);
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    color: var(--blue);
+    font-family: var(--ff-font-mono); font-size: 8.6px;
+    font-weight: 700; letter-spacing: 0.5px;
+    line-height: 1.1; white-space: nowrap;
+  }
+  .edge-label small {
+    display: block; margin-top: 2px;
+    color: var(--ff-muted); font-family: var(--ff-font-body);
+    font-size: 7.4px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+  .edge-label.green { color: var(--green); }
+  .edge-label.amber { color: var(--amber); }
+  .edge-label.blue  { color: var(--blue); }
+  .edge-label.fire  { color: var(--fire); }
+
+  /* terminal "user-facing result" — bottom span */
+  .terminal {
+    position: absolute; left: 35%; bottom: 0; width: 30%; height: 38px;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    border: 1px solid var(--fire);
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(255,74,28,0.18), rgba(255,180,84,0.06)), var(--ff-panel);
+    z-index: 3;
+  }
+  .terminal .pulse {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--fire);
+    box-shadow: 0 0 0 4px rgba(255,74,28,0.18);
+    flex: 0 0 auto;
+  }
+  .terminal-text { line-height: 1.1; }
+  .terminal strong {
+    display: block; font-family: var(--ff-font-display);
+    font-size: 13px; letter-spacing: 1.4px; color: var(--ff-text);
+    margin-bottom: 1px;
+  }
+  .terminal span {
+    display: block; font-family: var(--ff-font-mono); font-size: 8.5px;
+    color: var(--ff-smoke); letter-spacing: 0.5px;
+  }
+
+  /* legend */
+  .legend {
+    position: absolute; left: 0; right: 0; bottom: -34px;
+    display: flex; align-items: center; gap: 18px;
+    font-family: var(--ff-font-mono); font-size: 8.5px;
+    color: var(--ff-muted); letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700;
+  }
+  .legend .item { display: inline-flex; align-items: center; gap: 6px; }
+  .legend .swatch { width: 10px; height: 2px; }
+  .legend .green  .swatch { background: var(--green); }
+  .legend .amber  .swatch { background: var(--amber); }
+  .legend .blue   .swatch { background: var(--blue); }
+  .legend .fire   .swatch { background: var(--fire); }
+  .legend .item.flow { gap: 8px; }
+  .legend .stripe {
+    display: inline-block; width: 28px; height: 1px;
+    background-image: linear-gradient(90deg, var(--ff-muted) 50%, transparent 50%);
+    background-size: 6px 1px;
+  }
+  .legend .arr {
+    display: inline-block; width: 8px; height: 8px;
+    border-top: 1px solid var(--ff-muted); border-right: 1px solid var(--ff-muted);
+    transform: rotate(45deg);
+  }
+
+  /* ───── FOOTER ───────────────────────────────────────────── */
+  footer {
+    position: absolute; left: 0.55in; right: 0.55in; bottom: 0.18in;
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 8px; border-top: 1px solid var(--line);
+    font-family: var(--ff-font-mono); font-size: 8.5px;
+    color: var(--ff-muted); letter-spacing: 1.4px; text-transform: uppercase; font-weight: 600;
+    z-index: 2;
+  }
+  footer .l, footer .r { display: flex; align-items: center; gap: 10px; }
+  footer strong { color: var(--ff-text); font-weight: 700; }
+  footer .dot { width: 3px; height: 3px; background: var(--ff-muted); border-radius: 50%; }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="fit">
+  <section class="slide" aria-label="FireFly system architecture">
+    <div class="reg tl"></div>
+    <div class="reg tr"></div>
+    <div class="reg bl"></div>
+    <div class="reg br"></div>
+
+    <header>
+      <div class="header-l">
+        <div class="brand">
+          <span class="wordmark">FIRE<span>FLY</span></span>
+          <span class="sep"></span>
+          <h1>SYSTEM ARCHITECTURE</h1>
+        </div>
+        <div class="subtitle">Code flow · <b>drone sensors</b> → edge detection → <b>operator map</b></div>
+      </div>
+      <div class="doc-meta">
+        <div class="doc-id">DOC FF-ARCH-001 · REV. D</div>
+        <div>UCSC Baskin Eng · Team 6</div>
+        <div>Issued 18 May 2026</div>
+        <span class="pill">WORKING DEMO PATH</span>
+      </div>
+    </header>
+
+    <main>
+      <!-- swimlane headers -->
+      <div class="lanes">
+        <div class="lane green">
+          <span class="lnum">A</span> Field hardware <span class="tag">esp32 · embedded c</span>
+        </div>
+        <div class="lane amber">
+          <span class="lnum">B</span> Edge detection <span class="tag">python · opencv · yolov8</span>
+        </div>
+        <div class="lane blue">
+          <span class="lnum">C</span> Cloud + operator <span class="tag">flask · sqlite · leaflet</span>
+        </div>
+      </div>
+
+      <div class="canvas">
+        <!-- lane backgrounds -->
+        <div class="lane-bg b1"></div>
+        <div class="lane-bg b2"></div>
+        <div class="lane-bg b3"></div>
+
+        <!-- arrows -->
+        <svg class="arrows" viewBox="0 0 1000 600" preserveAspectRatio="none">
+          <defs>
+            <marker id="m-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#5cd09b" />
+            </marker>
+            <marker id="m-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#ffb454" />
+            </marker>
+            <marker id="m-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#4aa3ff" />
+            </marker>
+            <marker id="m-fire" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#ff4a1c" />
+            </marker>
+          </defs>
+
+          <!-- GPS → Cloud (telemetry, top arc) — green -->
+          <path d="M300 110 C 480 50, 620 50, 700 100"
+                stroke="#5cd09b" stroke-width="1.4" fill="none"
+                stroke-dasharray="5 3" marker-end="url(#m-green)" />
+
+          <!-- CAM → Edge worker (MJPEG over LAN) — amber, short horizontal -->
+          <path d="M300 350 L 350 320"
+                stroke="#ffb454" stroke-width="1.4" fill="none"
+                stroke-dasharray="5 3" marker-end="url(#m-amber)" />
+
+          <!-- Edge worker → Cloud (fire post + frame relay) — fire (solid) -->
+          <path d="M650 230 L 700 220"
+                stroke="#ff4a1c" stroke-width="1.4" fill="none" marker-end="url(#m-fire)" />
+
+          <!-- Cloud → Dashboard (state polling) — blue -->
+          <path d="M850 290 L 850 350"
+                stroke="#4aa3ff" stroke-width="1.4" fill="none"
+                stroke-dasharray="5 3" marker-end="url(#m-blue)" />
+
+          <!-- Dashboard → Result (alert) — fire -->
+          <path d="M850 510 L 850 560"
+                stroke="#ff4a1c" stroke-width="1.4" fill="none" marker-end="url(#m-fire)" />
+
+          <!-- Edge worker → Result (data hint, subtle) — amber thin -->
+          <path d="M500 480 L 500 540"
+                stroke="#ffb454" stroke-width="1" fill="none"
+                stroke-dasharray="2 3" opacity="0.5" marker-end="url(#m-amber)" />
+        </svg>
+
+        <!-- ━━ NODE 1 · GPS firmware ━━ -->
+        <article class="node green n-gps">
+          <div class="node-inner">
+            <div class="node-head">
+              <div class="num">1</div>
+              <div class="title">
+                <h2>ESP32-C3 Firmware</h2>
+                <p>ESP-IDF · GPS · BLE provision</p>
+              </div>
+              <div class="glyph">
+                <svg viewBox="0 0 24 24">
+                  <rect x="5" y="5" width="14" height="14" rx="2" />
+                  <rect x="9" y="9" width="6" height="6" rx="1" />
+                  <path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3" />
+                </svg>
+              </div>
+            </div>
+            <ul>
+              <li><code>read_pos_data.c</code> · NMEA over UART</li>
+              <li><code>ble_provision.c</code> · Wi-Fi + API key</li>
+              <li><code>cloud_uplink.c</code> · HTTPS telemetry</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ━━ NODE 2 · Camera ━━ -->
+        <article class="node amber n-cam">
+          <div class="node-inner">
+            <div class="node-head">
+              <div class="num">2</div>
+              <div class="title">
+                <h2>ESP32-CAM Source</h2>
+                <p>OV2640 · MJPEG server</p>
+              </div>
+              <div class="glyph">
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="6" width="18" height="14" rx="2" />
+                  <circle cx="12" cy="13" r="3.5" />
+                  <path d="M8 6l1.5-2h5L16 6" />
+                </svg>
+              </div>
+            </div>
+            <ul>
+              <li>MJPEG over LAN · <code>:81/stream</code></li>
+              <li>Live frames for edge detection</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ━━ NODE 3 · Edge worker ━━ -->
+        <article class="node amber n-edge">
+          <div class="node-inner">
+            <div class="node-head">
+              <div class="num">3</div>
+              <div class="title">
+                <h2>Python Edge Worker</h2>
+                <p>OpenCV · YOLOv8 · triangulator</p>
+              </div>
+              <div class="glyph">
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="5" width="16" height="11" rx="1.5" />
+                  <path d="M2 19h20l-1.5-3h-17L2 19z" />
+                </svg>
+              </div>
+            </div>
+            <ul>
+              <li><code>demo.py</code> launches cloud + camera worker</li>
+              <li><code>demo_worker.py</code> reads MJPEG frames</li>
+              <li>YOLOv8 detects fire/smoke after sustained presence</li>
+              <li>Bearing = pixel offset + heading + HFOV</li>
+              <li>Triangulates GPS fix from 2 observations</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ━━ NODE 4 · Cloud ━━ -->
+        <article class="node blue n-cloud">
+          <div class="node-inner">
+            <div class="node-head">
+              <div class="num">4</div>
+              <div class="title">
+                <h2>Flask Ground Station</h2>
+                <p>API · SQLite · live state</p>
+              </div>
+              <div class="glyph">
+                <svg viewBox="0 0 24 24">
+                  <path d="M7 18a4 4 0 1 1 .9-7.9A5 5 0 0 1 17.5 11a3.5 3.5 0 0 1 .5 7H7z" />
+                </svg>
+              </div>
+            </div>
+            <ul>
+              <li><code>server.py</code> ingests telemetry, fires, frames</li>
+              <li>Tables: <code>drones</code>, <code>api_keys</code>, <code>telemetry</code>, <code>fires</code></li>
+              <li>Live in-memory drone &amp; fire state</li>
+              <li>Serves <code>/api/state</code> for dashboard polling</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ━━ NODE 5 · Dashboard ━━ -->
+        <article class="node fire n-dash">
+          <div class="node-inner">
+            <div class="node-head">
+              <div class="num">5</div>
+              <div class="title">
+                <h2>Operator Dashboard</h2>
+                <p>Leaflet · browser map UI</p>
+              </div>
+              <div class="glyph">
+                <svg viewBox="0 0 24 24">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M3 8h18M8 13l2.2 2.2L16 10" />
+                </svg>
+              </div>
+            </div>
+            <ul>
+              <li>Map: drones, camera preview, fire pins, alerts</li>
+              <li>Turns backend state into operator action cues</li>
+            </ul>
+          </div>
+        </article>
+
+        <!-- ━━ EDGE LABELS ━━ -->
+        <div class="edge-label green" style="left: 50%; top: 7%;">
+          POST /api/drone
+          <small>GPS telemetry · 1 Hz</small>
+        </div>
+        <div class="edge-label amber" style="left: 32.5%; top: 58%;">
+          MJPEG :81/stream
+          <small>LAN video frames</small>
+        </div>
+        <div class="edge-label fire" style="left: 67.5%; top: 37%;">
+          POST /api/fire
+          <small>+ /api/camera/frame</small>
+        </div>
+        <div class="edge-label blue" style="left: 85%; top: 56%;">
+          GET /api/state
+          <small>Live polling · 2 Hz</small>
+        </div>
+
+        <!-- ━━ TERMINAL: user-facing result ━━ -->
+        <div class="terminal">
+          <div class="pulse"></div>
+          <div class="terminal-text">
+            <strong>USER-FACING RESULT</strong>
+            <span>Map pins · alert banner · camera panel</span>
+          </div>
+        </div>
+
+        <!-- ━━ LEGEND ━━ -->
+        <div class="legend">
+          <span class="item green"><span class="swatch"></span> Embedded GPS</span>
+          <span class="item amber"><span class="swatch"></span> Camera + edge AI</span>
+          <span class="item blue"><span class="swatch"></span> Cloud API</span>
+          <span class="item fire"><span class="swatch"></span> Dashboard alert</span>
+          <span class="item flow"><span class="stripe"></span> async stream</span>
+          <span class="item flow"><span class="arr"></span> request / event</span>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="l">
+        <strong>FireFly</strong> <span class="dot"></span> Coordinated wildfire detection prototype
+      </div>
+      <div class="r">
+        sensor input <span class="dot"></span> detection <span class="dot"></span> api <span class="dot"></span> <strong style="color: var(--fire);">live map</strong>
+      </div>
+    </footer>
+  </section>
+  </div>
+</div>
+
+<script>
+  function fitSlideToViewport() {
+    const fit = document.querySelector(".fit");
+    const slide = document.querySelector(".slide");
+    if (!fit || !slide) return;
+    slide.style.transform = "none";
+    const baseWidth = slide.offsetWidth;
+    const baseHeight = slide.offsetHeight;
+    const scale = Math.min(
+      (window.innerWidth - 32) / baseWidth,
+      (window.innerHeight - 32) / baseHeight,
+      1
+    );
+    slide.style.transform = `scale(${scale})`;
+    fit.style.width = `${baseWidth * scale}px`;
+    fit.style.height = `${baseHeight * scale}px`;
+  }
+  window.addEventListener("load", fitSlideToViewport);
+  window.addEventListener("resize", fitSlideToViewport);
+</script>
+</body>
+</html>
