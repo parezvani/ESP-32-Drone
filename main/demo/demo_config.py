@@ -13,10 +13,17 @@ TARGET_FIRE = (36.9985, -122.0565)
 # ESP-CAM (OV3660) horizontal field of view.
 CAMERA_HFOV_DEG = 60.0
 
-# Telemetry: cadence and reported altitude (alt only affects GSD sizing,
-# not triangulation).
+# Telemetry: steady-state cadence and reported altitude (alt only affects
+# GSD sizing, not triangulation).
 TELEMETRY_INTERVAL_S = 1.0
 DRONE_ALT_M = 50.0
+
+# When the user switches phase (A -> B or B -> A) the worker interpolates
+# the drone position over SLIDE_DURATION_S so the marker visibly traverses
+# the map. During the slide, telemetry posts at SLIDE_TICK_S for smoother
+# motion than the 1Hz steady-state rate.
+SLIDE_DURATION_S = 3.0
+SLIDE_TICK_S = 0.3
 
 # Cloud camera relay: JPEG frames per second pushed to /api/camera/frame.
 # Higher = smoother dashboard video, more bandwidth on Render free tier.

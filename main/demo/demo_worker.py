@@ -51,6 +51,8 @@ class State:
     def __init__(self):
         self.lock = threading.Lock()
         self.phase = "A"
+        self.prev_phase = None        # phase we were in before last switch
+        self.transition_start = 0.0   # ts of last phase switch (0 = never)
         self.observations = {}        # {'A': (lat, lon, bearing), 'B': ...}
         self.latest_raw = None        # most recent frame from capture thread
         self.latest_annotated = None  # YOLO-annotated frame for cloud relay
@@ -100,9 +102,25 @@ def telemetry_loop(state, api_key, cloud_url, headings):
     while not state.quit:
         with state.lock:
             phase = state.phase
-        pos = cfg.POSITION_A if phase == "A" else cfg.POSITION_B
+            prev_phase = state.prev_phase
+            t_start = state.transition_start
+
+        target_pos = cfg.POSITION_A if phase == "A" else cfg.POSITION_B
+        elapsed = time.time() - t_start
+        in_slide = (prev_phase and prev_phase != phase
+                    and elapsed < cfg.SLIDE_DURATION_S)
+        if in_slide:
+            t = elapsed / cfg.SLIDE_DURATION_S
+            prev_pos = cfg.POSITION_A if prev_phase == "A" else cfg.POSITION_B
+            lat = prev_pos[0] + t * (target_pos[0] - prev_pos[0])
+            lon = prev_pos[1] + t * (target_pos[1] - prev_pos[1])
+            interval = cfg.SLIDE_TICK_S
+        else:
+            lat, lon = target_pos
+            interval = cfg.TELEMETRY_INTERVAL_S
+
         payload = {
-            "lat": pos[0], "lon": pos[1],
+            "lat": lat, "lon": lon,
             "heading_deg": headings[phase],
             "alt_m": cfg.DRONE_ALT_M,
             "fire_detected": False,
@@ -113,7 +131,7 @@ def telemetry_loop(state, api_key, cloud_url, headings):
                 print(f"[telemetry] HTTP {r.status_code}: {r.text[:80]}")
         except requests.RequestException as e:
             print(f"[telemetry] {e}")
-        time.sleep(cfg.TELEMETRY_INTERVAL_S)
+        time.sleep(interval)
 
 
 def camera_relay_loop(state, api_key, cloud_url):
@@ -194,14 +212,16 @@ def capture_observation(state, frame, fire_box, headings):
 
 
 def handle_key(key, state):
-    if key == ord('a'):
+    new_phase = "A" if key == ord('a') else "B" if key == ord('b') else None
+    if new_phase:
         with state.lock:
-            state.phase = "A"
-        print("[keys] PHASE -> A")
-    elif key == ord('b'):
-        with state.lock:
-            state.phase = "B"
-        print("[keys] PHASE -> B")
+            if state.phase != new_phase:
+                state.prev_phase = state.phase
+                state.phase = new_phase
+                state.transition_start = time.time()
+                print(f"[keys] PHASE -> {new_phase} (sliding {cfg.SLIDE_DURATION_S:.1f}s)")
+            else:
+                print(f"[keys] already in phase {new_phase}")
     elif key == ord('r'):
         with state.lock:
             state.observations.clear()
