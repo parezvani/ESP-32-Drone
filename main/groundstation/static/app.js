@@ -7,7 +7,43 @@ const FRESH_FIRE_S = 30;
 // ── Fire banner notification ──────────────────────────────────────
 const _seenFireIds = new Set();
 let _bannerTimer = null;
- 
+
+// Browsers gate Notification.requestPermission() AND AudioContext behind a
+// user gesture. Both init on the first click anywhere on the page.
+let _notifPermission = "Notification" in window ? Notification.permission : "denied";
+let _audioCtx = null;
+window.addEventListener("click", () => {
+  if (_notifPermission === "default") {
+    Notification.requestPermission().then(p => { _notifPermission = p; });
+  }
+  if (!_audioCtx) {
+    try {
+      _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (_) { /* no audio support */ }
+  }
+}, { once: true });
+
+function _playFireSound() {
+  if (!_audioCtx || _audioCtx.state === "closed") return;
+  try {
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+    const now = _audioCtx.currentTime;
+    // Two-tone alarm: 880Hz then 660Hz, 250ms each with 50ms gap.
+    [[880, now], [660, now + 0.3]].forEach(([freq, t]) => {
+      const osc = _audioCtx.createOscillator();
+      const gain = _audioCtx.createGain();
+      osc.type = "square";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.exponentialRampToValueAtTime(0.3, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      osc.connect(gain).connect(_audioCtx.destination);
+      osc.start(t);
+      osc.stop(t + 0.3);
+    });
+  } catch (_) { /* AudioContext blocked or torn down */ }
+}
+
 function _showFireBanner(fires) {
   let banner = document.getElementById("ff-fire-banner");
   if (!banner) {
@@ -25,11 +61,29 @@ function _showFireBanner(fires) {
   clearTimeout(_bannerTimer);
   _bannerTimer = setTimeout(() => banner.classList.remove("show"), 6000);
 }
- 
+
+function _osNotifyFires(fires) {
+  if (_notifPermission !== "granted") return;
+  const newest = fires[fires.length - 1];
+  const title = fires.length > 1
+    ? `🔥 ${fires.length} fires detected`
+    : `🔥 Fire detected`;
+  const body = (newest.lat != null && newest.lon != null)
+    ? `${newest.lat.toFixed(5)}, ${newest.lon.toFixed(5)}`
+    : "FireFly Ground Station";
+  try {
+    new Notification(title, { body, tag: "firefly-fire" });
+  } catch (_) { /* quota/permission edge cases */ }
+}
+
 function _notifyNewFires(fires) {
   const newFires = fires.filter(f => !_seenFireIds.has(f.id));
   fires.forEach(f => _seenFireIds.add(f.id));
-  if (newFires.length) _showFireBanner(newFires);
+  if (newFires.length) {
+    _showFireBanner(newFires);
+    _osNotifyFires(newFires);
+    _playFireSound();
+  }
 }
 
 const map = L.map("map", { zoomControl: true }).setView([36.995578, -122.058878], 16);
@@ -452,23 +506,6 @@ $("cam-toggle").addEventListener("click", () => {
 $("cam-close").addEventListener("click", () => {
   $("cam-panel").classList.add("hidden");
   applyCamSrc();
-});
-
-$("triangulate-btn").addEventListener("click", async () => {
-  const btn = $("triangulate-btn");
-  btn.disabled = true;
-  btn.textContent = "Working…";
-  try {
-    const r = await fetch("/api/triangulate", { method: "POST" });
-    const j = await r.json();
-    btn.textContent = j.fire ? "Fire located" : "No solution";
-  } catch (e) {
-    btn.textContent = "Failed";
-  }
-  setTimeout(() => {
-    btn.disabled = false;
-    btn.textContent = "Trigger triangulation";
-  }, 1200);
 });
 
 $("reset-btn").addEventListener("click", async () => {
