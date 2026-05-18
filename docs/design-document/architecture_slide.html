@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>FireFly · System Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ─────────────────────────────────────────────────────────────
+     PRINT GEOMETRY — locks output to a single 11×8.5in landscape
+     ────────────────────────────────────────────────────────── */
+  @page { size: 11in 8.5in; margin: 0; }
+  @media print {
+    html, body { margin: 0; padding: 0; background: #07070a; }
+    .stage { background: none; padding: 0; }
+    .slide { box-shadow: none; margin: 0; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     TOKENS — pulled from the FireFly design system
+     ────────────────────────────────────────────────────────── */
+  :root {
+    --ff-night:     #07070a;
+    --ff-panel:     #0e0e13;
+    --ff-surface:   #14141b;
+    --ff-card:      #1a1a22;
+    --ff-border:    #22222d;
+    --ff-border-2:  #2e2e3a;
+    --ff-text:      #f0f0f5;
+    --ff-smoke:     #b0b0b8;
+    --ff-muted:     #888897;
+    --ff-mute-2:    #5a5a66;
+
+    --ff-fire:      #ff4a1c;
+    --ff-ember:     #ff7a3a;
+    --ff-amber:     #ffb454;
+    --ff-info:      #4aa3ff;
+    --ff-mint:      #5cd09b;
+    --ff-rose:      #ff6b8a;
+
+    --font-display: 'Bebas Neue', 'Oswald', sans-serif;
+    --font-body:    'DM Sans', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', ui-monospace, Consolas, monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: #1c1c22;
+    font-family: var(--font-body);
+    color: var(--ff-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  /* SCREEN STAGE — center the page on dark surround when viewed
+     in a browser; print mode removes this. */
+  .stage {
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top, #1a1a22 0%, #0f0f14 60%, #08080b 100%);
+    padding: 28px 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     THE SLIDE — exactly 11in × 8.5in, rendered top-down.
+     Vertical budget: header 0.90in + canvas 7.20in + footer 0.40in
+     == 8.50in. Header gets enough room for the title + eyebrow +
+     3-line meta without clipping into the canvas below it.
+     ────────────────────────────────────────────────────────── */
+  .slide {
+    width: 11in;
+    height: 8.5in;
+    background: var(--ff-night);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.55), 0 4px 12px rgba(0,0,0,0.4);
+    isolation: isolate;
+    display: grid;
+    grid-template-rows: 0.90in 1fr 0.40in;
+  }
+
+  /* Decorative blueprint grid + radial glow behind everything */
+  .slide::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(74,163,255,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,163,255,0.035) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-position: -1px -1px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 40%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .slide::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 55% 30% at 50% 105%, rgba(255,74,28,0.10), transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     HEADER STRIP
+     ────────────────────────────────────────────────────────── */
+  header {
+    position: relative;
+    z-index: 2;
+    padding: 0.22in 0.5in 0.18in 0.5in;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.4in;
+    border-bottom: 1px solid var(--ff-border);
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+  }
+  .brand .wordmark {
+    font-family: var(--font-display);
+    font-size: 32px;
+    letter-spacing: 4px;
+    color: var(--ff-text);
+    line-height: 1;
+  }
+  .brand .wordmark .accent { color: var(--ff-ember); }
+  .brand .divider {
+    width: 1px; height: 24px; background: var(--ff-border-2);
+    display: inline-block;
+    transform: translateY(2px);
+  }
+  .brand .doc-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    letter-spacing: 2.5px;
+    color: var(--ff-smoke);
+    line-height: 1;
+  }
+  .header-meta {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--ff-mute-2);
+    line-height: 1.5;
+  }
+  .header-meta strong {
+    display: block;
+    color: var(--ff-text);
+    letter-spacing: 0.8px;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    text-transform: none;
+    font-size: 10.5px;
+    margin-bottom: 1px;
+  }
+  .eyebrow {
+    margin-top: 6px;
+    font-family: var(--font-body);
+    font-size: 10px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--ff-fire);
+    font-weight: 600;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     DIAGRAM CANVAS
+     ────────────────────────────────────────────────────────── */
+  .canvas {
+    position: relative;
+    z-index: 2;
+    padding: 0.16in 0.5in 0.06in 0.5in;
+  }
+  .canvas-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* SVG arrows behind cards */
+  .arrows {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible;
+  }
+  .arrows path, .arrows line { fill: none; }
+
+  /* CARD GRID — 4 rows sized so rows + 3 gaps == 6.96in (the
+     canvas-inner height after the new header). Math:
+     1.35 + 1.80 + 1.70 + 1.00 + 0.37×3 == 6.96in exactly.
+     Heights are tuned so each card's bullets sit on one line at
+     its column width with a few px of bottom slack. 0.37in gaps
+     house the arrow-label pills cleanly. */
+  .layout {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-rows: 1.35in 1.80in 1.70in 1.00in;
+    grid-template-columns: repeat(12, 1fr);
+    column-gap: 10px;
+    row-gap: 0.37in;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     CARDS — service blocks
+     ────────────────────────────────────────────────────────── */
+  .card {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0)) ,
+      var(--ff-card);
+    border: 1px solid var(--ff-border-2);
+    border-radius: 8px;
+    padding: 11px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Accent stripe on the left edge */
+  .card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 14px; bottom: 14px; width: 3px;
+    border-radius: 2px;
+    background: currentColor;
+    opacity: 0.85;
+  }
+  .card.accent-mint   { color: var(--ff-mint); }
+  .card.accent-amber  { color: var(--ff-amber); }
+  .card.accent-info   { color: var(--ff-info); }
+  .card.accent-fire   { color: var(--ff-ember); }
+
+  .card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .card-icon {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--ff-border-2);
+    display: grid;
+    place-items: center;
+    color: currentColor;
+    flex-shrink: 0;
+  }
+  .card-icon svg { width: 15px; height: 15px; }
+  .card-title-block { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    letter-spacing: 1.8px;
+    color: var(--ff-text);
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-sub {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.7px;
+    color: var(--ff-muted);
+    text-transform: uppercase;
+    line-height: 1.2;
+  }
+  .card-chip {
+    margin-left: auto;
+    align-self: flex-start;
+    flex-shrink: 0;
+    padding: 3px 8px;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: currentColor;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    opacity: 0.85;
+    line-height: 1.4;
+  }
+
+  .card-body {
+    list-style: none;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--ff-smoke);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin: 0;
+    padding: 0;
+  }
+  .card-body li {
+    padding-left: 12px;
+    position: relative;
+  }
+  .card-body li::before {
+    content: "›";
+    position: absolute;
+    left: 1px; top: -1px;
+    color: currentColor;
+    font-weight: 600;
+    opacity: 0.7;
+    font-size: 11px;
+  }
+  .card-body strong {
+    color: var(--ff-text);
+    font-weight: 600;
+  }
+  .card-body code, .mono {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: currentColor;
+    letter-spacing: -0.2px;
+  }
+  .card-body code { color: currentColor; }
+
+  /* Endpoints grid for the cloud card */
+  .endpoints {
+    margin-top: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px 18px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
+  .endpoints .ep {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .endpoints .verb {
+    color: var(--ff-info);
+    font-weight: 700;
+    font-size: 8.5px;
+    background: rgba(74,163,255,0.10);
+    border: 1px solid rgba(74,163,255,0.25);
+    padding: 1px 4px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .endpoints .path {
+    color: var(--ff-text);
+  }
+  .endpoints .note {
+    color: var(--ff-muted);
+    font-family: var(--font-body);
+    font-size: 9px;
+    margin-left: 4px;
+  }
+
+  /* Grid placements */
+  .pos-hw   { grid-row: 1; grid-column: 1 / span 5; }
+  .pos-cam  { grid-row: 1; grid-column: 8 / span 5; }
+  .pos-cpu  { grid-row: 2; grid-column: 6 / span 7; }
+  .pos-cloud{ grid-row: 3; grid-column: 1 / span 12; }
+  .pos-ui   { grid-row: 4; grid-column: 3 / span 8; }
+
+  /* ─────────────────────────────────────────────────────────────
+     ARROW LABEL PILLS — positioned absolutely over the SVG paths
+     ────────────────────────────────────────────────────────── */
+  .label {
+    position: absolute;
+    z-index: 3;
+    background: var(--ff-night);
+    border: 1px solid var(--ff-border-2);
+    border-radius: 7px;
+    padding: 7px 11px 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.65);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    line-height: 1;
+  }
+  .label .proto {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--ff-text);
+    margin-bottom: 4px;
+    white-space: nowrap;
+  }
+  .label .meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-body);
+    font-size: 9px;
+    color: var(--ff-muted);
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .label .meta .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: currentColor;
+  }
+  .label.tone-info  { color: var(--ff-info); }
+  .label.tone-amber { color: var(--ff-amber); }
+  .label.tone-fire  { color: var(--ff-ember); }
+  .label.tone-mint  { color: var(--ff-mint); }
+  .label .meta { color: var(--ff-muted); }
+  .label .meta strong { color: currentColor; font-weight: 600; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 6px;
+    font-family: var(--font-mono);
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    border-radius: 3px;
+    border: 1px solid currentColor;
+    margin-left: 5px;
+    line-height: 1.25;
+  }
+
+  /* ─────────────────────────────────────────────────────────────
+     FOOTER STRIP
+     ────────────────────────────────────────────────────────── */
+  footer {
+    position: relative;
+    z-index: 2;
+    padding: 0 0.5in;
+    border-top: 1px solid var(--ff-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 1.4px;
+    text-transform: uppercase;
+    color: var(--ff-mute-2);
+  }
+  footer .legend {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+  }
+  footer .legend .swatch {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ff-muted);
+  }
+  footer .legend .swatch::before {
+    content: "";
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    background: currentColor;
+  }
+  footer .legend .swatch.mint  { color: var(--ff-mint); }
+  footer .legend .swatch.amber { color: var(--ff-amber); }
+  footer .legend .swatch.info  { color: var(--ff-info); }
+  footer .legend .swatch.fire  { color: var(--ff-ember); }
+
+  /* ─────────────────────────────────────────────────────────────
+     LAYER MARKERS — vertical row labels on the left gutter
+     ────────────────────────────────────────────────────────── */
+  .row-tag {
+    position: absolute;
+    left: -42px;
+    top: 8px;
+    font-family: var(--font-mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--ff-mute-2);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transform-origin: left top;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .row-tag .num {
+    color: var(--ff-text);
+    font-weight: 700;
+    font-size: 9px;
+    background: var(--ff-surface);
+    border: 1px solid var(--ff-border-2);
+    border-radius: 3px;
+    padding: 2px 5px;
+    letter-spacing: 0.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+
+  <div class="slide" aria-label="FireFly system architecture diagram">
+
+    <!-- ═══════════════════════════════════════════════════════════
+         HEADER
+         ════════════════════════════════════════════════════════ -->
+    <header>
+      <div>
+        <div class="brand">
+          <span class="wordmark">FIRE<span class="accent">FLY</span></span>
+          <span class="divider"></span>
+          <span class="doc-title">SYSTEM ARCHITECTURE</span>
+        </div>
+        <div class="eyebrow">Coordinated Drone Wildfire Detection · Functional Prototype</div>
+      </div>
+      <div class="header-meta">
+        <strong>firefly-j68i.onrender.com</strong>
+        UCSC Baskin Engineering · Team 06<br/>
+        CSE 123B · Spring 2026
+      </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         CANVAS — cards + svg arrows
+         ════════════════════════════════════════════════════════ -->
+    <div class="canvas">
+      <div class="canvas-inner">
+
+        <!-- SVG ARROW LAYER (viewBox = 1000 × 650; scales with container) -->
+        <svg class="arrows" viewBox="0 0 1000 650" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="ah-info" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="#4aa3ff" />
+            </marker>
+            <marker id="ah-amber" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="#ffb454" />
+            </marker>
+            <marker id="ah-fire" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="#ff7a3a" />
+            </marker>
+            <marker id="ah-mint" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="#5cd09b" />
+            </marker>
+          </defs>
+
+          <!-- ─────────────────────────────────────────────────
+               ARROW GEOMETRY (SVG viewBox 1000×650, scales with
+               canvas-inner 6.96in tall). Anchors computed from
+               layout grid:
+                 row1 bottom y=126  · row2 top y=161
+                 row2 bottom y=329  · row3 top y=363
+                 row3 bottom y=522  · row4 top y=557
+               Chip center x≈208 · cam center x≈792
+               Laptop center x≈708 · cloud=full width
+               ───────────────────────────────────────────────── -->
+
+          <!-- ARROW 1 : ESP32-C3 → Cloud  (long, bypasses laptop on the LEFT) -->
+          <path d="M 208 126 C 208 270, 120 295, 120 363"
+                stroke="#4aa3ff" stroke-width="4" stroke-linecap="round"
+                opacity="0.10"/>
+          <path d="M 208 126 C 208 270, 120 295, 120 363"
+                stroke="#4aa3ff" stroke-width="1.6" stroke-linecap="round"
+                marker-end="url(#ah-info)"/>
+
+          <!-- ARROW 2 : ESP32-CAM → Laptop  (short descent on the right) -->
+          <path d="M 792 126 C 792 142, 790 154, 790 161"
+                stroke="#ffb454" stroke-width="4" stroke-linecap="round"
+                opacity="0.10"/>
+          <path d="M 792 126 C 792 142, 790 154, 790 161"
+                stroke="#ffb454" stroke-width="1.6" stroke-linecap="round"
+                marker-end="url(#ah-amber)"/>
+
+          <!-- ARROW 3 : Laptop → Cloud  (descends into cloud top, biased right) -->
+          <path d="M 708 329 C 708 345, 760 355, 760 363"
+                stroke="#ff7a3a" stroke-width="4" stroke-linecap="round"
+                opacity="0.12"/>
+          <path d="M 708 329 C 708 345, 760 355, 760 363"
+                stroke="#ff7a3a" stroke-width="1.6" stroke-linecap="round"
+                marker-end="url(#ah-fire)"/>
+
+          <!-- ARROW 4 : Cloud → Browser  (centered, straight down) -->
+          <path d="M 500 522 L 500 557"
+                stroke="#5cd09b" stroke-width="4" stroke-linecap="round"
+                opacity="0.12"/>
+          <path d="M 500 522 L 500 557"
+                stroke="#5cd09b" stroke-width="1.6" stroke-linecap="round"
+                marker-end="url(#ah-mint)"/>
+        </svg>
+
+        <!-- ═══════════════════════════════════════════════════════
+             LAYOUT GRID — service cards
+             ════════════════════════════════════════════════════ -->
+        <div class="layout">
+
+          <!-- ── LAYER 1.a — ESP32-C3 chip ─────────────────────── -->
+          <div class="card accent-mint pos-hw">
+            <div class="card-head">
+              <div class="card-icon">
+                <!-- chip icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="5" y="5" width="14" height="14" rx="1.5"/>
+                  <rect x="8" y="8" width="8" height="8" rx="0.5"/>
+                  <path d="M9 3v2M12 3v2M15 3v2M9 19v2M12 19v2M15 19v2M3 9h2M3 12h2M3 15h2M19 9h2M19 12h2M19 15h2"/>
+                </svg>
+              </div>
+              <div class="card-title-block">
+                <div class="card-title">ESP32-C3 · GPS PAYLOAD</div>
+                <div class="card-sub">risc-v · esp-idf · firmware in c</div>
+              </div>
+              <div class="card-chip">field</div>
+            </div>
+            <ul class="card-body">
+              <li><code>read_pos_data.c</code> — NMEA over UART · heading derived via <code>atan2</code></li>
+              <li><code>cloud_uplink.c</code> — HTTPS POST <code>/api/drone</code> · root CAs pinned in flash</li>
+              <li><code>ble_provision.c</code> — first-boot Wi-Fi credential handoff over BLE</li>
+            </ul>
+          </div>
+
+          <!-- ── LAYER 1.b — ESP32-CAM ─────────────────────────── -->
+          <div class="card accent-amber pos-cam">
+            <div class="card-head">
+              <div class="card-icon">
+                <!-- camera icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="6" width="18" height="14" rx="2"/>
+                  <circle cx="12" cy="13" r="3.5"/>
+                  <path d="M8 6l1.5-2h5L16 6"/>
+                </svg>
+              </div>
+              <div class="card-title-block">
+                <div class="card-title">ESP32-CAM · OV3660</div>
+                <div class="card-sub">stock cameraserver · mjpeg</div>
+              </div>
+              <div class="card-chip">field</div>
+            </div>
+            <ul class="card-body">
+              <li>MJPEG at <code>:81/stream</code> · multipart/x-mixed-replace over Wi-Fi LAN</li>
+              <li>640 × 480 @ 5 – 10 fps · <strong>single client only</strong></li>
+              <li>Wall-powered; USB brownouts crash the stream</li>
+            </ul>
+          </div>
+
+          <!-- ── LAYER 2 — Laptop worker ───────────────────────── -->
+          <div class="card accent-amber pos-cpu">
+            <div class="card-head">
+              <div class="card-icon">
+                <!-- laptop icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="4" y="5" width="16" height="11" rx="1.5"/>
+                  <path d="M2 19h20l-1.2-2H3.2L2 19z"/>
+                </svg>
+              </div>
+              <div class="card-title-block">
+                <div class="card-title">OPERATOR LAPTOP</div>
+                <div class="card-sub">python 3 · opencv · ultralytics yolov8</div>
+              </div>
+              <div class="card-chip">edge compute</div>
+            </div>
+            <ul class="card-body">
+              <li><strong>Capture thread</strong> — direct MJPEG reader over <code>requests</code> · sub-second reconnect on stream hiccup</li>
+              <li><strong>YOLO thread</strong> — fire / smoke at <code>imgsz=640</code> · 3 s sustained-detection gate + grace period</li>
+              <li><strong>Bearing</strong> — <code>drone_heading + (pixel_offset / image_width) × HFOV</code></li>
+              <li><strong>Triangulator</strong> — flat-earth ray intersection · running-fix or multi-drone · <code>None</code> on parallel rays</li>
+              <li><strong>Relay</strong> — POST drone state, JPEG frames, triangulated fire to the cloud</li>
+            </ul>
+          </div>
+
+          <!-- ── LAYER 3 — Cloud (Render) ──────────────────────── -->
+          <div class="card accent-info pos-cloud">
+            <div class="card-head">
+              <div class="card-icon">
+                <!-- cloud icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M7 18a4 4 0 1 1 .9-7.9 5 5 0 0 1 9.6 1.4 3.5 3.5 0 0 1 .5 6.5H7z"/>
+                </svg>
+              </div>
+              <div class="card-title-block">
+                <div class="card-title">CLOUD GROUND STATION</div>
+                <div class="card-sub">flask · sqlalchemy · postgresql · render hobby tier · supabase auth</div>
+              </div>
+              <div class="card-chip">infrastructure</div>
+            </div>
+            <div class="endpoints">
+              <div class="ep"><span class="verb">POST</span><span class="path">/api/drone</span><span class="note">— telemetry ingest</span></div>
+              <div class="ep"><span class="verb">GET</span><span class="path">/api/state</span><span class="note">— live drones + fires</span></div>
+              <div class="ep"><span class="verb">POST</span><span class="path">/api/fire</span><span class="note">— triangulated fire events</span></div>
+              <div class="ep"><span class="verb">POST</span><span class="path">/api/camera/frame</span><span class="note">— JPEG relay</span></div>
+            </div>
+            <ul class="card-body" style="margin-top:10px;">
+              <li><strong>Auth</strong> — SHA-256-hashed API keys (workers) · Supabase JWT for browser sessions</li>
+              <li><strong>Schema</strong> — <code>drones</code> · <code>api_keys</code> · <code>telemetry</code> · <code>fires</code> (merged within 50 m)</li>
+              <li><strong>In-memory drone-state cache</strong> for sub-second map updates</li>
+            </ul>
+          </div>
+
+          <!-- ── LAYER 4 — Browser dashboard ───────────────────── -->
+          <div class="card accent-fire pos-ui">
+            <div class="card-head">
+              <div class="card-icon">
+                <!-- browser icon -->
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4" width="18" height="16" rx="2"/>
+                  <path d="M3 8h18"/>
+                  <circle cx="6" cy="6" r="0.6" fill="currentColor"/>
+                  <circle cx="8.5" cy="6" r="0.6" fill="currentColor"/>
+                  <circle cx="11" cy="6" r="0.6" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="card-title-block">
+                <div class="card-title">OPERATOR DASHBOARD</div>
+                <div class="card-sub">browser · leaflet · vanilla js · web audio</div>
+              </div>
+              <div class="card-chip">presentation</div>
+            </div>
+            <ul class="card-body">
+              <li>Live drone markers · pulsing fire pins · MJPEG camera panel from <code>/api/camera/&lt;drone_id&gt;/stream</code></li>
+              <li>New fire fires <strong>red toast banner + OS desktop notification + two-tone Web Audio alarm</strong></li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             ARROW LABELS — float over the SVG paths
+             Coordinates expressed as % of the canvas-inner box,
+             matching the SVG viewBox 1000 × 650 origin.
+             ════════════════════════════════════════════════════ -->
+
+        <!-- Label positions in % of canvas-inner (matches SVG viewBox
+             1000 × 650). Sit ON each arrow at its midpoint so the
+             stroke runs behind the pill. -->
+
+        <!-- Label 1 : chip → cloud (long left-side arrow, mid) -->
+        <div class="label tone-info" style="left: 14.5%; top: 36.9%;">
+          <span class="proto">HTTPS · POST /api/drone</span>
+          <span class="meta">
+            <span class="dot"></span>
+            <strong>1 Hz telemetry</strong>
+            <span class="badge">TLS pinned</span>
+            <span class="badge">X-API-Key</span>
+          </span>
+        </div>
+
+        <!-- Label 2 : cam → laptop (in row1-row2 gap, right side) -->
+        <div class="label tone-amber" style="left: 79%; top: 22.0%;">
+          <span class="proto">MJPEG · multipart over LAN</span>
+          <span class="meta">
+            <span class="dot"></span>
+            <strong>:81/stream</strong>
+            <span class="badge">Wi-Fi only</span>
+          </span>
+        </div>
+
+        <!-- Label 3 : laptop → cloud (in row2-row3 gap, right side) -->
+        <div class="label tone-fire" style="left: 73.5%; top: 53.2%;">
+          <span class="proto">HTTPS · POST /api/fire · POST /api/camera/frame</span>
+          <span class="meta">
+            <span class="dot"></span>
+            <strong>Triangulated GPS + JPEG bytes</strong>
+            <span class="badge">X-API-Key</span>
+          </span>
+        </div>
+
+        <!-- Label 4 : cloud → browser (in row3-row4 gap, centered) -->
+        <div class="label tone-mint" style="left: 50%; top: 83.1%;">
+          <span class="proto">JSON · GET /api/state</span>
+          <span class="meta">
+            <span class="dot"></span>
+            <strong>polled every 500 ms</strong>
+            <span class="badge">JWT session</span>
+          </span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════
+         FOOTER
+         ════════════════════════════════════════════════════════ -->
+    <footer>
+      <span>FireFly · CSE 123B Functional Prototype · 2026-05-22</span>
+      <div class="legend">
+        <span class="swatch mint">Field hardware</span>
+        <span class="swatch amber">Edge compute</span>
+        <span class="swatch info">Cloud</span>
+        <span class="swatch fire">Operator UI</span>
+      </div>
+    </footer>
+
+  </div><!-- /.slide -->
+
+</div><!-- /.stage -->
+
+</body>
+</html>
