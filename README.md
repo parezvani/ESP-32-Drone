@@ -241,6 +241,113 @@ on their own — unplug whenever.
 
 ---
 
+## Run the indoor demo (running-fix triangulation, no GPS)
+
+This is the path for an indoor demo where the ESP32-C3 can't lock onto
+satellites and a second drone isn't available. One drone observes a flame
+from two scripted positions, the worker triangulates the bearings, and a
+single fire pin drops on the cloud map.
+
+It's a one-command launcher: `python demo.py`. It wakes the cloud, finds
+your ESP-CAM, fabricates telemetry for a single registered drone, runs
+YOLOv8 against the live MJPEG stream, captures bearing observations on
+key press, and POSTs the triangulated result to `/api/fire`.
+
+### 0. One-time setup
+
+1. Register **one drone** on the cloud dashboard (e.g. `demo_drone`) and
+   copy its API key.
+2. Edit [`main/demo/demo_config.py`](main/demo/demo_config.py) so
+   `POSITION_A`, `POSITION_B`, and `TARGET_FIRE` are three real outdoor
+   coordinates near where you'll demo. The worker prints the
+   intersection angle on startup and warns if it's narrower than 20° —
+   aim for ≥30°.
+
+### 1. Launch
+
+```powershell
+# Windows PowerShell
+$env:FIREFLY_API_KEY = "<paste-from-dashboard>"
+python demo.py
+```
+
+```bash
+# macOS / Linux / Git Bash
+export FIREFLY_API_KEY="<paste-from-dashboard>"
+python demo.py
+```
+
+If the LAN scan can't find your ESP-CAM (some firmware variants put the
+control panel on a non-standard port), set the stream URL explicitly:
+
+```powershell
+$env:FIREFLY_CAM_URL = "http://<cam-ip>:81/stream"
+python demo.py
+```
+
+You should see:
+
+```text
+[1/3] waking cloud https://firefly-j68i.onrender.com...
+[2/3] found camera at http://10.0.0.173:81/stream
+[3/3] launching worker (this opens an OpenCV window)
+```
+
+…followed by the worker banner with positions, headings, and the
+intersection angle. A browser tab opens to the cloud map.
+
+### 2. Run the demo
+
+Click the OpenCV window so it has focus, then:
+
+| Key | Action |
+| --- | --- |
+| `A` | Set drone to position A (default at launch) — telemetry POSTs as A |
+| `B` | Set drone to position B — drone marker slides on the cloud map |
+| `R` | Reset both observations (lets you re-demo) |
+| `Q` / Esc | Quit |
+
+1. Hold a lighter or candle centered in the camera frame (~20-30 cm
+   from the lens). After **3 seconds of sustained detection**, the
+   console logs `[CAPTURE] phase A bearing=...` and the OpenCV status
+   bar updates to `A:OK`.
+2. Press `B`. Reposition the camera to a different angle, hold the
+   lighter centered again. After 3 seconds the console logs
+   `[CAPTURE] phase B`, immediately followed by `[triangulate] fire pin
+   POSTed`.
+3. The cloud map shows a **red fire pin** at the triangulated location,
+   a red banner slides in at the top, and a desktop notification fires
+   (after you've granted permission on first click).
+
+### 3. Troubleshooting
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `[capture] reconnecting` loops | ESP-CAM stream wedged or another MJPEG client connected | Close any browser tab on `http://<cam-ip>:81/stream`; power-cycle the cam if it persists |
+| `[yolo] FATAL: cannot open camera` | Wrong stream URL | Test the URL in a browser, then set `$env:FIREFLY_CAM_URL` |
+| Keys do nothing | Terminal has focus, not the OpenCV window | Click the OpenCV window once |
+| `[triangulate] rays did not intersect` | Lighter was way off-center in one phase, or same phase captured twice | Press `R` and try again; aim for `lighter_offset` <5° |
+| Pin lands far from `TARGET_FIRE` | Lighter wasn't centered (offset > a few degrees rotates the ray) | Center the lighter carefully both phases, or use `R` to retry |
+| Render cold-start delay | Free tier sleeps after 15 min idle | Hit the cloud URL in a browser ~1 minute before demo |
+
+### Why this approach
+
+Real triangulation needs two simultaneous observers. The "running fix"
+technique substitutes one observer at two different positions, treating
+the fire as stationary (true for wildfires, trivially true for a
+lighter). The math in [`main/groundstation/triangulator.py`](main/groundstation/triangulator.py)
+doesn't care whether the two bearings came from one drone over time or
+two drones at once — it just intersects them.
+
+The bearing rays are pre-aimed by computing the compass heading from
+each position to `TARGET_FIRE`, so when the lighter is held centered
+the system reproduces the planned geometry. Demonstrates the production
+pipeline (real firmware, real YOLO, real cloud roundtrip, real
+triangulation) with only the satellite portion faked, because we're
+indoors.
+
+---
+
 ## Optional: run the real fire detector with a fire video
 
 The simulator fakes fire detection geometrically. To run the actual YOLOv8 model on a recorded fire video:
