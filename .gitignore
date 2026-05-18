@@ -49,5 +49,6 @@ AuthKey_*.p8
 __pycache__/
 *.py[cod]
 
-# Claude Code local config
 .claude/
+
+.mcp.json
