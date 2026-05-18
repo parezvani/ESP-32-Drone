@@ -864,24 +864,44 @@ def get_state():
         "ntfy_topic": _user_ntfy_topic(uid),
     })
 
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+
 def _send_fire_alert(fire: dict, topic: str) -> None:
+    """Send fire alert via Discord webhook. Free, no IP restrictions."""
+    if not DISCORD_WEBHOOK_URL:
+        print("[alert] DISCORD_WEBHOOK_URL not set, skipping")
+        return
+
     lat = fire.get("lat", 0)
     lon = fire.get("lon", 0)
     conf = fire.get("confidence")
-    conf_str = f"{conf*100:.0f}%" if conf else "unknown"
+    conf_str = f"{conf * 100:.0f}%" if conf is not None else "unknown"
+    maps_url = f"https://maps.google.com/?q={lat},{lon}"
+
+    payload = {
+        "username": "FireFly",
+        "embeds": [{
+            "title": "🔥 Fire Detected",
+            "color": 0xFF4A1C,
+            "fields": [
+                {"name": "Location",   "value": f"`{lat:.5f}, {lon:.5f}`", "inline": True},
+                {"name": "Confidence", "value": conf_str,                  "inline": True},
+                {"name": "Source",     "value": fire.get("source", "?"),   "inline": True},
+                {"name": "Map",        "value": f"[Open in Google Maps]({maps_url})"},
+            ],
+            "footer": {"text": f"Fire #{fire.get('id')}  •  FireFly Ground Station"},
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+        }]
+    }
+
     try:
-        requests.post(
-            f"https://ntfy.sh/{topic}",
-            data=f"Fire detected @ ({lat:.5f}, {lon:.5f})\nConfidence: {conf_str}\nMaps: https://maps.google.com/?q={lat},{lon}".encode("utf-8"),
-            headers={
-                "Title": "FireFly Alert",
-                "Priority": "urgent",
-                "Tags": "fire,warning",
-            },
-            timeout=3.0,
-        )
+        r = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=5.0)
+        if r.ok:
+            print(f"[alert] Discord alert sent (fire #{fire.get('id')})")
+        else:
+            print(f"[alert] Discord returned {r.status_code}: {r.text[:120]}")
     except Exception as e:
-        print(f"[alert] ntfy push failed: {e}")
+        print(f"[alert] Discord push failed: {e}")
 
 @app.post("/api/fire")
 def post_fire():
