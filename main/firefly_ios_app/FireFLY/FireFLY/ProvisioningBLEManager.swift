@@ -64,11 +64,12 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
     private var ssidCharacteristic: CBCharacteristic?
     private var passwordCharacteristic: CBCharacteristic?
     private var commandCharacteristic: CBCharacteristic?
-    private var fallbackWritableCharacteristic: CBCharacteristic?
 
     private var pendingServiceDiscoveries = Set<String>()
     private var writeQueue: [WriteRequest] = []
     private var activeWrite: WriteRequest?
+    private var writeCompletion: (() -> Void)?
+    private var pendingDisconnectStatusMessage: String?
     private var sentCompletionMessage = "Credentials sent."
 
     override init() {
@@ -115,17 +116,21 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
     }
 
     @discardableResult
-    func sendCredentials(ssid: String, password: String, apiKey: String) -> Bool {
+    func sendCredentials(
+        ssid: String,
+        password: String,
+        apiKey: String,
+        onSent: (() -> Void)? = nil
+    ) -> Bool {
         let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !trimmedSSID.isEmpty else {
-            statusMessage = "SSID is required."
-            return false
-        }
-
-        guard !trimmedAPIKey.isEmpty else {
-            statusMessage = "API key is required."
+        if let validationMessage = ProvisioningCredentialValidator.validationMessage(
+            ssid: trimmedSSID,
+            password: password,
+            apiKey: trimmedAPIKey
+        ) {
+            statusMessage = validationMessage
             return false
         }
 
@@ -134,33 +139,33 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
             return false
         }
 
+        guard let combinedCharacteristic = combinedCredentialCharacteristic else {
+            statusMessage = "Connected, but no API key credential channel was found."
+            return false
+        }
+
         writeQueue.removeAll()
         activeWrite = nil
+        writeCompletion = nil
         sentCompletionMessage = "Credentials sent to \(peripheral.displayName)."
 
-        if let combinedCharacteristic = combinedCredentialCharacteristic ?? fallbackWritableCharacteristic {
-            let payload = ProvisioningPayload(
+        do {
+            let payloadData = try ProvisioningCredentialValidator.payloadData(
                 ssid: trimmedSSID,
                 password: password,
                 apiKey: trimmedAPIKey
             )
 
-            guard var payloadData = try? JSONEncoder().encode(payload) else {
-                statusMessage = "Could not encode credentials."
-                return false
-            }
-
-            payloadData.append(0x0A)
-
             guard queueWrite(payloadData, to: combinedCharacteristic, on: peripheral) else {
                 statusMessage = "Credential channel is not writeable."
                 return false
             }
-        } else {
-            statusMessage = "Connected, but no API key credential channel was found."
+        } catch {
+            statusMessage = error.localizedDescription
             return false
         }
 
+        writeCompletion = onSent
         canSendCredentials = false
         statusMessage = "Sending credentials."
         processNextWrite()
@@ -173,15 +178,14 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         ssidCharacteristic = nil
         passwordCharacteristic = nil
         commandCharacteristic = nil
-        fallbackWritableCharacteristic = nil
         pendingServiceDiscoveries.removeAll()
         writeQueue.removeAll()
         activeWrite = nil
+        writeCompletion = nil
     }
 
     private func updateReadyState() {
-        let hasCombinedCredentials = combinedCredentialCharacteristic != nil || fallbackWritableCharacteristic != nil
-        canSendCredentials = connectedPeripheral != nil && hasCombinedCredentials
+        canSendCredentials = connectedPeripheral != nil && combinedCredentialCharacteristic != nil
 
         if canSendCredentials {
             statusMessage = "Connected. Send credentials."
@@ -245,8 +249,6 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
             passwordCharacteristic = characteristic
         } else if characteristic.uuid.matches(Self.commandCharacteristicUUID) {
             commandCharacteristic = characteristic
-        } else if service.uuid.matches(Self.provisioningServiceUUID), fallbackWritableCharacteristic == nil {
-            fallbackWritableCharacteristic = characteristic
         }
 
         updateReadyState()
@@ -284,8 +286,12 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         }
 
         guard !writeQueue.isEmpty else {
-            canSendCredentials = connectedPeripheral != nil
+            updateReadyState()
             statusMessage = sentCompletionMessage
+
+            let completion = writeCompletion
+            writeCompletion = nil
+            completion?()
             return
         }
 
@@ -324,6 +330,18 @@ final class ProvisioningBLEManager: NSObject, ObservableObject {
         "firefly",
         "fire fly"
     ]
+
+    private func disconnectFromProvisioningDevice(_ peripheral: CBPeripheral, message: String) {
+        if connectedPeripheral?.identifier == peripheral.identifier {
+            pendingDisconnectStatusMessage = message
+            selectedDeviceID = nil
+            connectedPeripheral = nil
+            resetProvisioningCharacteristics()
+            centralManager.cancelPeripheralConnection(peripheral)
+        }
+
+        statusMessage = message
+    }
 }
 
 extension ProvisioningBLEManager: CBCentralManagerDelegate {
@@ -386,25 +404,34 @@ extension ProvisioningBLEManager: CBCentralManagerDelegate {
     }
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
+        let disconnectMessage = pendingDisconnectStatusMessage ?? error?.localizedDescription ?? "Disconnected."
+        pendingDisconnectStatusMessage = nil
+
         if selectedDeviceID == peripheral.identifier {
             selectedDeviceID = nil
             connectedPeripheral = nil
             resetProvisioningCharacteristics()
         }
 
-        statusMessage = error?.localizedDescription ?? "Disconnected."
+        statusMessage = disconnectMessage
     }
 }
 
 extension ProvisioningBLEManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error {
-            statusMessage = "Service discovery failed: \(error.localizedDescription)"
+            disconnectFromProvisioningDevice(
+                peripheral,
+                message: "Service discovery failed: \(error.localizedDescription)"
+            )
             return
         }
 
         guard let services = peripheral.services, !services.isEmpty else {
-            statusMessage = "Connected, but no BLE services were found."
+            disconnectFromProvisioningDevice(
+                peripheral,
+                message: "Connected, but no BLE services were found."
+            )
             return
         }
 
@@ -415,37 +442,62 @@ extension ProvisioningBLEManager: CBPeripheralDelegate {
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        defer {
-            pendingServiceDiscoveries.remove(service.uuid.uuidString)
-            if pendingServiceDiscoveries.isEmpty && !canSendCredentials {
-                if ssidCharacteristic != nil && passwordCharacteristic != nil {
-                    statusMessage = "Connected, but API key provisioning requires the AB01 channel."
-                } else {
-                    statusMessage = "Connected, but no writable credential channel was found."
-                }
-            }
-        }
-
         if let error {
-            statusMessage = "Characteristic discovery failed: \(error.localizedDescription)"
+            finishServiceDiscovery(
+                service,
+                on: peripheral,
+                failureMessage: "Characteristic discovery failed: \(error.localizedDescription)"
+            )
             return
         }
 
         service.characteristics?.forEach { characteristic in
             inspect(characteristic, in: service)
         }
+
+        finishServiceDiscovery(service, on: peripheral)
     }
 
     func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
         if let error {
             writeQueue.removeAll()
             activeWrite = nil
-            canSendCredentials = connectedPeripheral != nil
+            writeCompletion = nil
+            updateReadyState()
             statusMessage = "Send failed: \(error.localizedDescription)"
             return
         }
 
         writeNextChunk()
+    }
+
+    private func finishServiceDiscovery(
+        _ service: CBService,
+        on peripheral: CBPeripheral,
+        failureMessage: String? = nil
+    ) {
+        pendingServiceDiscoveries.remove(service.uuid.uuidString)
+
+        guard pendingServiceDiscoveries.isEmpty else {
+            if let failureMessage {
+                statusMessage = failureMessage
+            }
+            return
+        }
+
+        guard !canSendCredentials else {
+            return
+        }
+
+        let message = failureMessage ?? {
+            if ssidCharacteristic != nil && passwordCharacteristic != nil {
+                return "Connected, but API key provisioning requires the AB01 channel."
+            }
+
+            return "Connected, but no writable credential channel was found."
+        }()
+
+        disconnectFromProvisioningDevice(peripheral, message: message)
     }
 }
 
@@ -458,6 +510,89 @@ private struct ProvisioningPayload: Encodable {
         case ssid
         case password
         case apiKey = "api_key"
+    }
+}
+
+enum ProvisioningCredentialValidator {
+    static let maxSSIDBytes = 31
+    static let maxPasswordBytes = 63
+    static let maxAPIKeyBytes = 191
+    static let maxPayloadBytes = 383
+
+    static func validationMessage(ssid: String, password: String, apiKey: String) -> String? {
+        let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !trimmedSSID.isEmpty else {
+            return "SSID is required."
+        }
+
+        guard !trimmedAPIKey.isEmpty else {
+            return "API key is required."
+        }
+
+        return limitMessage(ssid: trimmedSSID, password: password, apiKey: trimmedAPIKey)
+    }
+
+    static func limitMessage(ssid: String, password: String, apiKey: String) -> String? {
+        if let message = byteLimitMessage("SSID", value: ssid, maxBytes: maxSSIDBytes) {
+            return message
+        }
+
+        if let message = byteLimitMessage("Password", value: password, maxBytes: maxPasswordBytes) {
+            return message
+        }
+
+        if let message = byteLimitMessage("API key", value: apiKey, maxBytes: maxAPIKeyBytes) {
+            return message
+        }
+
+        do {
+            _ = try payloadData(ssid: ssid, password: password, apiKey: apiKey)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    static func payloadData(ssid: String, password: String, apiKey: String) throws -> Data {
+        let payload = ProvisioningPayload(
+            ssid: ssid,
+            password: password,
+            apiKey: apiKey
+        )
+
+        var payloadData = try JSONEncoder().encode(payload)
+        payloadData.append(0x0A)
+
+        guard payloadData.count <= maxPayloadBytes else {
+            throw ProvisioningCredentialValidationError.payloadTooLarge(
+                maxBytes: maxPayloadBytes,
+                actualBytes: payloadData.count
+            )
+        }
+
+        return payloadData
+    }
+
+    private static func byteLimitMessage(_ name: String, value: String, maxBytes: Int) -> String? {
+        let byteCount = value.utf8.count
+        guard byteCount > maxBytes else {
+            return nil
+        }
+
+        return "\(name) must be \(maxBytes) UTF-8 bytes or fewer. Current value is \(byteCount) bytes."
+    }
+}
+
+enum ProvisioningCredentialValidationError: LocalizedError {
+    case payloadTooLarge(maxBytes: Int, actualBytes: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .payloadTooLarge(let maxBytes, let actualBytes):
+            return "Credential payload must be \(maxBytes) bytes or fewer after JSON encoding. Current payload is \(actualBytes) bytes."
+        }
     }
 }
 

@@ -104,9 +104,8 @@ struct FireFLYStatusNote: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 11)
+        .padding(.vertical, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .fireFLYGlassPanel(cornerRadius: 14, tint: tint.opacity(0.08))
     }
 }
 

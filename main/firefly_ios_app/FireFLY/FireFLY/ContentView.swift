@@ -225,7 +225,7 @@ struct ContentView: View {
             .disabled(!canSend)
 
             FireFLYInlineStatus(
-                message: bluetooth.statusMessage,
+                message: visibleCredentialValidationMessage ?? bluetooth.statusMessage,
                 systemImage: canSend ? "checkmark.circle.fill" : "info.circle.fill",
                 tint: canSend ? .green : .orange
             )
@@ -234,8 +234,35 @@ struct ContentView: View {
 
     private var canSend: Bool {
         bluetooth.canSendCredentials &&
-        !ssid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
-        !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        credentialValidationMessage == nil
+    }
+
+    private var trimmedSSID: String {
+        ssid.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var trimmedAPIKey: String {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var credentialValidationMessage: String? {
+        ProvisioningCredentialValidator.validationMessage(
+            ssid: trimmedSSID,
+            password: password,
+            apiKey: trimmedAPIKey
+        )
+    }
+
+    private var visibleCredentialValidationMessage: String? {
+        guard !trimmedSSID.isEmpty || !password.isEmpty || !trimmedAPIKey.isEmpty else {
+            return nil
+        }
+
+        return ProvisioningCredentialValidator.limitMessage(
+            ssid: trimmedSSID,
+            password: password,
+            apiKey: trimmedAPIKey
+        )
     }
 
     private func restoreSavedCredentials() {
@@ -255,20 +282,33 @@ struct ContentView: View {
     }
 
     private func sendCredentials() {
-        let trimmedSSID = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedAPIKey = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard bluetooth.sendCredentials(ssid: trimmedSSID, password: password, apiKey: trimmedAPIKey) else {
+        guard credentialValidationMessage == nil else {
             return
         }
 
+        restoreMessage = ""
+        let credentials = WiFiCredentials(
+            ssid: trimmedSSID,
+            password: password,
+            apiKey: trimmedAPIKey
+        )
+
+        guard bluetooth.sendCredentials(
+            ssid: credentials.ssid,
+            password: credentials.password,
+            apiKey: credentials.apiKey,
+            onSent: {
+                saveCredentials(credentials)
+            }
+        ) else {
+            return
+        }
+    }
+
+    private func saveCredentials(_ credentials: WiFiCredentials) {
         do {
-            try credentialStore.save(
-                WiFiCredentials(
-                    ssid: trimmedSSID,
-                    password: password,
-                    apiKey: trimmedAPIKey
-                )
-            )
+            try credentialStore.save(credentials)
+            restoreMessage = "Credentials saved."
         } catch {
             restoreMessage = "Credentials sent, but not saved."
         }
