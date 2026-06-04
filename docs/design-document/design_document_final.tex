@@ -98,62 +98,6 @@ Validation is conducted through a staged testing process beginning with bench-le
 % ============================================================
 \section{Introduction}
 % ============================================================
-
-\subsection{Introduction}
-Detecting wildfires in vast, dense forests presents a critical challenge for emergency responders, as early detection is the only way to prevent a small brush fire from becoming an uncontrollable catastrophe. In these environments, a single drone is severely limited by its flight time, battery capacity, and sensor range; it simply cannot scan thousands of acres quickly enough to pinpoint a heat source and relay the information effectively before it spreads. Furthermore, a lone drone can only provide a single "line of sight" to a fire, which makes it difficult to determine the exact GPS coordinates or the size of the blaze from a distance. Relying on one unit also creates a single point of failure where a mechanical issue or a loss of signal in a remote valley results in a total loss of monitoring capability.
-
-To solve this, a mesh network of drones acts as a distributed "eye in the sky," turning a group of individuals into a cohesive, intelligent sensing platform. By using multiple drones, the search area can be subdivided into a grid, allowing the team to cover a massive forest in a fraction of the time it would take a single unit. When a fire is spotted, the mesh allows multiple drones to converge and view the fire from different angles simultaneously. This multi-perspective data is relayed through a chain of drones to the ground station in the city. The central station then uses intersecting vectors from drone bearing data to triangulate the fire's precise location and calculate its growth rate with high accuracy. This ensures that firefighting resources are deployed exactly where they are needed most.
-
-\subsection{Scout Relay}
-
-The primary obstacle in long distance drone operations is the line of sight limitation of high frequency radio signals. In a heavily forested or mountainous environment, physical obstacles like ridges, thick timber, and even the curvature of the Earth act as barriers that swallow data signals. If a single scout drone flies deep into a valley to investigate a heat signature, the terrain will likely sever its direct link to a distant city-based ground station. By strategically positioning relay drones between the scout and the base, the system creates a relay network that extends operational range and reduces signal loss caused by any terrain obstruction.
-
-Furthermore, these relay nodes are essential for maintaining the bandwidth required for real-time video streaming and high frequency sensor telemetry. Radio signal strength decreases significantly over long distances, leading to noise and data loss that can cause video feeds to freeze or telemetry to drop. By using a series of relay drones, each communication hop covers a shorter distance, preserving signal quality and reducing latency. This allows the ground station to receive a stable, high definition video stream. Without these intermediate points, the transmitted data may arrive corrupted or fail to arrive entirely, limiting the effectiveness of the scout’s fire detection and monitoring.
-
-Beyond just signal strength, the relay drones provide a critical layer of operational resilience and "self-healing" for the entire mission. In an active wildfire scenario, conditions change rapidly; smoke plumes can become dense enough to scatter radio waves, or a drone might need to move to avoid extreme heat. A multi-drone mesh allows the network to stay flexible; if one relay point needs to shift its position, the other drones can adjust their spacing to maintain the link. This cooperative behavior ensures a stable data pipeline, allowing the scouts to focus entirely on the fire while the relays guarantee that the life-saving information they gather reaches the decision-makers in the city.
-
-\subsection{MANET}
-
-The planned Mobile Ad-hoc Network (MANET) is the "nervous system" that would transform a group of independent drones into a synchronized sensing fleet. Unlike traditional networks that rely on a fixed router or central tower, a MANET allows each drone to act as both receiver and transmitter. In the unpredictable environment of a forest fire, drones are constantly moving to get a better view or to avoid smoke. The MANET layer is intended to manage these shifting positions in real time, automatically calculating the most efficient path for data to travel from the scout to the ground station via available relays.
-
-The most important target characteristic of a MANET in this scenario is self-healing. In a wildfire mission, the risk of losing a drone to technical failure, low battery, or extreme environmental conditions is high. In a rigid network, the loss of a single relay drone can break the communication chain. A decentralized mesh lets the remaining drones reroute data through other nearby units as long as a path to the base remains.
-
-Furthermore, MANET technology allows for dynamic scalability, which is essential when the scale of a fire grows unexpectedly. If a fire spreads and more drones are deployed from the city to assist, they can join the MANET instantaneously without needing a manual configuration or a reboot of the system. The network simply expands to include the new nodes, automatically incorporating them into the relay chain or the search grid. This plug and play nature of ad-hoc networking allows emergency responders to scale their surveillance efforts in real-time as the situation on the ground evolves.
-
-Finally, using a MANET is important because it reduces the overhead and interference that usually plagues large-scale wireless systems. By using intelligent routing protocols, the drones can "gossip" with their immediate neighbors to determine which path is the least congested or has the strongest signal. This prevents the airwaves from becoming cluttered with redundant transmissions, ensuring that the high-priority triangulation data and video feeds reach the ground station with minimal latency. In a life or death firefighting scenario, the milliseconds saved by an optimized MANET path can be the difference between catching a fire early and losing control of the forest.
-
-\subsection{LoRa and COFDM}
-
-LoRa, short for Long Range, is a foundational component of our communication strategy, utilizing a spread-spectrum modulation technique that allows for connectivity over extreme distances. Its primary strength lies in its receive sensitivity, meaning it can maintain a link even when the signal is incredibly faint or obstructed by dense forest canopies. For emergency operations, this provides a nearly unbreakable "lifeline" for the most critical data points: the drone’s GPS and bearing data, battery health, and high-priority fire detection alerts.
-
-However, the physical laws of radio frequency dictate a strict tradeoff between range and speed. Because LoRa is optimized for distance and low power consumption, it has a very narrow data bandwidth–equivalent to sending simple text strings rather than complex media. While it is the ultimate tool for ensuring we never lose track of a drone, it is fundamentally incapable of transmitting the high-definition video streams required for modern AI-driven analysis. If used in isolation, the system would be aware of a drone's location but blind to the complex visual details of the fire.
-
-This limitation creates a significant hurdle for remote sensing: a mission that only provides coordinates without visual confirmation lacks the context needed for high-level decision making. Investors must recognize that relying on a single radio protocol in a vast forest creates a bottleneck that renders advanced AI software useless. To bridge the gap between long range and high quality, a more sophisticated, multi-layered approach is required to meet the demands of professional firefighting agencies.
-
-This motivates the planned Split-Link Architecture. This design philosophy separates communication into two distinct "pipes" operating simultaneously. Rather than forcing a single radio to compromise on both speed and distance, the mature system would use specialized hardware for low-bandwidth telemetry and higher-bandwidth video. This dual-path strategy keeps the "nervous system” of the fleet—telemetry, GPS, bearing, and alert data–independent from the "eyes" of the fleet–the video feed.
-
-For the future high-bandwidth path, the system evaluates COFDM (Coded Orthogonal Frequency Division Multiplexing) because OFDM-style links can tolerate multipath better than simple single-carrier video links. In a forest, radio signals are reflected off trees and terrain, which can fragment video. A COFDM video path is therefore treated as a planned hardware upgrade for non-line-of-sight video, not as a capability demonstrated by the current repository.
-
-In the current prototype, the video path is implemented with recorded fire videos, ESP32-CAM or MJPEG stream URLs, OpenCV frame capture, and YOLOv8 inference running on the ground station computer. The proof of concept therefore validates detection and map posting, while future RF hardware must still be selected and tested for real outdoor range, bandwidth, latency, and multipath performance.
-
-The Split-Link Architecture is intended to solve range and video quality as separate engineering problems. If the high-bandwidth video link degrades, the lower-bandwidth telemetry path should continue to carry GPS, heading, battery state, and fire-alert packets. This supports a "fail-functional" mission mode in which the operator may lose video detail but still retains the data required to track drone position and estimate fire location.
-
-Ultimately, dual-protocol hardware is a future design direction for operational resilience. The implemented repository currently uses Wi-Fi UDP telemetry and HTTP APIs, while the MANET, LoRa, and COFDM portions remain requirements for the next hardware iteration.
-
-\subsection{Automation}
-To maximize operational efficiency and ensure rapid response, the full FireFly concept uses a dynamic automation workflow that transitions through three distinct phases: the Lawnmower Search, the Relay Chain, and the Orbital Ring. This multi-tiered approach is a design target for future autonomous flight software. The current repository simulates drone movement and validates how the ground station reacts to detection and telemetry data.
-
-In the initial "Search Phase," the fleet executes a Lawnmower pattern, which is the industry standard for 100 percent visual coverage. The targeted area is divided into precise parallel lanes, and each drone is autonomously assigned a specific path. This systematic grid ensures that we are not just flying aimlessly, but are instead thoroughly scanning the forest floor with mathematical certainty. By subdividing the area among multiple drones, we can search thousands of acres in minutes—a task that would take hours for a single aircraft or ground crew.
-
-As the search expands farther from the ground station, the future system would transition into the Relay Chain configuration. Not all drones are sent to the front line; instead, automation software would position selected units as high-altitude signal repeaters. This creates a resilient data bridge for future video and telemetry links. This self-positioning relay logic is not currently implemented in the repository.
-
-The moment a scout drone’s onboard AI detects a fire, the fleet enters the Orbital Ring phase. Rather than staying in a fixed grid, nearby drones are called to the detection site to surround the fire from multiple cardinal directions. This orbital formation is crucial for the triangulation calculations performed at the ground station. By viewing the heat source from multiple different angles simultaneously, the system can intersect those vectors to pinpoint the fire’s GPS coordinates and estimate its dimensions with far greater accuracy than a single observation could.
-
-For the customer, this three-stage automation means the entire mission—from search to discovery to precise location tracking—is handled with minimal human intervention. The drones "decide" how to move based on the needs of the network and the urgency of the fire. This workflow provides a professional-grade solution that combines the speed of a broad search with the tactical precision of a localized orbital scan, ensuring that firefighting teams have the exact data they need the moment a fire begins to spread.
-
-
-\vspace{1em}
-
 Wildfires exert a devastating, multi-layered impact on communities, beginning with the immediate destruction of physical infrastructure, homes, and essential utilities that can displace thousands and cripple local economies. Beyond the visible charred landscape, these events trigger severe public health crises, as fine particulate matter from smoke travels hundreds of miles, exacerbating respiratory and cardiovascular conditions for both local residents and distant populations. The long-term recovery is often hindered by "burn scars" on the environment, where the loss of vegetation and changes in soil chemistry significantly increase the risk of flash flooding and debris flows during subsequent rainstorms. Furthermore, the psychological toll—manifesting as trauma, chronic stress, and a lost sense of security—can linger for years, fundamentally altering the social fabric and demographic makeup of a community as residents struggle with the financial and emotional burdens of rebuilding or relocating.
 
 \vspace{1em}
@@ -307,7 +251,7 @@ FireFly can be deployed in multiple locations at the boundary of a detected fire
 
 \subsection{Sensor}
 
-\textbf{Intro: }
+\subsubsection{Intro}
 
 While a drone equipped solely with a standard optical camera provides a valuable "eye in the sky," it is fundamentally insufficient for the complex task of early-phase wildfire detection and comprehensive situational awareness. Visual feeds are easily obscured by dense canopy, low-light conditions, or the very smoke the system is trying to identify, leaving first responders with an incomplete and potentially misleading picture of the threat. To provide the high-fidelity data required for rapid emergency response, a drone must move beyond simple sight and operate as a mobile, multi-modal sensing laboratory capable of "smelling" and "feeling" the environment long before flames become visible to the naked eye.
 
@@ -316,7 +260,7 @@ To bridge this information gap, our design integrates a sophisticated array of a
 
 \vspace{1em}
 
-\textbf{LWIR(Long-Wave Infrared): }
+\subsubsection{LWIR(Long-Wave Infrared)}
 
 Long-Wave Infrared (LWIR) refers to a specific band of the electromagnetic spectrum, typically spanning wavelengths from $8 \mu m$ to $14 \mu m$. Unlike visible light, which is reflected off surfaces, LWIR sensors detect the thermal radiation emitted naturally by all objects with a temperature above absolute zero. In this "thermal" window, the atmosphere is remarkably transparent, allowing long-wave energy to travel through air with minimal absorption. This allows LWIR cameras to act as heat maps rather than traditional photographs, converting the invisible infrared energy of the environment into a visible image where intensity corresponds to temperature.
 
@@ -334,52 +278,7 @@ Finally, LWIR provides a level of quantitative data that visual cameras cannot o
 
 \vspace{1em}
 
-\textbf{CO(Carbon Monoxide): }
-
-Carbon Monoxide (CO) is a colorless, odorless, and tasteless gas that is a byproduct of incomplete combustion. It is produced when organic fuels—such as wood, brush, or peat—burn in an environment where oxygen is limited, preventing the carbon from fully oxidizing into carbon dioxide ($CO_2$). Because it is nearly impossible for the human senses to detect and is highly toxic, it is often referred to as the "silent killer." In a wildfire scenario, CO is one of the primary gases released into the atmosphere, often rising in concentrated plumes that can be detected by localized sensors even when the fire is not yet visible.
-
-
-For fire detection, Carbon Monoxide is an essential metric because it serves as a highly reliable "chemical signature" of active burning. Unlike smoke particles, which can be confused with dust or fog, or temperature spikes, which can be caused by direct sunlight on a sensor, a significant rise in CO levels is almost exclusively tied to a combustion event. This makes it an invaluable tool for reducing false positives. 
-
-Furthermore, CO is particularly prevalent during the smoldering phase of a fire—the critical early stage before an open flame breaks out. By detecting these elevated CO levels, a drone can identify a potential disaster in its infancy, providing first responders with the earliest possible warning to intervene before the fire reaches a catastrophic scale.
-
-\vspace{1em}
-
-$\bm{CO_2(CarbonDioxide): }$
-
-Carbon Dioxide ($CO_2$) is a naturally occurring, colorless gas composed of one carbon atom covalently bonded to two oxygen atoms. While it is a fundamental component of Earth's atmosphere and a primary product of cellular respiration, it is also the most abundant gas produced during the combustion of organic materials. In the presence of a well-oxygenated fire, the carbon stored in vegetation reacts almost completely with atmospheric oxygen to release $CO_2$. Because it is denser than air at standard temperatures but rises rapidly when heated by a blaze, it creates distinct "pillars" of high concentration above an active fire site.
-
-
-In the field of autonomous fire detection, monitoring $CO_2$ levels is critical for assessing the intensity and scale of a fire. While Carbon Monoxide is a marker for smoldering, a sharp and sustained spike in $CO_2$ typically indicates "clean" flaming combustion where the fire has reached a high enough temperature to oxidize fuel efficiently. By comparing the ratio of $CO_2$ to other gases, the drone's onboard systems can determine the fire’s current stage and metabolic rate. This data is essential for first responders, as it helps distinguish between a small, controlled burn and a rapidly spreading wildfire, allowing for a more strategic and proportional deployment of firefighting resources.
-
-\vspace{1em}
-
-\textbf{VOC(Volatile Organic Compounds)}
-Volatile Organic Compounds (VOCs) are a broad category of organic chemicals that have a high vapor pressure at ordinary room temperature. This high volatility results from a low boiling point, which causes large numbers of molecules to evaporate or sublimate from the liquid or solid form of the compound and enter the surrounding air. In the context of a forest or wildland environment, VOCs can include naturally occurring compounds like isoprenes and terpenes emitted by trees, as well as a vast array of synthetic chemicals. When these organic materials are heated during the pre-ignition or combustion phases of a fire, the rate of VOC emission increases dramatically as the chemical bonds within the fuel begin to break down.
-
-
-The inclusion of VOC sensors is vital for fire detection because they act as an "early warning" system for the thermal decomposition of fuel, often preceding the appearance of open flames or thick smoke. Before a fire fully ignites, the heat from a nearby heat source or a small smolder causes "pyrolysis"—the chemical decomposition of wood and leaf litter. This process releases a specific "cocktail" of VOC gases into the atmosphere. By monitoring these chemical spikes, the drone can detect a brewing fire that may still be hidden from thermal and optical sensors. For first responders, this means the difference between responding to a manageable hotspot and arriving at a fully developed wildfire, as VOC detection provides the chemical evidence of a fire's earliest "breath."
-
-\vspace{1em}
-
-\textbf{PM(Particulate Matter): }
-Particulate Matter (PM) refers to a complex mixture of solid particles and liquid droplets suspended in the air. These particles come in many sizes and shapes and can be made up of hundreds of different chemicals. In an environmental context, PM is categorized by its diameter, as the size determines how the particles behave in the atmosphere and how they impact human health. When organic materials like timber, grass, and brush burn during a wildfire, they release massive quantities of these particles, creating the thick, visible plumes commonly associated with smoke.
-
-
-The classification of PM into "2.5" and "10" is a measurement of their aerodynamic diameter in micrometers ($\mu m$). PM10, known as "coarse" particles, consists of any particulate matter with a diameter of 10 micrometers or less. These are typically generated by mechanical processes, such as wind blowing dust, construction activities, or debris being kicked up by the movement of air. In contrast, PM2.5 refers to "fine" particles that are 2.5 micrometers or smaller. These are so microscopic that they are primarily the result of chemical reactions and combustion, making them the signature component of smoke.
-
-
-The primary difference between the two lies in their buoyancy and origin. Because PM10 particles are larger and heavier, they tend to settle out of the air relatively quickly and remain closer to the ground near the source of the disturbance. PM2.5 particles, however, are light enough to remain suspended in the atmosphere for days or even weeks. Due to this extreme lightness, PM2.5 can be carried by wind currents over hundreds of miles, meaning a drone at high altitude is far more likely to encounter a "scent" of fine combustion particles than the heavier coarse dust associated with PM10.
-
-
-For fire detection, monitoring both metrics is essential because the relationship between them acts as a filter for false alarms. In a wildland environment, high PM10 levels are frequently caused by non-fire events, such as a vehicle driving on a dirt road or high winds lifting topsoil. If a sensor suite only measured PM10, the system might trigger a fire alert every time a gust of wind blew through a dry clearing. By comparing the two, the drone’s onboard logic can identify a "combustion profile": a sharp spike in PM2.5 that far outweighs the PM10 concentration, confirming the presence of smoke rather than simple dust.
-
-
-Furthermore, tracking both sizes allows first responders to assess the quality of the air and the intensity of the blaze. While PM2.5 is the definitive indicator of a fire, the presence of PM10 in a smoke plume often indicates a high-intensity fire that is physically lifting ash and charred debris into the air. By providing data on the full spectrum of particulate matter, the drone provides ground crews with a "particle signature" that helps them understand the fire's behavior. This dual-sensing approach ensures that the information relayed is both accurate and comprehensive, allowing for a more effective emergency response.
-
-\vspace{1em}
-
-\textbf{Live Camera feed: }
+\subsubsection{Live Camera Feed}
 
 A live camera feed serves as the primary visual confirmation layer, transforming abstract sensor data into actionable intelligence. While gas and thermal sensors can identify the presence of a fire, the optical feed allows operators and autonomous systems to verify the "ground truth" of the situation. This visual context is vital for distinguishing between a high-confidence fire event and environmental anomalies, such as a localized dust cloud or a reflection that might trigger a single-sensor alert. For first responders, seeing the actual environment provides an immediate understanding of the terrain, fuel types, and potential obstacles that no numerical data point can replicate.
 
@@ -392,123 +291,66 @@ The synergy between the live feed and AI is also critical for the "locate" phase
 
 Lastly, the live feed provides the essential "human-in-the-loop" capability required for high-stakes emergency response. Even with sophisticated AI, the ability for a remote incident commander to view the fire line in real-time allows for informed decision-making regarding the deployment of resources. The video feed can highlight specific hazards, such as nearby structures, power lines, or trapped vehicles, which are critical for tactical planning. Ultimately, the live feed acts as the bridge between autonomous detection and human intervention, ensuring that the information gathered by the drone is utilized to its fullest potential in saving lives and protecting property.
 
+\vspace{1em}
 
+\subsection{Communication}
+\subsubsection{intro}
+Detecting wildfires in vast, dense forests presents a critical challenge for emergency responders, as early detection is the only way to prevent a small brush fire from becoming an uncontrollable catastrophe. In these environments, a single drone is severely limited by its flight time, battery capacity, and sensor range; it simply cannot scan thousands of acres quickly enough to find a pinpoint heat source before it spreads. Furthermore, a lone drone can only provide a single "line of sight" to a fire, which makes it nearly impossible to determine the exact GPS coordinates or the actual size of the blaze from a distance. Relying on one unit creates a single point of failure where a mechanical issue or a loss of signal in a remote valley results in a total loss of monitoring capability.
 
+To solve this, a mesh network of drones acts as a distributed "eye in the sky," turning a group of individual robots into a cohesive, intelligent sensing platform. By using multiple drones, the search area can be subdivided into a grid, allowing the team to cover a massive forest in a fraction of the time it would take a single unit. When a fire is spotted, the mesh allows multiple drones to converge and view the fire from different angles simultaneously. This multi-perspective data is sent back through the chain of drones—using each other as relays—to the ground station in the city. The central station then uses these intersecting vectors to triangulate the fire's precise location and calculate its growth rate with high accuracy, ensuring that firefighting resources are deployed exactly where they are needed most.
+
+\subsubsection{Scout Relay Concept}
+
+The primary obstacle in long-distance drone operations is the "line-of-sight" limitation of high-frequency radio signals. In a heavily forested or mountainous environment, physical obstacles like ridges, thick timber, and even the curvature of the Earth act as barriers that swallow data signals. If a single scout drone flies deep into a valley to investigate a heat signature, the terrain will likely sever its direct link to a distant city-based ground station. By strategically positioning relay drones between the scout and the base, the system creates a "daisy chain" that carries the signal over and around these obstacles, ensuring that the scout remains connected no matter how rugged the landscape becomes.
+
+Furthermore, these relay points are essential for maintaining the high bandwidth required for real-time video and complex sensor data. As a radio signal travels, its strength decays rapidly over distance, leading to "noise" and data loss that can cause video feeds to freeze or telemetry to drop. By using a series of relay drones, the data only has to travel a short distance between each "hop." This keeps the signal strength high and the latency low, allowing the artificial intelligence at the ground station to receive a clear, high-definition stream. Without these intermediate points, the data would arrive corrupted or not at all, rendering the scout’s advanced fire-detection sensors useless.
+
+Beyond just signal strength, the relay drones provide a critical layer of operational resilience and "self-healing" for the entire mission. In an active wildfire scenario, conditions change rapidly; smoke plumes can become dense enough to scatter radio waves, or a drone might need to move to avoid extreme heat. A multi-drone mesh allows the network to stay flexible; if one relay point needs to shift its position, the other drones can adjust their spacing to maintain the link. This cooperative behavior ensures a persistent data pipeline, allowing the scouts to focus entirely on the fire while the relays guarantee that the life-saving information they gather actually reaches the decision-makers in the city.
+
+\subsubsection{MANET}
+
+The planned Mobile Ad-hoc Network (MANET) is the "nervous system" that would transform a group of independent drones into a synchronized sensing fleet. Unlike traditional networks that rely on a fixed router or central tower, a MANET allows each drone to act as both receiver and transmitter. In the unpredictable environment of a forest fire, drones are constantly moving, banking, and changing altitudes to get a better view or to avoid smoke. The MANET layer is intended to manage these shifting positions in real time, automatically calculating the most efficient path for data to travel from the scout to the ground station through available relays.
+
+The most important target characteristic of a MANET in this scenario is self-healing. In a wildfire mission, the risk of losing a drone to technical failure, low battery, or extreme environmental conditions is high. In a rigid network, the loss of a single relay drone can break the communication chain. A decentralized mesh should let the remaining drones reroute data through other nearby units as long as a physical path to the base remains.
+
+Furthermore, MANET technology allows for dynamic scalability, which is essential when the scale of a fire grows unexpectedly. If a fire spreads and more drones are deployed from the city to assist, they can join the MANET instantaneously without needing a manual configuration or a reboot of the system. The network simply expands to include the new "nodes," automatically incorporating them into the relay chain or the search grid. This "plug-and-play" nature of ad-hoc networking allows emergency responders to scale their surveillance efforts in real-time as the situation on the ground evolves.
+
+Finally, using a MANET is important because it reduces the "overhead" and interference that usually plagues large-scale wireless systems. By using intelligent routing protocols, the drones can "gossip" with their immediate neighbors to determine which path is the least congested or has the strongest signal. This prevents the airwaves from becoming cluttered with redundant transmissions, ensuring that the high-priority triangulation data and AI video feeds reach the ground station with minimal latency. In a life-or-death firefighting scenario, the milliseconds saved by an optimized MANET path can be the difference between catching a fire early and losing control of the forest.
+
+\subsubsection{LoRa and COFDM}
+
+LoRa, short for Long Range, is a foundational component of our communication strategy, utilizing a spread-spectrum modulation technique that allows for connectivity over extreme distances. Its primary strength lies in its "receive sensitivity," meaning it can maintain a link even when the signal is incredibly faint or obstructed by dense forest canopies. For emergency operations, this provides a nearly unbreakable "lifeline" for the most critical data points: the drone’s GPS coordinates, battery health, and high-priority fire detection alerts.
+
+However, the physical laws of radio frequency dictate a strict trade-off between range and speed. Because LoRa is optimized for distance and low power consumption, it has a very narrow data bandwidth—equivalent to sending simple text strings rather than complex media. While it is the ultimate tool for ensuring we never lose track of a drone, it is fundamentally incapable of transmitting the high-definition video streams required for modern AI-driven analysis. If used in isolation, the system would be "aware" of a drone's location but "blind" to the visual details of the fire.
+
+This limitation creates a significant hurdle for remote sensing: a mission that only provides coordinates without visual confirmation lacks the context needed for high-level decision-making. Investors must recognize that relying on a single radio protocol in a vast forest creates a bottleneck that renders advanced AI software useless. To bridge the gap between "long range" and "high quality," a more sophisticated, multi-layered approach is required to meet the demands of professional firefighting agencies.
+
+This motivates the planned Split-Link Architecture. This design philosophy separates communication into two distinct "pipes" operating simultaneously. Rather than forcing a single radio to compromise on both speed and distance, the mature system would use specialized hardware for low-bandwidth telemetry and higher-bandwidth video. This dual-path strategy keeps the "nervous system" of the fleet--telemetry, GPS, bearing, and alert data--independent from the "eyes" of the fleet--the video feed.
+
+For the future high-bandwidth path, the system evaluates COFDM (Coded Orthogonal Frequency Division Multiplexing) because OFDM-style links can tolerate multipath better than simple single-carrier video links. In a forest, radio signals are reflected off trees and terrain, which can fragment video. A COFDM video path is therefore treated as a planned hardware upgrade for non-line-of-sight video, not as a capability demonstrated by the current repository.
+
+In the current prototype, the video path is implemented with recorded fire videos, ESP32-CAM or MJPEG stream URLs, OpenCV frame capture, and YOLOv8 inference running on the ground-station computer. The proof-of-concept therefore validates detection and map posting, while future RF hardware must still be selected and tested for real outdoor range, bandwidth, latency, and multipath performance.
+
+The Split-Link Architecture is intended to solve range and video quality as separate engineering problems. If the high-bandwidth video link degrades, the lower-bandwidth telemetry path should continue to carry GPS, heading, battery state, and fire-alert packets. This supports a "fail-functional" mission mode in which the operator may lose video detail but still retains the data required to track drone position and estimate fire location.
+
+Ultimately, dual-protocol hardware is a future design direction for operational resilience. The implemented repository currently uses Wi-Fi UDP telemetry and HTTP APIs, while the MANET, LoRa, and COFDM portions remain requirements for the next hardware iteration.
+
+\subsubsection{Automation Concept}
+To maximize operational efficiency and ensure rapid response, the full FireFly concept uses a dynamic automation workflow that transitions through three distinct phases: the Lawnmower Search, the Relay Chain, and the Orbital Ring. This tiered approach is a design target for future autonomous flight software. The current repository simulates drone movement and validates how the ground station reacts to detection and telemetry data.
+
+In the initial "Search Phase," the fleet executes a Lawnmower pattern, which is the industry standard for 100 percent visual coverage. The mission area is divided into precise parallel "lanes," and each drone is autonomously assigned a specific path. This systematic grid ensures that we are not just flying aimlessly, but are instead "scanning" the forest floor with mathematical certainty. By subdividing the area among multiple drones, we can search thousands of acres in minutes—a task that would take hours for a single aircraft or ground crew.
+
+As the search expands farther from the ground station, the future system would transition into the Relay Chain configuration. Not all drones are sent to the front line; instead, automation software would position selected units as high-altitude signal repeaters. This creates a resilient data bridge for future video and telemetry links. This self-positioning relay logic is not currently implemented in the repository.
+
+The moment a scout drone’s onboard AI detects a fire, the fleet enters the Orbital Ring phase. Rather than staying in a fixed grid, nearby drones are "called" to the detection site to surround the fire from multiple cardinal directions. This orbital formation is crucial for the triangulation math performed at the ground station. By viewing the heat source from three or four different angles simultaneously, the system can intersect those vectors to pinpoint the fire’s GPS coordinates and estimate its total acreage with far greater accuracy than a single observation ever could.
+
+For the customer, this three-stage automation means the entire mission—from search to discovery to precise location tracking—is handled with minimal human intervention. The drones "decide" how to move based on the needs of the network and the urgency of the fire. This workflow provides a professional-grade solution that combines the speed of a broad search with the tactical precision of a localized orbital scan, ensuring that firefighting teams have the exact data they need the moment a fire begins to spread.
 
 \vspace{1em}
 
-
-\subsection{Aesthetic Prototype}
-
-The FireFly aesthetic prototype follows a field-ready design language: a compact enclosed central body with rounded corners, symmetric X-arm geometry, and cylindrical motor pods at each corner. The overall form emphasizes structural clarity and quick visual inspection rather than cosmetic styling. Rounded exterior edges reduce snag points during transport, while the open-top bay and side windows communicate where electronics, wiring, and battery hardware are intended to be serviced.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.46\textwidth]{images/drone_design_5_top.png}
-    \hfill
-    \includegraphics[width=0.46\textwidth]{images/drone_design_5_corner.png}
-    \caption{FireFly CAD aesthetic prototype, iteration v5 (top and isometric views).}
-    \label{fig:drone_v5_aesthetic}
-\end{figure}
-
-The prototype evolved through multiple print-test iterations. Early versions validated basic packaging and motor placement, while later versions introduced a cleaner body-to-arm transition, larger internal volume, and improved vent/window geometry for lighter weight and faster access to internals. This iterative process preserved a consistent visual identity while converging on a more manufacturable and maintainable frame.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{images/drone_design_5_compare_1.jpeg}
-    \caption{Physical prototype progression (v1--v3) that informed the final v5 frame direction.}
-    \label{fig:drone_proto_progression}
-\end{figure}
-
-\subsection{Design for Manufacture, Assembly, Maintenance}
-
-\textbf{Design for Manufacture (DFM):}
-The current frame is designed as a single-piece 3D print to minimize part count and remove alignment errors. The v5 CAD envelope is approximately $100 \times 72 \times 24$ mm with $2.5$ mm floor and wall thicknesses, balancing print speed, stiffness, and mass. Arms are sized at $10.0$ mm width and $5.4$ mm thickness to maintain rigidity under motor thrust and landing loads. Motor pods are dimensioned for SunnySky R1106-class motors with built-in tolerance ($19$ mm outer diameter, $15.0$ mm inner diameter, $17$ mm height, $2.2$ mm mounting holes on a $9$ mm bolt-circle).
-
-\vspace{0.5em}
-
-\textbf{Design for Assembly (DFA):}
-Assembly features are integrated directly into the print geometry. The frame includes four battery strap slots in the floor and continuous wire-routing paths from motor pods into the electronics bay. This allows a straightforward assembly order: install motors in pods, route motor leads through arm channels, mount the controller board, then secure the battery and sensor harness. Because most interfaces are geometric rather than adhesive, rework is possible without damaging the frame.
-
-\vspace{0.5em}
-
-\textbf{Design for Maintenance (DFMn):}
-Maintenance access is provided by the open top cavity, side-wall windows, and pod-to-arm wire notches. These features allow quick inspection of solder joints, connector seating, and wire wear without full teardown. Electronics can be removed independently from propulsion hardware, and battery straps can be replaced in the field with standard hook-and-loop straps. In case of structural damage, the one-piece architecture supports rapid replacement by reprinting the frame using the same CAD file, preserving dimensional repeatability across repairs.
-
-\subsection{Block Diagrams}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1.0\textwidth]{images/Final_Schematic.png}
-    \caption{A high-level schematic of the FireFly system.}
-    \label{fig:schematic_design}
-\end{figure}
-
-\subsection{Wiring Diagrams}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\textwidth]{images/Circuit Diagram.png}
-    \caption{Circuit Diagram}
-    \label{fig:circuit_diagram}
-\end{figure}
-
-\subsection{State Transition Diagrams}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\textwidth]{images/State Transition Diagram.png}
-    \caption{State Transition Diagram}
-    \label{fig:state_transition}
-\end{figure}
-
-\subsection{Interface Definitions}
-
-\textit{Template: define the electrical and software interfaces between subsystems so assembly and debugging are reproducible.}
-
-\begin{table}[H]
-    \centering
-    \scriptsize
-    \begin{tabular}{|p{0.16\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
-        \hline
-        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
-        \hline
-        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
-        \hline
-        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
-        \hline
-        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
-        \hline
-        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
-        \hline
-        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
-        \hline
-    \end{tabular}
-    \caption{Interface-definition template.}
-    \label{tab:interface_template}
-\end{table}
-
-\begin{comment}
-\subsection{Technology (Languages, Hardware, etc.)}
-
-The FireFly system utilizes a custom-integrated hardware architecture designed for high-reliability telemetry in extreme environments. Rather than utilizing external third-party modules, the drone features a custom-designed Flight Control and Sensing PCB. This board integrates a high-performance 32-bit microcontroller with a dedicated RF front-end optimized for the 2.4GHz spectrum. The onboard sensor suite is deeply integrated into the hardware logic, utilizing an I2C-based sensor bus to interface custom environmental monitoring circuits—specifically high-precision thermistor arrays and particulate matter sensors—directly with the primary processing unit.
-
-\vspace{0.5em}
-
-The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
-\end{comment}
-
-\subsection{Simulations}
-
-Before building and flying, we used simulation tools to verify that the FireFly configuration can sustain flight, carry its sensor payload, and meet the core mission requirement of delivering real-time environmental data during the pre-fire window. An online multicopter calculator (eCalc xcopterCalc) was used to evaluate combinations of frame size, motors, propellers, and battery against thrust-to-weight ratio, hover throttle, current draw, and expected flight time under sensor payload assumptions. This confirmed that the selected hardware provides sufficient thrust margin to carry the temperature/humidity sensor and smoke detector while maintaining acceptable hover efficiency and a flight time long enough to collect and transmit meaningful readings to the ground station.
-
-\vspace{0.5em}
-
-A simplified quadcopter dynamics model was used to tune attitude and altitude control parameters, verifying that the platform can hold a stable position over a monitoring area, a prerequisite for consistent sensor sampling. Research on quadcopter modeling confirms that such simulations can predict controller behavior and reduce the number of risky test flights needed to achieve stable flight. Together, these simulations provide evidence that FireFly can meet its need statement requirements: reaching areas with zero sensor infrastructure and sustaining flight long enough to collect and transmit temperature, humidity, and smoke data before committing to full implementation and field testing.
-
-
 \subsection{Onboard Systems}
 % Might need to overhall some of these later like the co2 and other sensors. This is mostly an overview now.
+\subsubsection{Intro}
 FireFly utilizes an autonomous patrol and respond logic designed to maximize coverage. This ensures data can be captured upon fire detection. During the initial search phase, the drone performs a preset pattern, typically a circular orbit or in parallel lines like a lawnmower at a constant altitude. This phase provides steady environmental monitoring, where the onboard systems are continuously sampling data from GPS coordinates, barometric altitude, and inertial measurements. The camera provides a live visual feed for detection and data training. By sweeping the area under a stabilized flight path, the system provides a baseline for specific geographical areas. This allows the ground station to differentiate between normal atmospheric variations and detected sharp spikes associated with wildfires.
 
 \vspace{0.5em}
@@ -579,24 +421,24 @@ The communication architect of the platform is defined by a bidirectional data l
 To ensure reliability in remote environments where signal bandwidth may fluctuate, the communication firmware utilizes a priority based queuing protocol. Mission critical data is categorized into levels of urgency to prevent bottlenecks. Critical alerts are prioritized first including, detection notifications, battery failsafe triggers, and manual override commands. These are low bandwidth packets and are transmitted with high redundancy to ensure delivery even under signal degradation.
 Video feed is categorized as mission critical data. The system relies on server side analysis, the video stream acts as the primary data source for detection logic and triangulation. The high bandwidth stream ensures the ground station receives the visual input required to maintain active monitoring. By pairing the stream with synchronized spatial telemetry, the design allows the server to process real time visual evidence without latency. Lastly, Navigation and Health systems cover GPS updates and hardware health metrics. They are sent at a consistent frequency to maintain operational function. 
 
-\section{Server} 
-\subsection{Intro}
+\subsection{Server} 
+\subsubsection{Intro}
 Now that we have a drone equipped with a sophisticated sensor suite and a robust communication infrastructure to transfer that data, we require a centralized intelligence to process that raw information and transform it into actionable insights for first responders. The server acts as the command-of-operations center, serving as the bridge between the high-altitude hardware and the human decision-makers on the ground. Without a powerful backend to aggregate, analyze, and interpret the incoming streams of telemetry and video, the system would merely be a collection of disconnected data points rather than a cohesive life-saving tool.
 Operating as the "digital brain" of the FireFly system, the server is responsible for the heavy computational lifting that exceeds the capacity of edge microcontrollers. By centralizing complex tasks such as real-time computer vision analysis, spatial triangulation, and fleet management, the server ensures that the data is not only stored but is actively interrogated for patterns that indicate fire behavior. This centralized architecture allows for a "single source of truth," where every piece of chemical and thermal data is fused together to provide a comprehensive, real-time map of the emergency landscape.
 
 \vspace{0.5em}
-\subsection{Drone Management}
+\subsubsection{Drone Management}
 The drone management system serves as the central conductor for the multi-node network, maintaining a comprehensive, real-time registry of every "Scout" and "Relay" unit in the field. The server continuously monitors a telemetry stream from each individual drone, tracking critical flight metrics such as remaining battery voltage, GPS coordinates, and signal strength within the MANET. By aggregating the live sensor data from each unit into a single dashboard, the server ensures that the health and performance of the entire fleet are visible at a glance. This centralized oversight allows the system to predict when a drone might need to return for a battery swap or when a relay node needs to shift position to maintain a stable link.
 When a scout drone successfully identifies a fire through its onboard AI and sensor fusion logic, the server shifts from a monitoring state into an active tactical coordinator. Upon a high-confidence detection, the server utilizes the drone’s triangulated coordinates to establish a "target zone." It then issues autonomous commands to nearby drones in the mesh, dynamically reassigning their flight paths to converge on the incident area. By managing these flight trajectories centrally, the server ensures that multiple drones can transition from a broad search pattern to a concentrated surveillance formation without the risk of mid-air collisions.
 This coordinated "surrounding" maneuver is designed to provide first responders with a 360-degree view of the fire’s perimeter. As the drones relocate, the server manages their positioning to create a visual and chemical "containment ring," where different units monitor the fire's head, flanks, and tail simultaneously. This multi-angle perspective is vital for tracking the fire’s rate of spread and direction in real-time. By automating this swarm behavior, the drone management system removes the burden of manual piloting from the ground crew, allowing them to focus entirely on the tactical information being delivered by the newly formed surveillance perimeter.
 
 \vspace{0.5em}
-\subsection{History}
+\subsubsection{History}
 As the FireFly system generates a constant stream of high-resolution telemetry and visual data, it becomes essential to maintain a comprehensive historical log of every incoming metric. For first responders, the value of this data lies in the ability to establish a "baseline" for the specific environment being monitored. By archiving standard readings of atmospheric gases, humidity, and thermal patterns during normal conditions, the server provides a critical point of comparison. When an anomaly occurs, the system doesn't just report a number; it can demonstrate how significantly the current environment has deviated from the norm, allowing for a much more accurate assessment of the threat level.
 To ensure this data remains accessible and actionable, the server utilizes a dedicated time-series database designed for high-frequency logging. This storage architecture is optimized to handle the heavy throughput of real-time sensor updates while allowing for rapid querying of past events. Every data point—from the specific parts-per-million of Carbon Monoxide to the GPS coordinates of a scout drone—is time-stamped and indexed, creating a "black box" record of the entire mission. This historical archive not only powers the real-time trend graphs on the front end but also serves as an invaluable resource for post-incident analysis, helping fire investigators reconstruct the fire's origin and behavior with scientific precision.
 
 \vspace{0.5em}
-\subsection{AI}
+\subsubsection{AI}
 To process the visual data streams, the server utilizes two distinct AI agents, each specialized in a specific wavelength of the electromagnetic spectrum. The first agent is trained exclusively on an extensive dataset of optical (RGB) imagery, comprising thousands of examples of forest environments in various states—including clear weather, heavy fog, and active fire scenarios. By training the model on "negative" samples (forests without fire) alongside "positive" samples (smoke and flames), the agent learns to identify the visual textures and volumetric patterns of combustion while ignoring common environmental distractions like cloud cover or light reflections.
 The second AI agent is specifically tuned for Long-Wave Infrared (LWIR) imagery. Unlike the optical agent, this model is trained to recognize radiometric heat signatures and thermal gradients rather than colors or shapes. The training set for this agent includes a wide array of thermal profiles, ranging from the natural heat of sun-warmed rocks and animals to the intense, localized "thermal spikes" characteristic of an ignition point. Because infrared data can appear abstract to the human eye, this specialized agent is essential for filtering out background noise and identifying concentrated heat sources that may be obscured by trees or light brush.
 By running these two agents in parallel, the server can cross-reference the visual world with the thermal world in real-time. For instance, if the optical agent detects what looks like a plume of smoke, the server immediately queries the infrared agent to see if there is a corresponding heat signature at the base of that plume. This "dual-vision" verification significantly reduces the likelihood of false positives. If both agents report a positive detection simultaneously, the system can confirm the presence of a fire with a much higher degree of certainty than any single-camera system could provide.
@@ -604,14 +446,12 @@ This visual intelligence is critical because it provides a qualitative "eyes-on"
 Ultimately, these agents function as a high-speed filtration system that distills hours of video footage into a few seconds of critical information. Instead of requiring first responders to monitor multiple screens constantly, the AI agents highlight only the frames where anomalies are detected, drawing bounding boxes or heat maps around the areas of concern. This ensures that the visual information relayed to the front end is not just a raw video feed, but an intelligent, interpreted map of the fire's presence, providing ground crews with a clear, visual understanding of exactly what they are up against.
 
 \vspace{0.5em}
-\subsection{Confidence}
+\subsubsection{Confidence}
 The final stage of the server’s analytical pipeline is the generation of a dynamic confidence rating, a multi-layered scoring system that translates raw data into a reliable threat assessment. Each individual data stream—from the LWIR AI’s visual patterns to the concentration ratios of $CO_2$ and Carbon Monoxide—is assigned its own "Category Confidence" score. For instance, if the infrared AI detects a concentrated heat signature, it may generate a 90 percent confidence rating for that specific channel. Simultaneously, the chemical sensors evaluate their own readings against historical baselines; a sharp spike in VOCs and Particulate Matter would produce a high chemical confidence score. By evaluating each category independently, the system ensures that no single sensor can trigger a false alarm, requiring a consensus across different physical and chemical domains.
 Once these individual category ratings are established, the server utilizes a weighted aggregation algorithm to produce a unified "Final Confidence Rating." This master score is not a simple average; instead, the system prioritizes data points that are most characteristic of a wildfire. For example, a simultaneous high-confidence hit from both the LWIR AI and the Carbon Monoxide sensor carries significantly more weight than a spike in Particulate Matter alone, which could be caused by non-fire events like wind-blown dust. This hierarchical weighting allows the server to filter out environmental noise and provide first responders with a single, clear percentage that represents the statistical probability of an active, dangerous fire.
 This Final Confidence Rating is a living metric, designed to change dynamically as the drone's position and the environment evolve. As the Scout drones converge on the triangulated source and more sensors begin to report from different angles, the server continuously re-evaluates the score. If the $CO_2$ levels continue to climb while the AI confirms the presence of an expanding smoke plume, the confidence rating will trend toward 100 percent. Conversely, if the heat signature dissipates or the gas concentrations stabilize, the system will automatically downgrade the alert level. This real-time adaptability ensures that first responders are always acting on the most current and verified intelligence, allowing for tactical decisions that shift as rapidly as the fire itself.
 
 \vspace{0.5em}
-
-\newpage
 
 % ============================================================
 \section{References}
@@ -839,5 +679,113 @@ The distribution of the FireFly system will be managed through a centralized, pr
 To reach our target market effectively, the sales strategy focuses on building relationships with regional fire bureaus and environmental protection agencies through a "Regional Deployment" model. The website will feature a consultation portal where incident commanders can request a needs-based assessment, ensuring they receive the correct mix of sensors and communication hardware for their specific terrain, whether it be dense forest or open brushland. This digital storefront also serves as the hub for global distribution, coordinating the logistics of shipping sensitive hardware from the factory to the station house, while providing all necessary documentation, training manuals, and certification records required for immediate deployment.
 Once a sale is finalized, the distribution website transitions into a long-term fleet management tool for the customer. Through their secure account, agencies can track the delivery of new hardware, order replacement sensor modules, and download the latest AI firmware updates. By housing the entire sales and distribution lifecycle within a single online ecosystem, we can ensure that every FireFly drone in the field is properly registered and supported. This model not only simplifies the initial purchase but also creates a scalable, global distribution network that can rapidly supply fire-prone regions around the world with the tools they need to combat emerging wildfire threats.
 
+\section{Prototype}
+\subsection{Aesthetic Prototype}
+
+The FireFly aesthetic prototype follows a field-ready design language: a compact enclosed central body with rounded corners, symmetric X-arm geometry, and cylindrical motor pods at each corner. The overall form emphasizes structural clarity and quick visual inspection rather than cosmetic styling. Rounded exterior edges reduce snag points during transport, while the open-top bay and side windows communicate where electronics, wiring, and battery hardware are intended to be serviced.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.46\textwidth]{images/drone_design_5_top.png}
+    \hfill
+    \includegraphics[width=0.46\textwidth]{images/drone_design_5_corner.png}
+    \caption{FireFly CAD aesthetic prototype, iteration v5 (top and isometric views).}
+    \label{fig:drone_v5_aesthetic}
+\end{figure}
+
+The prototype evolved through multiple print-test iterations. Early versions validated basic packaging and motor placement, while later versions introduced a cleaner body-to-arm transition, larger internal volume, and improved vent/window geometry for lighter weight and faster access to internals. This iterative process preserved a consistent visual identity while converging on a more manufacturable and maintainable frame.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/drone_design_5_compare_1.jpeg}
+    \caption{Physical prototype progression (v1--v3) that informed the final v5 frame direction.}
+    \label{fig:drone_proto_progression}
+\end{figure}
+
+\subsection{Design for Manufacture, Assembly, Maintenance}
+
+\textbf{Design for Manufacture (DFM):}
+The current frame is designed as a single-piece 3D print to minimize part count and remove alignment errors. The v5 CAD envelope is approximately $100 \times 72 \times 24$ mm with $2.5$ mm floor and wall thicknesses, balancing print speed, stiffness, and mass. Arms are sized at $10.0$ mm width and $5.4$ mm thickness to maintain rigidity under motor thrust and landing loads. Motor pods are dimensioned for SunnySky R1106-class motors with built-in tolerance ($19$ mm outer diameter, $15.0$ mm inner diameter, $17$ mm height, $2.2$ mm mounting holes on a $9$ mm bolt-circle).
+
+\vspace{0.5em}
+
+\textbf{Design for Assembly (DFA):}
+Assembly features are integrated directly into the print geometry. The frame includes four battery strap slots in the floor and continuous wire-routing paths from motor pods into the electronics bay. This allows a straightforward assembly order: install motors in pods, route motor leads through arm channels, mount the controller board, then secure the battery and sensor harness. Because most interfaces are geometric rather than adhesive, rework is possible without damaging the frame.
+
+\vspace{0.5em}
+
+\textbf{Design for Maintenance (DFMn):}
+Maintenance access is provided by the open top cavity, side-wall windows, and pod-to-arm wire notches. These features allow quick inspection of solder joints, connector seating, and wire wear without full teardown. Electronics can be removed independently from propulsion hardware, and battery straps can be replaced in the field with standard hook-and-loop straps. In case of structural damage, the one-piece architecture supports rapid replacement by reprinting the frame using the same CAD file, preserving dimensional repeatability across repairs.
+
+\subsection{Block Diagrams}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{images/Final_Schematic.png}
+    \caption{A high-level schematic of the FireFly system.}
+    \label{fig:schematic_design}
+\end{figure}
+
+\subsection{Wiring Diagrams}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/Circuit Diagram.png}
+    \caption{Circuit Diagram}
+    \label{fig:circuit_diagram}
+\end{figure}
+
+\subsection{State Transition Diagrams}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/State Transition Diagram.png}
+    \caption{State Transition Diagram}
+    \label{fig:state_transition}
+\end{figure}
+
+\subsection{Interface Definitions}
+
+\textit{Template: define the electrical and software interfaces between subsystems so assembly and debugging are reproducible.}
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \begin{tabular}{|p{0.16\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
+        \hline
+        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
+        \hline
+        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
+        \hline
+        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
+        \hline
+        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
+        \hline
+        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
+        \hline
+        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Interface-definition template.}
+    \label{tab:interface_template}
+\end{table}
+
+\begin{comment}
+\subsection{Technology (Languages, Hardware, etc.)}
+
+The FireFly system utilizes a custom-integrated hardware architecture designed for high-reliability telemetry in extreme environments. Rather than utilizing external third-party modules, the drone features a custom-designed Flight Control and Sensing PCB. This board integrates a high-performance 32-bit microcontroller with a dedicated RF front-end optimized for the 2.4GHz spectrum. The onboard sensor suite is deeply integrated into the hardware logic, utilizing an I2C-based sensor bus to interface custom environmental monitoring circuits—specifically high-precision thermistor arrays and particulate matter sensors—directly with the primary processing unit.
+
+\vspace{0.5em}
+
+The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
+\end{comment}
+
+\subsection{Simulations}
+
+Before building and flying, we used simulation tools to verify that the FireFly configuration can sustain flight, carry its sensor payload, and meet the core mission requirement of delivering real-time environmental data during the pre-fire window. An online multicopter calculator (eCalc xcopterCalc) was used to evaluate combinations of frame size, motors, propellers, and battery against thrust-to-weight ratio, hover throttle, current draw, and expected flight time under sensor payload assumptions. This confirmed that the selected hardware provides sufficient thrust margin to carry the temperature/humidity sensor and smoke detector while maintaining acceptable hover efficiency and a flight time long enough to collect and transmit meaningful readings to the ground station.
+
+\vspace{0.5em}
+
+A simplified quadcopter dynamics model was used to tune attitude and altitude control parameters, verifying that the platform can hold a stable position over a monitoring area, a prerequisite for consistent sensor sampling. Research on quadcopter modeling confirms that such simulations can predict controller behavior and reduce the number of risky test flights needed to achieve stable flight. Together, these simulations provide evidence that FireFly can meet its need statement requirements: reaching areas with zero sensor infrastructure and sustaining flight long enough to collect and transmit temperature, humidity, and smoke data before committing to full implementation and field testing.
 
 \end{document}
