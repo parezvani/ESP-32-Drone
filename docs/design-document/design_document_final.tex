@@ -551,7 +551,7 @@ The FireFly aesthetic prototype follows a field-ready design language: a compact
     \label{fig:drone_v5_aesthetic}
 \end{figure}
 
-The prototype evolved through multiple print-test iterations. Early versions validated basic packaging and motor placement, while later versions introduced a cleaner body-to-arm transition, larger internal volume, and improved vent/window geometry for lighter weight and faster access to internals. This iterative process preserved a consistent visual identity while converging on a more manufacturable and maintainable frame.
+The prototype evolved through multiple print-test iterations. Early versions validated basic packaging and motor placement, while later versions introduced a cleaner body-to-arm transition, larger internal volume, and improved vent/window geometry for lighter weight and faster access to internals. We also created cavities within the arms so that we can tuck away the wires running from the motors so that it would not interfere with the motion of the blades. This iterative process preserved a consistent visual identity while converging on a more manufacturable and maintainable frame.
 
 \begin{figure}[H]
     \centering
@@ -560,20 +560,20 @@ The prototype evolved through multiple print-test iterations. Early versions val
     \label{fig:drone_proto_progression}
 \end{figure}
 
-\subsection{Design for Manufacture, Assembly, Maintenance}
+\subsection{Design for Manufacture, Assembly, and Maintenance}
 
 \textbf{Design for Manufacture (DFM):}
-The current frame is designed as a single-piece 3D print to minimize part count and remove alignment errors. The v5 CAD envelope is approximately $100 \times 72 \times 24$ mm with $2.5$ mm floor and wall thicknesses, balancing print speed, stiffness, and mass. Arms are sized at $10.0$ mm width and $5.4$ mm thickness to maintain rigidity under motor thrust and landing loads. Motor pods are dimensioned for SunnySky R1106-class motors with built-in tolerance ($19$ mm outer diameter, $15.0$ mm inner diameter, $17$ mm height, $2.2$ mm mounting holes on a $9$ mm bolt-circle).
+The frame is designed as a single 3D-printed piece to keep the part count low and eliminate alignment issues. The v5 CAD model is roughly $100 \times 72 \times 24$ mm. We used $2.5$ mm thick floors and walls to find a good balance between fast print times, structural stiffness, and low weight. The arms are $10.0$ mm wide and $5.4$ mm thick, keeping them rigid enough to handle motor thrust and hard landings. The motor pods are sized for a drop-in fit with SunnySky R1106-class motors (19 mm outer diameter, 15.0 mm inner diameter, 17 mm height) and feature $2.2$ mm mounting holes on a $9$ mm bolt circle.
 
 \vspace{0.5em}
 
 \textbf{Design for Assembly (DFA):}
-Assembly features are integrated directly into the print geometry. The frame includes four battery strap slots in the floor and continuous wire-routing paths from motor pods into the electronics bay. This allows a straightforward assembly order: install motors in pods, route motor leads through arm channels, mount the controller board, then secure the battery and sensor harness. Because most interfaces are geometric rather than adhesive, rework is possible without damaging the frame.
+Putting the drone together is straightforward because the assembly features are built right into the frame. The design includes four battery strap slots in the floor and dedicated wire-routing channels running from the motor pods directly into the central electronics bay. This creates a natural, step-by-step assembly order: install the motors, route the wires through the arms, mount the controller board, and finally strap in the battery and sensors. Because the components slide or bolt into place without needing adhesives, it is easy to take apart and rework without damaging the frame.
 
 \vspace{0.5em}
 
 \textbf{Design for Maintenance (DFMn):}
-Maintenance access is provided by the open top cavity, side-wall windows, and pod-to-arm wire notches. These features allow quick inspection of solder joints, connector seating, and wire wear without full teardown. Electronics can be removed independently from propulsion hardware, and battery straps can be replaced in the field with standard hook-and-loop straps. In case of structural damage, the one-piece architecture supports rapid replacement by reprinting the frame using the same CAD file, preserving dimensional repeatability across repairs.
+The airframe is built to make field maintenance quick and easy. The open top cavity, side inspection windows, and exposed wire notches let you visually check solder joints, connectors, and wire wear without having to take the drone apart. The layout allows you to service the electronics independently from the motors, and the battery uses standard hook-and-loop straps for easy swapping. If the frame takes major damage, the single-piece design means you can simply 3D print a fresh one from the original CAD file and easily transfer your hardware over.
 
 \subsection{Block Diagrams}
 
@@ -611,17 +611,17 @@ Maintenance access is provided by the open top cavity, side-wall windows, and po
     \scriptsize
     \begin{tabular}{|p{0.16\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
         \hline
-        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
+        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} \\
         \hline
-        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
+        Sensor bus & [Micro Controller] & [ESC \& Camera Sensor] & [I2C / SPI / ADC] & [5V] & [N/A] \\
         \hline
-        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
+        Telemetry link & [Micro Controller] & [Ground Station] & [ESP-NOW / Wi-Fi / BLE] & [N/A] & [Connection Speed: $ > 100$ Mbps]\\
         \hline
-        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
+        Host link & [Groundstation] & [Micro Controller] & [UART / USB serial] & [N/A] & [N/A] \\
         \hline
-        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
+        Power rail & [Battery] & [Micro Controller \& ESC] & [battery / regulator / BEC] & [5V] & [N/A]\\
         \hline
-        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
+        Motor control & [ESC] & [Motor] & [PWM / DShot / other] & [5V] & [PWM Frequency: 24 kHz] \\
         \hline
     \end{tabular}
     \caption{Interface-definition template.}
@@ -773,6 +773,73 @@ The following combinations were explored for the primary subsystems:
     \caption{Morphological analysis chart outlining potential components of FireFly}
     \label{fig:morphological}
 \end{figure}
+
+\subsection{Software Overview}
+The FireFly prototype operates on a continuous data loop: edge hardware captures telemetry and video, a worker processes the video for object detection, a Flask backend aggregates this data into user-scoped state, and a browser client polls this state to render a live, interactive map.
+
+Notably, heavy computation (like ML inference and coordinate triangulation) is offloaded from the microcontrollers to a laptop worker and the backend server.
+
+\subsection{Hardware \& Edge Processing}
+\begin{itemize}
+    \item \textbf{ESP32-C3 (Telemetry \& Identity):} Acts as the GPS and identity hub. It reads NMEA GPS data, computes heading from movement, and transmits telemetry (via local UDP or cloud HTTP). It receives credentials via BLE from an iOS app.
+    \item \textbf{ESP32-CAM (Visuals):} Operates purely as a video server, providing a local MJPEG stream over WiFi. It does not perform on-device inference.
+    \item \textbf{Vision Worker (YOLOv8 \& OpenCV):} A Python script running on a laptop pulls the ESP32-CAM stream, runs YOLOv8 to detect fires, and filters out false positives. When a fire is sustained, it uses a camera model (FOV, tilt, altitude, drone GPS/heading) to estimate the fire's geo-coordinates and sends the data to the backend.
+\end{itemize}
+
+\subsection{Backend Architecture}
+The core backend is built in Python using Flask (\texttt{server.py}). It scales from an in-memory local testing environment to a production environment using PostgreSQL and Supabase.
+
+\begin{itemize}
+    \item \textbf{State Management:} Maintains live, in-memory state for fast polling, including drone telemetry, fire detections (grouped by user), relayed JPEG frames, and system health.
+    \item \textbf{Data Persistence:} When configured for production, it uses SQLAlchemy/Postgres to store registered drones, hashed API keys, telemetry history, and confirmed fires.
+    \item \textbf{Authentication:} Dual-layer security using Supabase JWTs for browser/dashboard routes and hashed API keys for hardware/worker telemetry ingestion.
+    \item \textbf{Fire Aggregation:} The \texttt{/api/fire} endpoint merges multiple nearby fire detections over a rolling time window, continuously updating a centroid and estimating the perimeter size.
+\end{itemize}
+
+\subsection{Core Algorithms}
+\begin{itemize}
+    \item \textbf{Coordinate Projection:} Converts bounding box pixels from the camera frame into real-world compass bearings and ground distances, using drone altitude and heading.
+    \item \textbf{Triangulation:} If two separate bearing observations (from two drones or one drone moving over time) are reported, the backend calculates the 2D intersection of their rays to accurately pinpoint the fire's location on a flat-earth projection.
+\end{itemize}
+
+\subsection{Frontend \& Map Rendering}
+\begin{itemize}
+    \item \textbf{Live Polling:} The web client polls the \texttt{/api/state} endpoint every 500ms to fetch the latest state for the authenticated user.
+    \item \textbf{Visual Mapping:} Built with Leaflet, the UI plots drone markers, draws dashed sightlines when a fire is detected, and places fire pins.
+    \item \textbf{User Alerts:} The UI features live camera previews (via a multipart MJPEG stream from the backend), Discord webhook integration, in-browser banners, and audio alerts for new fire detections.
+\end{itemize}
+
+\subsection{Indoor Demonstration (Simulated GPS)}
+The indoor demonstration provides a one-command launcher to showcase running-fix triangulation using a single camera from two scripted positions. This is particularly useful for testing the geolocation pipeline indoors where a live GPS lock is unavailable.
+
+\subsubsection{Setup and Launch}
+To prepare the environment, register a single drone on the FireFly dashboard and copy its associated API key. Next, configure the environment by editing the \texttt{main/demo/demo\_config.py} file with three local coordinates.
+
+Execute the following commands to launch the demo:
+\begin{lstlisting}[language=bash, caption={Launching the Indoor Demo}]
+# macOS / Linux / Git Bash
+export FIREFLY_API_KEY="<paste-from-dashboard>"
+python demo.py
+\end{lstlisting}
+\textit{Note: Use the \texttt{\$env:VAR="value"} syntax for Windows PowerShell.}
+
+\subsubsection{Execution Steps}
+Once launched, ensure the OpenCV window is focused and proceed with the following steps:
+\begin{itemize}
+    \item \textbf{Phase A Capture:} Hold a lighter centered within the camera frame. After 3 seconds of sustained detection, the system captures Phase A.
+    \item \textbf{Phase B Capture:} Press \texttt{B} on the keyboard. Reposition the camera to a new angle and hold the lighter centered again. The system captures Phase B and automatically POSTs the triangulated fire coordinate (pin) to the cloud map.
+    \item \textbf{Controls:} Press \texttt{R} to reset the observations and try again, or \texttt{Q} to quit the application.
+\end{itemize}
+
+\subsection{Testing with Recorded Video (Optional)}
+To evaluate the YOLOv8 model independently of live camera feeds, the system can be tested against a pre-recorded video of a fire.
+
+\begin{lstlisting}[language=bash, caption={Running the YOLOv8 Video Detector}]
+cd main/fire_detect/fire_detect_YOLO8
+python fire_detect.py
+\end{lstlisting}
+
+By default, this script opens \texttt{test\_videos/palisades\_fire.mp4} and POSTs the detected fire to the ground station. Alternatively, it can be redirected to a live ESP32-CAM stream by setting the appropriate environment variable: \texttt{FIREFLY\_VIDEO=http://<ip>:81/stream}.
 
 \newpage
 
