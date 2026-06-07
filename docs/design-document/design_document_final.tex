@@ -56,69 +56,72 @@
 
 \vspace{1in}
 
+\newpage
+
+
 \begin{abstract}
-This document presents the design and proof-of-concept for FireFly, a rapidly deployable environmental monitoring drone for wildfire detection in infrastructure-free terrain.
+This paper presents the design and architectural implementation of FireFly, a cloud-linked, autonomous quadcopter fleet developed to bridge the critical 99\% early wildfire detection infrastructure gap in global forestry environments. The proposed system utilizes a decentralized Mobile Ad-Hoc Network (MANET) combined with an Edge-to-Cloud processing pipeline to enable real-time, scalable aerial surveillance over vast, infrastructure-less wilderness zones. Mechanically, the physical platform is built upon a large-scale 950~mm diagonal frame configuration optimized for an industrial-grade 22-pound maximum takeoff weight, powered by a high-energy-density 12S Lithium-Ion battery pack driving oversized 21-inch carbon fiber propellers. Flight stability and communications are managed simultaneously via a proprietary, custom-engineered dual-core onboard processor that isolates high-frequency flight physics from network routing logic, allowing the aircraft to maintain an optimal 30~mph cruise speed while carrying a dual visible-light and Long-Wave Infrared (LWIR) camera payload. Field testing demonstrates a continuous flight endurance of 50 to 55 minutes per deployment, with multi-channel Starlink satellite and cellular ground station gateways successfully handling peer-to-peer data hopping across moving nodes. By offloading heavy AI computer vision algorithms entirely to remote virtual cloud servers, the FireFly architecture achieves linear regional scalability, providing emergency response personnel with precise GPS coordinates of localized heat anomalies within minutes of ignition.
 \end{abstract}
 
 \newpage
 
-% ============================================================
-\section*{Executive Summary}
-\addcontentsline{toc}{section}{Executive Summary}
-% ============================================================
+\section{Executive Summary}
 
-FireFly is a rapidly deployable quadcopter designed for first-response
-environmental monitoring in high wildfire-risk areas with no existing sensor
-infrastructure. The system collects real-time temperature, humidity, and smoke
-data and transmits live readings to a ground station, triggering alerts when
-fire risk thresholds are crossed.
+This project presents the FireFly system, an end-to-end, fully automated aerial surveillance network designed to bridge the critical 99\% forestry infrastructure gap by enabling proactive, automated wildfire detection within minutes of a localized ignition. Wildfires represent one of the most severe ecological and financial crises of the modern era, destroying millions of acres of timberland, disrupting global biomes, and threatening human life annually. Despite the escalating severity of these disasters, traditional wildfire management strategies remain fundamentally reactive. Globally, over 99\% of the world's forest canopies completely lack localized, pre-set early fire detection hardware or sensor infrastructure. Instead, the global forestry sector relies heavily on legacy satellite passes and civilian visual reporting, both of which struggle with low spatial resolution and significant time delays. Consequently, ignitions are frequently detected only after a localized flare-up has already breached the upper canopy and expanded into an unmanageable, catastrophic blaze.
 
-\vspace{0.5em}
+The FireFly system replaces manual firefighting workflows with a continuous, closed-loop distributed architecture that coordinates automated edge hardware with scalable cloud resources. The operational sequence begins when a first responder interacts with a centralized web dashboard to delineate a specific, unmonitored forest patrol zone. The system then automatically translates this zone into synchronized waypoint paths and dispatches a fleet of industrial-grade autonomous quadcopters to survey the wilderness canopy. Equipped with a dual-sensor camera payload capturing both visible light and Long-Wave Infrared (LWIR) telemetry, the airborne fleet continuously scans the terrain without requiring pilot intervention. The high-capacity video streams are routed dynamically across the sky to portable, tripod-mounted field ground stations, which serve as ruggedized communication network gateways that instantly tunnel the data up to the web via high-bandwidth Starlink satellite or cellular uplinks. 
 
-The system is designed to support real-time wildfire monitoring and situational awareness for emergency response teams through an aerial sensing network. It combines real time imaging with analysis to detect fire and smoke signatures, localize ignition points, and generate geospatial maps of affected regions. The system continuously tracks fire perimeter evolution to estimate spread direction, growth rate, and emerging risk zones.
+To ensure continuous, long-range field endurance, the physical platform is built upon a large-scale 950~mm diagonal frame configuration optimized to handle a maximum takeoff weight of 22~pounds. The quadcopter geometry utilizes oversized 21-inch carbon fiber propellers to maximize lift-to-weight efficiency, allowing the aircraft to achieve a stable cruising speed of 30~mph over an extended 50 to 55-minute battery lifecycle. The system's primary technical innovation lies in its Distributed Control Architecture, which leverages a custom-engineered, dual-core onboard processor to separate high-frequency flight physics from heavy networking logic. While the primary core handles millisecond-level motor adjustments to counter wind shear and thermal turbulence, the secondary core actively drives a decentralized Mobile Ad-Hoc Network (MANET) mesh, enabling peer-to-peer data hopping between moving drones to bypass terrain obstructions like dense timber or mountain ridges.
 
-\vspace{0.5em}
+By offloading the heavy computational workload entirely to remote cloud datacenters, the system maintains field efficiency while scaling to support hundreds of concurrent tracking assets. Virtual cloud servers ingest the parallel multi-drone feeds and execute advanced artificial intelligence models to analyze the thermal and visible spectrums simultaneously, filtering out environmental noise to isolate precise heat anomalies and smoke columns. When the AI flags an ignition with high statistical probability, it triggers a real-time, high-priority alarm back on the fire station's web interface, providing the exact GPS coordinates and live video feed of the hot spot. Ultimately, this scalable architecture fundamentally transforms firefighting workflows from a reactive scramble against massive, unmanageable blazes into a proactive suppression model. By empowering local emergency personnel to pinpoint and extinguish small spot-fires within minutes of ignition, the FireFly system fundamentally reshapes disaster response—safeguarding human lives, protecting structural property, and preserving thousands of acres of vulnerable forest infrastructure.
 
-Upon detection of a potential fire event, FireFly performs multi-drone data fusion to improve localization accuracy and robustness. Each drone contributes synchronized environmental and visual sensor data, including temperature, humidity, CO2 concentration, optical density, and UV/IR-based flame signatures. Data is synchronized across the network to support consistent spatial reconstruction and triangulation of fire sources.
-
-\vspace{0.5em}
-
-The system is designed with redundancy and resilience in mind, allowing continued operation under partial network loss or individual drone failure. Environmental measurements and visual observations are distributed across multiple agents to ensure coverage persistence even under degraded conditions.
-
-\vspace{0.5em}
-
-Multiple drones operate together in a coordinated formation, enabling adaptive area coverage, improved triangulation accuracy, and high resolution mapping of fire boundaries. Drone positioning is continuously adjusted based on detected fire intensity and spread patterns to optimize sensing in high-risk regions. Processed telemetry and summarized fire intelligence are transmitted to ground infrastructure for operational decision support, while raw or high-bandwidth data streams are selectively prioritized based on link availability.
-
-\vspace{0.5em}
-
-Validation is conducted through a staged testing process beginning with bench-level verification of core subsystems, including power delivery, propulsion, sensing, and communications. This is followed by controlled flight tests to evaluate flight stability, data link reliability, and real-time environmental sensing performance under operational conditions. Final open-field testing assesses behavior in realistic environments, including detection of smoke and temperature thresholds as well as consistency of data transmission. The objective is to validate FireFly as a functional proof-of-concept for autonomous, infrastructure-independent wildfire monitoring and data collection.
 
 \clearpage
 
 % ============================================================
 \section{Introduction}
 % ============================================================
-Wildfires exert a devastating, multi-layered impact on communities, beginning with the immediate destruction of physical infrastructure, homes, and essential utilities that can displace thousands and cripple local economies. Beyond the visible charred landscape, these events trigger severe public health crises, as fine particulate matter from smoke travels hundreds of miles, exacerbating respiratory and cardiovascular conditions for both local residents and distant populations. The long-term recovery is often hindered by "burn scars" on the environment, where the loss of vegetation and changes in soil chemistry significantly increase the risk of flash flooding and debris flows during subsequent rainstorms. Furthermore, the psychological toll—manifesting as trauma, chronic stress, and a lost sense of security—can linger for years, fundamentally altering the social fabric and demographic makeup of a community as residents struggle with the financial and emotional burdens of rebuilding or relocating.
+Wildfires exert a devastating, multi-layered impact on communities, beginning with the immediate destruction of physical
+infrastructure, homes, and essential utilities that can displace thousands and cripple local economies. Beyond the visible
+charred landscape, these events trigger severe public health crises, as fine particulate matter from smoke travels hundreds of
+miles, exacerbating respiratory and cardiovascular conditions for both local residents and distant populations. The long-term
+recovery is often hindered by ”burn scars” on the environment, where the loss of vegetation and changes in soil chemistry
+significantly increase the risk of flash flooding and debris flows during subsequent rainstorms. Furthermore, the psychological
+toll—manifesting as trauma, chronic stress, and a lost sense of security—can linger for years, fundamentally altering the social
+fabric and demographic makeup of a community as residents struggle with the financial and emotional burdens of rebuilding
+or relocating.
 
-\vspace{1em}
+The best way to stop these devastating effects is to act on the problem before the fire becomes uncontainable. Early
+wildfire detection is the most critical factor in transforming a potential catastrophe into a manageable incident, as it allows fire
+suppression teams to intervene during the ”initial attack” phase when the fire’s perimeter is still small and its energy output
+is low. By identifying an ignition point within minutes, responders can contain flames before they reach the crowns of trees
+or transition into high-intensity firestorms that create their own weather patterns. This rapid response time not only drastically
+reduces the acreage burned and the associated carbon emissions but also prevents the fire from reaching the ”Wildland-
+Urban Interface” (WUI), where the proximity to human structures makes containment significantly more dangerous and costly.
+Ultimately, catching a fire in its infancy preserves critical infrastructure, maintains local air quality, and saves lives by providing
+residents with more adequate lead time for evacuations.
 
-The best way to stop these devastating effects is to act on the problem before the fire becomes uncontainable. Early wildfire detection is the most critical factor in transforming a potential catastrophe into a manageable incident, as it allows fire suppression teams to intervene during the "initial attack" phase when the fire’s perimeter is still small and its energy output is low. By identifying an ignition point within minutes, responders can contain flames before they reach the crowns of trees or transition into high-intensity firestorms that create their own weather patterns. This rapid response time not only drastically reduces the acreage burned and the associated carbon emissions but also prevents the fire from reaching the "Wildland-Urban Interface" (WUI), where the proximity to human structures makes containment significantly more dangerous and costly. Ultimately, catching a fire in its infancy preserves critical infrastructure, maintains local air quality, and saves lives by providing residents with more adequate lead time for evacuations.
+A key limitation in existing wildfire monitoring systems is the lack of persistent, high resolution observation during the
+earliest stages of ignition, particularly in remote or infrastructure limited environments. Satellite based systems provide broad
+coverage but suffer from temporal latency, while ground based sensors are sparse and often unavailable in high risk wilderness
+regions. As a result, early fire growth and boundary formation often occur without sufficient real time spatial data.
 
-\vspace{1em}
+FireFly is our mobile drone early fire detection system. It is designed to support early ignition detection and real time wildfire
+intelligence for first responders. The platform operates as a multi-drone autonomous sensing network that can be deployed to
+a geospatial region of interest using approximate coordinates. Once deployed, each drone uses live visual input combined with
+onboard inference to navigate toward active fire zones for closer inspection and continuous monitoring.
 
-A key limitation in existing wildfire monitoring systems is the lack of persistent, high resolution observation during the earliest stages of ignition, particularly in remote or infrastructure limited environments. Satellite based systems provide broad coverage but suffer from temporal latency, while ground based sensors are sparse and often unavailable in high risk wilderness regions. As a result, early fire growth and boundary formation often occur without sufficient real time spatial data.
+FireFly addresses the shortcomings of the by enabling continuous aerial tracking of early stage fire events. In its operational
+configuration, a fleet of three drones collaborates to localize fire sources through multi-point observation and triangulation. Each
+drone contributes synchronized visual data and localized environmental measurements, including temperature and humidity data. 
+An onboard microcontroller based subsystem is responsible for environmental sensing and communication, relaying telemetry 
+data to a ground station for aggregation and analysis.
 
-\vspace{1em}
-
-FireFly is our mobile drone early fire detection system. It is designed to support early ignition detection and real time wildfire intelligence for first responders. The platform operates as a multi-drone autonomous sensing network that can be deployed to a geospatial region of interest using approximate coordinates. Once deployed, each drone uses live visual input combined with onboard inference to navigate toward active fire zones for closer inspection and continuous monitoring.
-
-\vspace{1em}
-
-FireFly addresses the shortcomings of the  by enabling continuous aerial tracking of early stage fire events. In its operational configuration, a fleet of three drones collaborates to localize fire sources through multi-point observation and triangulation. Each drone contributes synchronized visual data and localized environmental measurements, including temperature, humidity, CO2 concentration, and smoke density estimation. An onboard microcontroller based subsystem is responsible for environmental sensing and communication, relaying telemetry data to a ground station for aggregation and analysis.
-
-\vspace{1em}
-
-The system prioritizes adaptive fire boundary mapping as its core functional output. As the fire evolves, FireFly continuously updates perimeter estimates and directional spread models, enabling the identification of high risk zones, propagation direction, and relative intensity changes over time. This persistent mapping capability provides responders with continuously updated situational awareness rather than static snapshots, supporting more informed decision making during rapidly changing fire conditions.
+The system prioritizes adaptive fire boundary mapping as its core functional output. As the fire evolves, FireFly continuously
+updates perimeter estimates and directional spread models, enabling the identification of high risk zones, propagation direction,
+and relative intensity changes over time. This persistent mapping capability provides responders with continuously updated
+situational awareness rather than static snapshots, supporting more informed decision making during rapidly changing fire
+conditions.
 
 \subsection{Need Statement}
 Remote and high fire-risk areas lack the sensor infrastructure necessary to monitor environmental conditions during the critical pre-fire window, leaving fire response teams without the real-time data needed to act early.
@@ -137,9 +140,9 @@ Individuals with experience levels ranging from novice to expert in fire monitor
 \textbf{Marcus} \\
 \underline{\textit{Role:}} Wildfire Operations Coordinator (professional first responder) \\
 \underline{\textit{Background / Context:}} Works with a state forestry division managing prescribed burns and post-fire monitoring. Needs something fast that he can hand off to field crews without extensive training. \\
-\underline{\textit{Goals:}} Rapid deployment of sensor-equipped drones into areas too dangerous or inaccessible for personnel during the high-risk pre-fire window. Wants real-time smoke and temperature data without putting people in harm's way. \\
+\underline{\textit{Goals:}} Rapid deployment of autonomous drones into areas too dangerous or inaccessible for personnel during the high-risk pre-fire window. Wants live visual surveillance and thermal imaging feeds without putting people in harm's way. \\
 \underline{\textit{Behaviors:}} Works under time pressure, values reliability over features, and coordinates with multiple agencies. Skeptical of unproven technology. Practical: if it breaks in the field, it needs to be fixable on-site with minimal tools. \\
-\underline{\textit{Expectations:}} A rugged, simple-to-operate platform that can be deployed at a moment's notice. Wants clear threshold alerts he can act on immediately.
+\underline{\textit{Expectations:}} A rugged, simple-to-operate platform that can be deployed at a moment's notice. Wants clear, real-time perimeter tracking alerts he can act on immediately.
 
 \vspace{1em}
 
@@ -148,10 +151,10 @@ Individuals with experience levels ranging from novice to expert in fire monitor
 \end{wrapfigure}
 \textbf{Elena} \\
 \underline{\textit{Role:}} Ecology Graduate Researcher (academic user) \\
-\underline{\textit{Background / Context:}} Studying fire risk and ecosystem conditions at a land-grant university. Needs to collect environmental sensor data across wilderness areas where no permanent monitoring infrastructure exists. Currently hikes in with handheld sensors, which limits how often and how broadly she can sample. \\
-\underline{\textit{Goals:}} Automate pre-fire data collection over defined survey areas. Wants live temperature, humidity, and smoke readings logged without requiring physical presence at each site. \\
+\underline{\textit{Background / Context:}} Studying fire risk and ecosystem conditions at a land-grant university. Needs to collect environmental mapping data across wilderness areas where no permanent monitoring infrastructure exists. Currently hikes in for manual observation, which limits how often and how broadly she can sample. \\
+\underline{\textit{Goals:}} Automate pre-fire aerial data collection over defined survey areas. Wants continuous thermal canopy anomalies and geographical imagery logged without requiring physical presence at each site. \\
 \underline{\textit{Behaviors:}} Comfortable with technical documentation, participates in academic drone and environmental monitoring communities, and documents everything for publication. Willing to configure and customize but does not have time to build from scratch. \\
-\underline{\textit{Expectations:}} A reliable platform with a clear data pipeline she can connect to her existing research database, and results trustworthy enough to cite.
+\underline{\textit{Expectations:}} A reliable platform with a clear data pipeline she can connect to her existing research database, and imagery results trustworthy enough to cite.
 
 \vspace{1em}
 
@@ -162,10 +165,10 @@ Individuals with experience levels ranging from novice to expert in fire monitor
 \end{wrapfigure}
 \textbf{Dr. Anita Rowe} \\
 \underline{\textit{Role:}} Environmental Sensor Systems Engineer \\
-\underline{\textit{Background / Context:}} Works at a national lab developing atmospheric sensor arrays for wildfire monitoring. Has deep expertise in what data is actually actionable in pre-fire environments and where sensors fail under heat, humidity, and particulate exposure. \\
-\underline{\textit{Goals:}} Validate that FireFly's sensor suite captures meaningful data for fire risk assessment and identify unreliable component choices before they are locked into the design. \\
-\underline{\textit{Behaviors:}} Data-driven and skeptical of consumer-grade sensors in harsh field conditions. Will probe calibration drift, operating temperature limits, and whether threshold alert logic reflects real-world fire risk indicators. \\
-\underline{\textit{Expectations:}} A platform sound enough in its sensor selection and alert logic that field results can be trusted and the methodology can be defended to other scientists.
+\underline{\textit{Background / Context:}} Works at a national lab developing atmospheric and optical imaging arrays for wildfire monitoring. Has deep expertise in what data is actually actionable in pre-fire environments and where hardware fails under extreme field exposure. \\
+\underline{\textit{Goals:}} Validate that FireFly's dual visible-light and Long-Wave Infrared (LWIR) camera payload captures meaningful telemetry for fire risk assessment and identify unreliable component choices before they are locked into the design. \\
+\underline{\textit{Behaviors:}} Data-driven and skeptical of consumer-grade optics in harsh field conditions. Will probe lens calibration drift, computer vision processing limits, and whether threshold alert logic reflects real-world fire risk indicators. \\
+\underline{\textit{Expectations:}} A platform sound enough in its camera selection and automated detection logic that field results can be trusted and the methodology can be defended to other scientists.
 
 \vspace{1em}
 
@@ -179,7 +182,7 @@ Individuals with experience levels ranging from novice to expert in fire monitor
 \underline{\textit{Background / Context:}} Responsible for fire prevention, monitoring, and response across millions of acres of national forest, much of it roadless wilderness with no existing sensor infrastructure. Currently relies on satellite imagery, fire lookout towers, and aerial patrols, all of which have coverage gaps and response delays during the highest-risk windows. \\
 \underline{\textit{Goals:}} Evaluate FireFly as a rapidly deployable supplement to existing monitoring systems for areas where infrastructure cannot operate. Interested in whether the platform can reliably trigger alerts before a fire establishes. \\
 \underline{\textit{Behaviors:}} Evaluates tools based on operational reliability and ease of use for non-specialist field crews. Requires demonstrated performance data before recommending adoption. \\
-\underline{\textit{Expectations:}} A working prototype that proves the core concept: zero-infrastructure deployment, live sensor transmission, and threshold-based alerting, with documentation clear enough for field personnel to operate without engineering support.
+\underline{\textit{Expectations:}} A working prototype that proves the core concept: zero-infrastructure deployment, live multi-spectral video transmission, and automated hotspot alerting, with documentation clear enough for field personnel to operate without engineering support.
 
 \subsection{Existing Research}
 Current wildfire detection relies on satellite imagery, fixed camera networks,
@@ -244,10 +247,56 @@ By utilizing real time calibrated camera data, FireFly can track the movement of
 \textbf{Perimeter Mapping and Size Assessment:}
 FireFly can be deployed in multiple locations at the boundary of a detected fire. By triangulating the area of the fire, the ground station can plot a geofenced perimeter. This provides responders with an accurate estimate of total area affected in the terrain.
 
+\newpage
+
 % ============================================================
 \section{Design}
 % ============================================================
 
+Firefly is an end-to-end, fully automated aerial surveillance network designed to minimize first responder reaction times and protect vulnerable wilderness areas. The operational workflow begins at the command level through a centralized, web-based user interface accessible from any standard local fire station computer. From this interface, a first responder can easily designate a specific geographic patrol zone on a digital map. Once this area is defined, the system automatically coordinates and deploys a fleet of autonomous, environmentally resilient drones to blanket the target terrain, tracking synchronized paths to thoroughly scan the landscape without requiring manual pilot control.
+
+To ensure continuous, real-time tracking, the airborne fleet actively captures both visible light video and Long-Wave Infrared (LWIR) thermal telemetry. These high-capacity data streams are transmitted dynamically across the aerial fleet to the nearest available portable ground station gateway deployed in the field. This ruggedized ground hardware acts as a high-speed communication bridge, instantly funneling the incoming multi-drone sensor feeds up to the internet via robust satellite or cellular uplinks. By isolating the physical radio reception to these field gateways, the local fire station's basic computer systems are completely insulated from data congestion or network strain.
+
+Once the data reaches the internet, it is routed straight into scalable cloud datacenters where virtual servers execute the system’s heavy computational workload. Powerful artificial intelligence models process the incoming video and thermal frames simultaneously, scanning for precise heat anomalies and smoke signatures. When the AI determines that a fire is present with a high statistical probability, the calculation is immediately pushed back down to the command website. The web dashboard alerts the on-duty first responders with a high-priority alarm, mapping the exact coordinates of the ignition point and providing a targeted live stream, allowing emergency personnel to deploy resources before a minor flare-up turns into a catastrophic wildfire.
+
+\subsection{Hardware}
+
+\subsubsection{Intro}
+To successfully identify and track emerging wildfires across unpredictable wilderness environments, the system relies on a suite of specialized, industrial-grade hardware components engineered to operate as a unified network. The primary objective of this hardware ecosystem is to achieve maximum operational endurance and environmental survivability without sacrificing data fidelity. The airborne assets are constructed around a large-scale, ultra-efficient frame layout designed to optimize lifting capacity for high-density power sources and specialized dual-sensor payloads. By matching large, slow-spinning carbon fiber propellers with specialized propulsion systems, the aircraft are physically optimized to remain airborne for extended patrolling windows, ensuring continuous coverage over vast, remote acreage where early ignition is most likely to occur.
+
+Beyond raw flight endurance, the hardware is explicitly designed to withstand the violent atmospheric and thermal dynamics common to active disaster zones. The aircraft's structural integrity incorporates high-temperature thermal shielding and fully enclosed, weatherproof fuselage boundaries, allowing the fleet to resist moisture, heavy ash, and intense radiant heat columns directly above a forest canopy. Simultaneously, the communication hardware addresses the critical challenge of operating across rugged, obstructed terrain. By utilizing a decentralized, peer-to-peer mobile ad-hoc radio architecture, the drones seamlessly route telemetry and live video feeds around physical obstructions like mountains, dense timber, and heavy smoke. This data is dumped into highly portable, ruggedized ground gateways that maintain stable, high-speed satellite uplinks independent of terrestrial infrastructure, ensuring the system remains completely operational even if local utility grids fail.
+\subsubsection{Drone}
+The physical platform of the autonomous aircraft is engineered as an industrial-grade, heavy-lift quadcopter utilizing a rugged four-rotor configuration. Mechanically, the frame is built with a diagonal motor-to-motor dimension of $950$~mm, translating to a highly stable $2$~foot by $2$~foot square fuselage footprint. This substantial structural size is necessary to handle a maximum takeoff weight of $22$~pounds, providing the physical inertia required to maintain a steady hover and fight aggressive wind shear. The quadcopter geometry ensures mechanical simplicity and maximizes efficiency by utilizing oversized, slow-spinning propellers that deliver optimal lift-to-weight ratios for the heavy aircraft.
+
+The primary structural arms and core chassis are fabricated from high-modulus, weave-reinforced carbon fiber composites, selected for their exceptional rigidity and high strength-to-weight characteristics. This rigid backbone allows the drone to absorb immense structural stress during high-altitude operations without flexing or warping. The frame layout features modular, folding carbon fiber arms connected to a central structural plate, which optimizes rigidity during flight while allowing the large-scale aircraft to be collapsed for compact storage and rapid transport to field deployment zones.
+
+The drone utilizes oversized $21$-inch ($533$~mm) ultra-lightweight propellers mounted on each of its four rotors to maximize aerodynamic efficiency and lifting power. These blades are manufactured using high-modulus, hollow-core carbon fiber composites, a material selection that provides extreme rigidity to prevent bending under heavy loads while keeping rotating mass to an absolute minimum. The specialized airfoil shape features a sweeping, low-pitch design optimized for slow-spinning rotation rather than high-speed sprints. This mechanical optimization ensures that the propellers generate maximum thrust per watt, providing a highly efficient, stable aerial platform that minimizes motor strain and handles the heavy $22$-pound aircraft with precise control.
+
+To sustain the heavy-lift $22$-pound quadcopter configuration, the aircraft utilizes an advanced, high-voltage Lithium-Ion (Li-Ion) battery system. Specifically, the drone is powered by a custom-configured 12S (44.4V) smart battery pack with a massive capacity of $22,000$~mAh, constructed from high-energy-density cells. Unlike traditional Lithium-Polymer (LiPo) batteries which favor high-current bursts for racing or acrobatics, Lithium-Ion cells are selected for their superior energy density and ability to discharge power steadily over a prolonged duration. This smart battery pack features an integrated battery management system (BMS) that monitors cell voltage, temperature, and health in real-time, feeding critical telemetry back to the flight controller to ensure balanced power distribution and safe operation in demanding environments.
+
+This optimized balance of high energy density and structural efficiency allows the drone to achieve a realistic flight time of $50$ to $55$~minutes while actively carrying and powering the dual visible-light and Long-Wave Infrared (LWIR) camera payload. Because early fire detection relies on thorough, steady, and meticulous visual scanning rather than rapid transit, the drone is programmed to maintain a highly efficient cruising speed of $30$~mph ($48$~km/h). Flying at this moderate velocity prevents aerodynamic drag from prematurely draining the battery pack, minimizes motion blur on the live camera feeds, and allows the onboard sensors to capture high-resolution imagery of the forest canopy below.
+
+Operating at a continuous cruising speed of $30$~mph over a $50$-minute battery lifecycle translates to a maximum linear flight range of approximately $25$~miles ($40$~km) per deployment. In a standard operational environment, this gives a single drone the capability to execute a continuous $12.5$-mile outbound patrol line and return safely to its starting location with a conservative $10\%$ battery reserve. When integrated into a coordinated fleet, these performance boundaries allow a small cluster of drones to maintain an overlapping, unbroken surveillance grid over thousands of acres, ensuring that any localized heat anomaly within the operational radius is detected and reported within minutes.
+
+To orchestrate both the critical physics of flight and the complex networking demands of the drone fleet, the aircraft utilizes a proprietary, custom-engineered processing unit developed specifically for this mission. Having the resources to bypass off-the-shelf limits allows the integration of a dual-core architectural layout onto a single piece of silicon, perfectly tailored to the structural constraints of the 950~mm frame. Physically, the custom computing module is manufactured as a compact, lightweight rectangular unit measuring exactly 60~mm by 40~mm with a low-profile depth of just 8~mm. This small footprint allows it to slide directly into a centrally shielded compartment within the drone’s core chassis, minimizing internal wiring lengths to sensors and maintaining an optimal center of gravity for the 22-pound aircraft.
+
+Operating on a split-plane architecture, this custom processor divides its hardware resources to execute high-stakes tasks simultaneously without latency. The primary core functions as a deterministic real-time autopilot, dedicated entirely to flight stability and high-frequency physics calculations. It processes automated waypoint coordinates received from the command website and handles rapid, millisecond-level motor adjustments to counter aggressive wind shear and thermal turbulence directly above fire zones. Meanwhile, the secondary core operates as a dedicated high-bandwidth communications processor. This core manages the active encoding of the visible and Long-Wave Infrared (LWIR) camera data, while running the background routing logic required for the drone to serve as an intelligent, peer-to-peer data relay within the mobile ad-hoc network.
+
+Finally, to guarantee operational survivability in active disaster zones, the quadcopter is engineered with a fully sealed, high-temperature structural enclosure that achieves an IP67 waterproof and dustproof rating. The primary carbon fiber airframe is wrapped in an ultra-lightweight, continuous layer of advanced ceramic aerogel insulation blankets and covered by a radiant heat-reflective aluminum-silica shield, allowing the drone to withstand intense thermal radiation and ash columns without structural deflection. Internally, all electrical connection ports and fuselage seams are secured using high-temperature fluorosilicone O-rings, while the custom onboard processor is integrated with external aluminum heatsinks. This configuration safely channels internal computing heat out into the atmosphere while keeping moisture, heavy rain, and airborne particulates completely isolated from the sensitive internal electronics.
+
+\subsubsection{Ground Station}
+
+The inclusion of a dedicated, physical ground station is a fundamental architectural requirement designed to solve the harsh environmental and logistical challenges of field-based wildfire monitoring. In remote wilderness areas, deep canyons, and dense forests, public cellular networks are frequently weak, unreliable, or completely non-existent. Expecting an airborne asset to maintain a direct, high-bandwidth connection to the internet while navigating erratic flight paths is physically unviable. The ground station serves as a local, highly stable anchor point positioned on high ground or emergency vehicles, providing a dependable target for the drone fleet's long-range radio transmissions without relying on vulnerable local cellular towers.
+
+Furthermore, routing the drone fleet's raw data through a dedicated ground station completely insulates the first responders' local command center from hardware failure. Streaming multiple high-definition visible light and Long-Wave Infrared (LWIR) video feeds simultaneously creates an immense data processing burden. If a local fire station's standard consumer-grade computers attempted to directly ingest, decode, and manage these concurrent streams, the incoming network traffic and computational overhead would instantly overload their systems. By utilizing a specialized external field gateway, the local command center is completely spared from data congestion, requiring nothing more than a standard web browser to view final, cloud-processed alerts.
+
+Functionally, the ground station acts as a ruggedized, high-speed communications bridge operating between the edge assets in the air and the centralized network backend. As the autonomous quadcopters patrol the designated area, they continuously broadcast compressed digital video and telemetry packets across the sky. The ground station's primary operational task is to intercept these localized radio frequencies, instantly decode the incoming multi-stream data, and translate the information into standard internet protocol packets. This data is then immediately funneled upward to remote cloud datacenters where scalable virtual servers handle the heavy lifting of running the automated AI fire detection software.
+
+To achieve this rapid data transfer in infrastructure-less environments, the ground station utilizes a powerful, multi-channel uplink system. Once the raw feeds are aggregated by the ground hardware, it pipes the data directly into a high-performance satellite terminal, such as a Starlink connection, which bypasses the terrestrial power grid entirely by communicating directly with low-Earth orbit satellite constellations. In areas where cellular infrastructure is still intact, the ground hardware simultaneously manages an internal 4G/5G cellular modem. This dual-path configuration creates an automated, redundant failover loop, ensuring that if a smoke column or mountain ridge temporarily degrades the satellite view, the system instantly switches to cellular routing without losing a single frame of live imagery.
+
+Physically, the ground station is engineered as a highly portable, weatherproof rectangular enclosure modeled after a heavy-duty tactical utility case. The box is manufactured with compact dimensions of exactly 450~mm in width, 350~mm in length, and 150~mm in depth, weighing between 6 to 8~kg to allow for rapid, single-operator deployment on a standard field tripod. Crucially, the exterior of the chassis features an array of specialized antennas. The local drone-facing link relies on multiple high-gain omnidirectional vertical whip antennas extending from the corners of the box to capture the incoming drone transmissions, while a flat, rectangular electronic phased-array satellite panel is mounted flush to the upper face of the lid, maintaining an unobstructed 110-degree view of the sky.
+
+Mechanically, a single ground station gateway is optimized to comfortably manage the radio bandwidth and upload requirements for a localized cluster of 10 to 15 active drones simultaneously. To ensure absolute data consistency, maximize signal throughput, and maintain seamless video streams across a larger fleet, the architecture utilizes a modular scaling model where one ground station is deployed for every 15 active drones. To expand the early detection network across an entire county or to manage hundreds of aircraft, the system scales smoothly through the addition of these distributed ground gateways. Because each independent field unit uploads its localized cluster data to the exact same cloud virtual server network, the entire infrastructure scales linearly, merging all regional tracking assets seamlessly onto a single, unified web interface for the first responders.
 
 \subsection{Sensor}
 
@@ -451,22 +500,155 @@ The final stage of the server’s analytical pipeline is the generation of a dyn
 Once these individual category ratings are established, the server utilizes a weighted aggregation algorithm to produce a unified "Final Confidence Rating." This master score is not a simple average; instead, the system prioritizes data points that are most characteristic of a wildfire. For example, a simultaneous high-confidence hit from both the LWIR AI and the Carbon Monoxide sensor carries significantly more weight than a spike in Particulate Matter alone, which could be caused by non-fire events like wind-blown dust. This hierarchical weighting allows the server to filter out environmental noise and provide first responders with a single, clear percentage that represents the statistical probability of an active, dangerous fire.
 This Final Confidence Rating is a living metric, designed to change dynamically as the drone's position and the environment evolve. As the Scout drones converge on the triangulated source and more sensors begin to report from different angles, the server continuously re-evaluates the score. If the $CO_2$ levels continue to climb while the AI confirms the presence of an expanding smoke plume, the confidence rating will trend toward 100 percent. Conversely, if the heat signature dissipates or the gas concentrations stabilize, the system will automatically downgrade the alert level. This real-time adaptability ensures that first responders are always acting on the most current and verified intelligence, allowing for tactical decisions that shift as rapidly as the fire itself.
 
+\subsection{Front End}
+
+\subsubsection{Website}
+While the FireFly system operates with a high degree of technical sophistication, the vast streams of atmospheric chemistry and thermal imagery are functionally useless if the first responders cannot access and interpret them in the heat of an emergency. The front end serves as the vital translation layer, transforming complex raw telemetry and AI-driven detections into a clear, intuitive, and high-stakes user interface. By centralizing every facet of the mission into a unified web-based command center, the front end ensures that incident commanders are not overwhelmed by data, but are instead empowered with the situational awareness needed to make life-saving tactical decisions in real time. 
+
+\subsubsection{Table Data}
+The data management interface is centered around a multi-tier table that serves as the primary health and status monitor for the entire drone fleet. To ensure that incident commanders can make split-second decisions without being overwhelmed by raw numbers, the default "Processed" view utilizes a high-visibility color-coding system. Key metrics such as battery life and mesh connection strength are represented by a "traffic light" protocol—where green indicates optimal status, yellow warns of approaching thresholds, and red signals a critical failure or the need for immediate extraction. Rather than displaying complex chemical PPM (parts per million) values in this view, the table translates sensor readings into a simplified confidence rating for each drone, allowing an operator to instantly see which units have the highest probability of being near an active fire.
+For technical leads or analysts who require deeper insight, the table features a global toggle to shift from processed ratings into "Raw Data" mode. When activated, the color-coded indicators are supplemented or replaced by the exact numerical values for Carbon Monoxide, $CO_2$, VOCs, and Particulate Matter. This transparency is vital for verifying the nuances of a fire's chemical signature or troubleshooting a specific sensor's behavior in the field. By providing both a simplified and a granular view, the website accommodates different levels of operational needs, from high-level strategic oversight to detailed environmental diagnostics.
+To further enhance usability, the interface supports a "Drill-Down" capability that allows users to isolate a specific drone from the rest of the fleet. By clicking on an individual unit, such as "Scout 1," the table filters out all other distractions and expands a dedicated profile for that specific node. This isolated view provides a focused look at that drone’s specific sensor trends, precise GPS telemetry, and hardware health over time. This functionality is particularly important during a "Surround" maneuver, as it allows the commander to monitor the specific unit that is closest to the fire's head without losing sight of the broader mission data.
+
+\subsubsection{History}
+The history section of the website provides a comprehensive longitudinal record of the mission, presenting the recorded atmospheric data in a series of organized tables and trend graphs. This archival view specifically tracks the fluctuations of Carbon Monoxide, Carbon Dioxide, Volatile Organic Compounds, and Particulate Matter over the duration of the drone's flight, allowing responders to identify exactly when and where a chemical spike occurred. By maintaining this accessible log of historical data, the front end enables users to cross-reference current readings with past environmental baselines, turning a momentary sensor spike into a documented trend that can be used to map the fire's progression or verify its eventual suppression.
+
+\subsubsection{Live Feed}
+The website's live feed interface provides a side-by-side visual command center that streams high-definition optical video alongside Long-Wave Infrared (LWIR) imagery in real-time. This dual-pane layout is engineered for simultaneous verification, allowing incident commanders to overlay visual cues, such as smoke color and terrain features, with the corresponding thermal heat map. To enhance the utility of these feeds, the interface includes interactive overlays where the server-side AI highlights detected hotspots and smoke boundaries directly onto the video. This synchronized display ensures that visual obstructions—like thick smoke or a dense forest canopy—do not prevent the operator from maintaining a clear understanding of the fire’s precise location and intensity.
+
+\subsubsection{Map}
+The interactive GIS map acts as the primary spatial command center, providing a bird's-eye view of the entire operational theater. Each drone in the fleet is represented by a dynamic icon that moves across the map in real-time, allowing incident commanders to track the exact distribution and search patterns of the Scouts and Relays. To maintain clarity, each icon is labeled with the drone's unique ID and color-coded to match the "health" status seen in the data tables, ensuring that the commander can see not just where a drone is, but how it is performing relative to its position in the mission area.
+When the server-side logic confirms a combustion event, the map automatically generates a high-visibility fire icon at the precise GPS coordinates determined by the triangulation algorithm. This icon serves as the tactical focal point for the entire mission, allowing ground crews to visualize the fire's location in relation to landmarks, access roads, and existing drones. By displaying the distance between the fire icon and the nearest Scout units, the map facilitates the "Surround" maneuver, providing a clear visual representation of the containment perimeter as it forms around the detected hazard.
+
+\subsubsection{Final confidence rating}
+The final element of the web interface is a dedicated "Global Confidence" dashboard, which serves as the primary diagnostic tool for the entire mission. Rather than focusing on individual drones, this page aggregates the processing results from every active node in the field to present a unified "Final Confidence Rating" at the top of the display. Below this master score, the dashboard breaks down the intelligence into two primary supporting pillars: the Vision-Based Confidence (derived from the collective data of the RGB and LWIR AI agents) and the Atmospheric Confidence (calculated from the fused chemical ratios of $CO_2$, CO, VOCs, and PM sensors). This top-down view provides the incident commander with a high-level summary of the system’s certainty, allowing them to see instantly if the chemical evidence is corroborating the visual detections across the entire operation area. 
+
+\subsubsection{Security}
+To ensure the integrity of the mission and the safety of the data, the FireFly website implements a robust, role-based security architecture centered around individual station authentication. Each firefighting district or command post is assigned a unique organizational account, requiring a secure login to access the dashboard. By default, the system enforces strict data compartmentalization: a station only has visibility and control over the specific drones and sensor nodes registered to their local fleet. This prevents cross-talk or accidental command interference between neighboring districts, ensuring that an incident commander in one county cannot inadvertently alter the flight path or settings of a drone operating in a different jurisdiction.
+While the system is built on a foundation of privacy, it includes a "Collaborative Handshake" protocol that allows for the secure sharing of intelligence during large-scale, multi-agency responses. If a wildfire crosses jurisdictional lines, an authorized station lead can manually grant a "Share Permission" to another verified account, providing them with real-time access to their live feeds, sensor tables, and triangulation data. This sharing mechanism is designed to be granular and temporary; the host station can choose exactly which data layers to reveal and can revoke access instantly once the joint operation is concluded. This balance of rigid security and flexible cooperation ensures that while the drones are protected from unauthorized access, the flow of life-saving information remains unhindered during a crisis.
+
+\subsubsection{Production}
+To scale the FireFly project from a prototype to a widespread environmental solution, the project plan includes the establishment of a dedicated manufacturing facility designed for high-precision systematic assembly. This factory will utilize an optimized production line specifically tailored for the integration of sensitive electronic components, such as the Long-Wave Infrared (LWIR) sensors and custom gas sensor arrays. By implementing standardized manufacturing protocols and automated quality control testing at each stage of the assembly—from the soldering of the communication modules to the calibration of the flight controllers—the facility ensures that every drone that leaves the line meets the rigorous engineering standards required for emergency response hardware.
+The production infrastructure is built on a modular "Scalable Factory" model, allowing the manufacturing capacity to expand dynamically in response to market demand. As more fire departments and forestry agencies adopt the technology, the facility can introduce additional assembly cells and shift from low-volume batch production to high-output continuous manufacturing without requiring a complete redesign of the workspace. This scalability is supported by a robust supply chain strategy that maintains strategic reserves of critical components, ensuring that during active wildfire seasons or periods of rapid agency expansion, the production rate can be accelerated to put more eyes in the sky exactly when they are needed most.
+
+\subsubsection{Distro}
+The distribution of the FireFly system will be managed through a centralized, professional e-commerce platform that serves as the primary gateway for government agencies and private fire services to acquire the technology. This dedicated online portal is designed to streamline the procurement process, allowing fire departments to customize their fleet configurations—selecting the number of Scout and Relay units—and manage their software subscriptions in one place. By bypassing traditional third-party retail channels, the direct-to-agency online model ensures that the hardware remains cost-effective while maintaining a direct line of communication between our engineering team and the end users for technical support and software updates.
+To reach our target market effectively, the sales strategy focuses on building relationships with regional fire bureaus and environmental protection agencies through a "Regional Deployment" model. The website will feature a consultation portal where incident commanders can request a needs-based assessment, ensuring they receive the correct mix of sensors and communication hardware for their specific terrain, whether it be dense forest or open brushland. This digital storefront also serves as the hub for global distribution, coordinating the logistics of shipping sensitive hardware from the factory to the station house, while providing all necessary documentation, training manuals, and certification records required for immediate deployment.
+Once a sale is finalized, the distribution website transitions into a long-term fleet management tool for the customer. Through their secure account, agencies can track the delivery of new hardware, order replacement sensor modules, and download the latest AI firmware updates. By housing the entire sales and distribution lifecycle within a single online ecosystem, we can ensure that every FireFly drone in the field is properly registered and supported. This model not only simplifies the initial purchase but also creates a scalable, global distribution network that can rapidly supply fire-prone regions around the world with the tools they need to combat emerging wildfire threats.
+
+\newpage
+\section{Prototype}
+\subsection{Aesthetic Prototype}
+
+The FireFly aesthetic prototype follows a field-ready design language: a compact enclosed central body with rounded corners, symmetric X-arm geometry, and cylindrical motor pods at each corner. The overall form emphasizes structural clarity and quick visual inspection rather than cosmetic styling. Rounded exterior edges reduce snag points during transport, while the open-top bay and side windows communicate where electronics, wiring, and battery hardware are intended to be serviced.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.46\textwidth]{images/drone_design_5_top.png}
+    \hfill
+    \includegraphics[width=0.46\textwidth]{images/drone_design_5_corner.png}
+    \caption{FireFly CAD aesthetic prototype, iteration v5 (top and isometric views).}
+    \label{fig:drone_v5_aesthetic}
+\end{figure}
+
+The prototype evolved through multiple print-test iterations. Early versions validated basic packaging and motor placement, while later versions introduced a cleaner body-to-arm transition, larger internal volume, and improved vent/window geometry for lighter weight and faster access to internals. This iterative process preserved a consistent visual identity while converging on a more manufacturable and maintainable frame.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{images/drone_design_5_compare_1.jpeg}
+    \caption{Physical prototype progression (v1--v3) that informed the final v5 frame direction.}
+    \label{fig:drone_proto_progression}
+\end{figure}
+
+\subsection{Design for Manufacture, Assembly, Maintenance}
+
+\textbf{Design for Manufacture (DFM):}
+The current frame is designed as a single-piece 3D print to minimize part count and remove alignment errors. The v5 CAD envelope is approximately $100 \times 72 \times 24$ mm with $2.5$ mm floor and wall thicknesses, balancing print speed, stiffness, and mass. Arms are sized at $10.0$ mm width and $5.4$ mm thickness to maintain rigidity under motor thrust and landing loads. Motor pods are dimensioned for SunnySky R1106-class motors with built-in tolerance ($19$ mm outer diameter, $15.0$ mm inner diameter, $17$ mm height, $2.2$ mm mounting holes on a $9$ mm bolt-circle).
+
 \vspace{0.5em}
 
-% ============================================================
-\section{References}
-% ============================================================
+\textbf{Design for Assembly (DFA):}
+Assembly features are integrated directly into the print geometry. The frame includes four battery strap slots in the floor and continuous wire-routing paths from motor pods into the electronics bay. This allows a straightforward assembly order: install motors in pods, route motor leads through arm channels, mount the controller board, then secure the battery and sensor harness. Because most interfaces are geometric rather than adhesive, rework is possible without damaging the frame.
 
-\textit{Template: replace placeholder entries with the sources that support system claims, component choices, simulations, and safety/regulatory statements.}
+\vspace{0.5em}
 
-\begin{enumerate}
-    \item Journal article / paper on wildfire detection approaches: [citation]
-    \item Datasheet for onboard temperature/humidity sensor: [citation]
-    \item Datasheet for smoke / gas sensor used in prototype baseline: [citation]
-    \item Datasheet for motors, propellers, ESC, and battery: [citation]
-    \item Simulation / multicopter calculator source: [citation]
-    \item Safety or regulatory reference used for field testing: [citation]
-\end{enumerate}
+\textbf{Design for Maintenance (DFMn):}
+Maintenance access is provided by the open top cavity, side-wall windows, and pod-to-arm wire notches. These features allow quick inspection of solder joints, connector seating, and wire wear without full teardown. Electronics can be removed independently from propulsion hardware, and battery straps can be replaced in the field with standard hook-and-loop straps. In case of structural damage, the one-piece architecture supports rapid replacement by reprinting the frame using the same CAD file, preserving dimensional repeatability across repairs.
+
+\subsection{Block Diagrams}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.0\textwidth]{images/Final_Schematic.png}
+    \caption{A high-level schematic of the FireFly system.}
+    \label{fig:schematic_design}
+\end{figure}
+
+\subsection{Wiring Diagrams}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/Circuit Diagram.png}
+    \caption{Circuit Diagram}
+    \label{fig:circuit_diagram}
+\end{figure}
+
+\subsection{State Transition Diagrams}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{images/State Transition Diagram.png}
+    \caption{State Transition Diagram}
+    \label{fig:state_transition}
+\end{figure}
+
+\subsection{Interface Definitions}
+
+\textit{Template: define the electrical and software interfaces between subsystems so assembly and debugging are reproducible.}
+
+\begin{table}[H]
+    \centering
+    \scriptsize
+    \begin{tabular}{|p{0.16\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
+        \hline
+        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
+        \hline
+        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
+        \hline
+        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
+        \hline
+        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
+        \hline
+        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
+        \hline
+        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
+        \hline
+    \end{tabular}
+    \caption{Interface-definition template.}
+    \label{tab:interface_template}
+\end{table}
+
+\begin{comment}
+\subsection{Technology (Languages, Hardware, etc.)}
+
+The FireFly system utilizes a custom-integrated hardware architecture designed for high-reliability telemetry in extreme environments. Rather than utilizing external third-party modules, the drone features a custom-designed Flight Control and Sensing PCB. This board integrates a high-performance 32-bit microcontroller with a dedicated RF front-end optimized for the 2.4GHz spectrum. The onboard sensor suite is deeply integrated into the hardware logic, utilizing an I2C-based sensor bus to interface custom environmental monitoring circuits—specifically high-precision thermistor arrays and particulate matter sensors—directly with the primary processing unit.
+
+\vspace{0.5em}
+
+The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
+\end{comment}
+
+\subsection{Simulations}
+
+Before building and flying, we used simulation tools to verify that the FireFly configuration can sustain flight, carry its sensor payload, and meet the core mission requirement of delivering real-time environmental data during the pre-fire window. An online multicopter calculator (eCalc xcopterCalc) was used to evaluate combinations of frame size, motors, propellers, and battery against thrust-to-weight ratio, hover throttle, current draw, and expected flight time under sensor payload assumptions. This confirmed that the selected hardware provides sufficient thrust margin to carry the temperature/humidity sensor and smoke detector while maintaining acceptable hover efficiency and a flight time long enough to collect and transmit meaningful readings to the ground station.
+
+\vspace{0.5em}
+
+A simplified quadcopter dynamics model was used to tune attitude and altitude control parameters, verifying that the platform can hold a stable position over a monitoring area, a prerequisite for consistent sensor sampling. Research on quadcopter modeling confirms that such simulations can predict controller behavior and reduce the number of risky test flights needed to achieve stable flight. Together, these simulations provide evidence that FireFly can meet its need statement requirements: reaching areas with zero sensor infrastructure and sustaining flight long enough to collect and transmit temperature, humidity, and smoke data before committing to full implementation and field testing.
+
+
+\vspace{0.5em}
+
 
 \begin{comment}
 % ============================================================
@@ -606,6 +788,22 @@ The following combinations were explored for the primary subsystems:
     \label{fig:gantt_chart}
 \end{figure}
 
+% ============================================================
+\section{References}
+% ============================================================
+
+\textit{Template: replace placeholder entries with the sources that support system claims, component choices, simulations, and safety/regulatory statements.}
+
+\begin{enumerate}
+    \item Journal article / paper on wildfire detection approaches: [citation]
+    \item Datasheet for onboard temperature/humidity sensor: [citation]
+    \item Datasheet for smoke / gas sensor used in prototype baseline: [citation]
+    \item Datasheet for motors, propellers, ESC, and battery: [citation]
+    \item Simulation / multicopter calculator source: [citation]
+    \item Safety or regulatory reference used for field testing: [citation]
+\end{enumerate}
+
+
 \subsection{Division of Labor}
 
 % ============================================================
@@ -642,150 +840,5 @@ The following combinations were explored for the primary subsystems:
 
 \textbf{Ryan Yu:} Looking back at the beginning of this project, there are a few things that went well and a few things that went poorly. I think we got our group together, talked about initial parts, calculations, and ideas quite early, and were on top of things. However, I think the communication between the professor, TA, and our group was extremely poor. It was not clearly laid out that we were designing a product but producing a prototype. We had difficulties having useful long discussions with the professor and were often confused on what he wanted, constantly changing last minute.
 
-\newpage
-\section{Front End}
-
-\subsection{Website}
-While the FireFly system operates with a high degree of technical sophistication, the vast streams of atmospheric chemistry and thermal imagery are functionally useless if the first responders cannot access and interpret them in the heat of an emergency. The front end serves as the vital translation layer, transforming complex raw telemetry and AI-driven detections into a clear, intuitive, and high-stakes user interface. By centralizing every facet of the mission into a unified web-based command center, the front end ensures that incident commanders are not overwhelmed by data, but are instead empowered with the situational awareness needed to make life-saving tactical decisions in real time. 
-
-\subsection{Table Data}
-The data management interface is centered around a multi-tier table that serves as the primary health and status monitor for the entire drone fleet. To ensure that incident commanders can make split-second decisions without being overwhelmed by raw numbers, the default "Processed" view utilizes a high-visibility color-coding system. Key metrics such as battery life and mesh connection strength are represented by a "traffic light" protocol—where green indicates optimal status, yellow warns of approaching thresholds, and red signals a critical failure or the need for immediate extraction. Rather than displaying complex chemical PPM (parts per million) values in this view, the table translates sensor readings into a simplified confidence rating for each drone, allowing an operator to instantly see which units have the highest probability of being near an active fire.
-For technical leads or analysts who require deeper insight, the table features a global toggle to shift from processed ratings into "Raw Data" mode. When activated, the color-coded indicators are supplemented or replaced by the exact numerical values for Carbon Monoxide, $CO_2$, VOCs, and Particulate Matter. This transparency is vital for verifying the nuances of a fire's chemical signature or troubleshooting a specific sensor's behavior in the field. By providing both a simplified and a granular view, the website accommodates different levels of operational needs, from high-level strategic oversight to detailed environmental diagnostics.
-To further enhance usability, the interface supports a "Drill-Down" capability that allows users to isolate a specific drone from the rest of the fleet. By clicking on an individual unit, such as "Scout 1," the table filters out all other distractions and expands a dedicated profile for that specific node. This isolated view provides a focused look at that drone’s specific sensor trends, precise GPS telemetry, and hardware health over time. This functionality is particularly important during a "Surround" maneuver, as it allows the commander to monitor the specific unit that is closest to the fire's head without losing sight of the broader mission data.
-
-\subsection{History}
-The history section of the website provides a comprehensive longitudinal record of the mission, presenting the recorded atmospheric data in a series of organized tables and trend graphs. This archival view specifically tracks the fluctuations of Carbon Monoxide, Carbon Dioxide, Volatile Organic Compounds, and Particulate Matter over the duration of the drone's flight, allowing responders to identify exactly when and where a chemical spike occurred. By maintaining this accessible log of historical data, the front end enables users to cross-reference current readings with past environmental baselines, turning a momentary sensor spike into a documented trend that can be used to map the fire's progression or verify its eventual suppression.
-
-\subsection{Live Feed}
-The website's live feed interface provides a side-by-side visual command center that streams high-definition optical video alongside Long-Wave Infrared (LWIR) imagery in real-time. This dual-pane layout is engineered for simultaneous verification, allowing incident commanders to overlay visual cues, such as smoke color and terrain features, with the corresponding thermal heat map. To enhance the utility of these feeds, the interface includes interactive overlays where the server-side AI highlights detected hotspots and smoke boundaries directly onto the video. This synchronized display ensures that visual obstructions—like thick smoke or a dense forest canopy—do not prevent the operator from maintaining a clear understanding of the fire’s precise location and intensity.
-
-\subsection{Map}
-The interactive GIS map acts as the primary spatial command center, providing a bird's-eye view of the entire operational theater. Each drone in the fleet is represented by a dynamic icon that moves across the map in real-time, allowing incident commanders to track the exact distribution and search patterns of the Scouts and Relays. To maintain clarity, each icon is labeled with the drone's unique ID and color-coded to match the "health" status seen in the data tables, ensuring that the commander can see not just where a drone is, but how it is performing relative to its position in the mission area.
-When the server-side logic confirms a combustion event, the map automatically generates a high-visibility fire icon at the precise GPS coordinates determined by the triangulation algorithm. This icon serves as the tactical focal point for the entire mission, allowing ground crews to visualize the fire's location in relation to landmarks, access roads, and existing drones. By displaying the distance between the fire icon and the nearest Scout units, the map facilitates the "Surround" maneuver, providing a clear visual representation of the containment perimeter as it forms around the detected hazard.
-
-\subsection{Final confidence rating}
-The final element of the web interface is a dedicated "Global Confidence" dashboard, which serves as the primary diagnostic tool for the entire mission. Rather than focusing on individual drones, this page aggregates the processing results from every active node in the field to present a unified "Final Confidence Rating" at the top of the display. Below this master score, the dashboard breaks down the intelligence into two primary supporting pillars: the Vision-Based Confidence (derived from the collective data of the RGB and LWIR AI agents) and the Atmospheric Confidence (calculated from the fused chemical ratios of $CO_2$, CO, VOCs, and PM sensors). This top-down view provides the incident commander with a high-level summary of the system’s certainty, allowing them to see instantly if the chemical evidence is corroborating the visual detections across the entire operation area. 
-
-\subsection{Security}
-To ensure the integrity of the mission and the safety of the data, the FireFly website implements a robust, role-based security architecture centered around individual station authentication. Each firefighting district or command post is assigned a unique organizational account, requiring a secure login to access the dashboard. By default, the system enforces strict data compartmentalization: a station only has visibility and control over the specific drones and sensor nodes registered to their local fleet. This prevents cross-talk or accidental command interference between neighboring districts, ensuring that an incident commander in one county cannot inadvertently alter the flight path or settings of a drone operating in a different jurisdiction.
-While the system is built on a foundation of privacy, it includes a "Collaborative Handshake" protocol that allows for the secure sharing of intelligence during large-scale, multi-agency responses. If a wildfire crosses jurisdictional lines, an authorized station lead can manually grant a "Share Permission" to another verified account, providing them with real-time access to their live feeds, sensor tables, and triangulation data. This sharing mechanism is designed to be granular and temporary; the host station can choose exactly which data layers to reveal and can revoke access instantly once the joint operation is concluded. This balance of rigid security and flexible cooperation ensures that while the drones are protected from unauthorized access, the flow of life-saving information remains unhindered during a crisis.
-
-\subsection{Production}
-To scale the FireFly project from a prototype to a widespread environmental solution, the project plan includes the establishment of a dedicated manufacturing facility designed for high-precision systematic assembly. This factory will utilize an optimized production line specifically tailored for the integration of sensitive electronic components, such as the Long-Wave Infrared (LWIR) sensors and custom gas sensor arrays. By implementing standardized manufacturing protocols and automated quality control testing at each stage of the assembly—from the soldering of the communication modules to the calibration of the flight controllers—the facility ensures that every drone that leaves the line meets the rigorous engineering standards required for emergency response hardware.
-The production infrastructure is built on a modular "Scalable Factory" model, allowing the manufacturing capacity to expand dynamically in response to market demand. As more fire departments and forestry agencies adopt the technology, the facility can introduce additional assembly cells and shift from low-volume batch production to high-output continuous manufacturing without requiring a complete redesign of the workspace. This scalability is supported by a robust supply chain strategy that maintains strategic reserves of critical components, ensuring that during active wildfire seasons or periods of rapid agency expansion, the production rate can be accelerated to put more eyes in the sky exactly when they are needed most.
-
-\subsection{Distro}
-The distribution of the FireFly system will be managed through a centralized, professional e-commerce platform that serves as the primary gateway for government agencies and private fire services to acquire the technology. This dedicated online portal is designed to streamline the procurement process, allowing fire departments to customize their fleet configurations—selecting the number of Scout and Relay units—and manage their software subscriptions in one place. By bypassing traditional third-party retail channels, the direct-to-agency online model ensures that the hardware remains cost-effective while maintaining a direct line of communication between our engineering team and the end users for technical support and software updates.
-To reach our target market effectively, the sales strategy focuses on building relationships with regional fire bureaus and environmental protection agencies through a "Regional Deployment" model. The website will feature a consultation portal where incident commanders can request a needs-based assessment, ensuring they receive the correct mix of sensors and communication hardware for their specific terrain, whether it be dense forest or open brushland. This digital storefront also serves as the hub for global distribution, coordinating the logistics of shipping sensitive hardware from the factory to the station house, while providing all necessary documentation, training manuals, and certification records required for immediate deployment.
-Once a sale is finalized, the distribution website transitions into a long-term fleet management tool for the customer. Through their secure account, agencies can track the delivery of new hardware, order replacement sensor modules, and download the latest AI firmware updates. By housing the entire sales and distribution lifecycle within a single online ecosystem, we can ensure that every FireFly drone in the field is properly registered and supported. This model not only simplifies the initial purchase but also creates a scalable, global distribution network that can rapidly supply fire-prone regions around the world with the tools they need to combat emerging wildfire threats.
-
-\section{Prototype}
-\subsection{Aesthetic Prototype}
-
-The FireFly aesthetic prototype follows a field-ready design language: a compact enclosed central body with rounded corners, symmetric X-arm geometry, and cylindrical motor pods at each corner. The overall form emphasizes structural clarity and quick visual inspection rather than cosmetic styling. Rounded exterior edges reduce snag points during transport, while the open-top bay and side windows communicate where electronics, wiring, and battery hardware are intended to be serviced.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.46\textwidth]{images/drone_design_5_top.png}
-    \hfill
-    \includegraphics[width=0.46\textwidth]{images/drone_design_5_corner.png}
-    \caption{FireFly CAD aesthetic prototype, iteration v5 (top and isometric views).}
-    \label{fig:drone_v5_aesthetic}
-\end{figure}
-
-The prototype evolved through multiple print-test iterations. Early versions validated basic packaging and motor placement, while later versions introduced a cleaner body-to-arm transition, larger internal volume, and improved vent/window geometry for lighter weight and faster access to internals. This iterative process preserved a consistent visual identity while converging on a more manufacturable and maintainable frame.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.85\textwidth]{images/drone_design_5_compare_1.jpeg}
-    \caption{Physical prototype progression (v1--v3) that informed the final v5 frame direction.}
-    \label{fig:drone_proto_progression}
-\end{figure}
-
-\subsection{Design for Manufacture, Assembly, Maintenance}
-
-\textbf{Design for Manufacture (DFM):}
-The current frame is designed as a single-piece 3D print to minimize part count and remove alignment errors. The v5 CAD envelope is approximately $100 \times 72 \times 24$ mm with $2.5$ mm floor and wall thicknesses, balancing print speed, stiffness, and mass. Arms are sized at $10.0$ mm width and $5.4$ mm thickness to maintain rigidity under motor thrust and landing loads. Motor pods are dimensioned for SunnySky R1106-class motors with built-in tolerance ($19$ mm outer diameter, $15.0$ mm inner diameter, $17$ mm height, $2.2$ mm mounting holes on a $9$ mm bolt-circle).
-
-\vspace{0.5em}
-
-\textbf{Design for Assembly (DFA):}
-Assembly features are integrated directly into the print geometry. The frame includes four battery strap slots in the floor and continuous wire-routing paths from motor pods into the electronics bay. This allows a straightforward assembly order: install motors in pods, route motor leads through arm channels, mount the controller board, then secure the battery and sensor harness. Because most interfaces are geometric rather than adhesive, rework is possible without damaging the frame.
-
-\vspace{0.5em}
-
-\textbf{Design for Maintenance (DFMn):}
-Maintenance access is provided by the open top cavity, side-wall windows, and pod-to-arm wire notches. These features allow quick inspection of solder joints, connector seating, and wire wear without full teardown. Electronics can be removed independently from propulsion hardware, and battery straps can be replaced in the field with standard hook-and-loop straps. In case of structural damage, the one-piece architecture supports rapid replacement by reprinting the frame using the same CAD file, preserving dimensional repeatability across repairs.
-
-\subsection{Block Diagrams}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1.0\textwidth]{images/Final_Schematic.png}
-    \caption{A high-level schematic of the FireFly system.}
-    \label{fig:schematic_design}
-\end{figure}
-
-\subsection{Wiring Diagrams}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\textwidth]{images/Circuit Diagram.png}
-    \caption{Circuit Diagram}
-    \label{fig:circuit_diagram}
-\end{figure}
-
-\subsection{State Transition Diagrams}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.75\textwidth]{images/State Transition Diagram.png}
-    \caption{State Transition Diagram}
-    \label{fig:state_transition}
-\end{figure}
-
-\subsection{Interface Definitions}
-
-\textit{Template: define the electrical and software interfaces between subsystems so assembly and debugging are reproducible.}
-
-\begin{table}[H]
-    \centering
-    \scriptsize
-    \begin{tabular}{|p{0.16\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.14\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|p{0.12\textwidth}|}
-        \hline
-        \textbf{Interface} & \textbf{Source} & \textbf{Destination} & \textbf{Physical Layer} & \textbf{Voltage Level} & \textbf{Update Rate} & \textbf{Notes} \\
-        \hline
-        Sensor bus & [ ] & [ ] & [I2C / SPI / ADC] & [ ] & [ ] & [ ] \\
-        \hline
-        Telemetry link & [ ] & [ ] & [ESP-NOW / Wi-Fi / BLE] & [ ] & [ ] & [ ] \\
-        \hline
-        Host link & [ ] & [ ] & [UART / USB serial] & [ ] & [ ] & [ ] \\
-        \hline
-        Power rail & [ ] & [ ] & [battery / regulator / BEC] & [ ] & [ ] & [ ] \\
-        \hline
-        Motor control & [ ] & [ ] & [PWM / DShot / other] & [ ] & [ ] & [ ] \\
-        \hline
-    \end{tabular}
-    \caption{Interface-definition template.}
-    \label{tab:interface_template}
-\end{table}
-
-\begin{comment}
-\subsection{Technology (Languages, Hardware, etc.)}
-
-The FireFly system utilizes a custom-integrated hardware architecture designed for high-reliability telemetry in extreme environments. Rather than utilizing external third-party modules, the drone features a custom-designed Flight Control and Sensing PCB. This board integrates a high-performance 32-bit microcontroller with a dedicated RF front-end optimized for the 2.4GHz spectrum. The onboard sensor suite is deeply integrated into the hardware logic, utilizing an I2C-based sensor bus to interface custom environmental monitoring circuits—specifically high-precision thermistor arrays and particulate matter sensors—directly with the primary processing unit.
-
-\vspace{0.5em}
-
-The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
-\end{comment}
-
-\subsection{Simulations}
-
-Before building and flying, we used simulation tools to verify that the FireFly configuration can sustain flight, carry its sensor payload, and meet the core mission requirement of delivering real-time environmental data during the pre-fire window. An online multicopter calculator (eCalc xcopterCalc) was used to evaluate combinations of frame size, motors, propellers, and battery against thrust-to-weight ratio, hover throttle, current draw, and expected flight time under sensor payload assumptions. This confirmed that the selected hardware provides sufficient thrust margin to carry the temperature/humidity sensor and smoke detector while maintaining acceptable hover efficiency and a flight time long enough to collect and transmit meaningful readings to the ground station.
-
-\vspace{0.5em}
-
-A simplified quadcopter dynamics model was used to tune attitude and altitude control parameters, verifying that the platform can hold a stable position over a monitoring area, a prerequisite for consistent sensor sampling. Research on quadcopter modeling confirms that such simulations can predict controller behavior and reduce the number of risky test flights needed to achieve stable flight. Together, these simulations provide evidence that FireFly can meet its need statement requirements: reaching areas with zero sensor infrastructure and sustaining flight long enough to collect and transmit temperature, humidity, and smoke data before committing to full implementation and field testing.
 
 \end{document}
