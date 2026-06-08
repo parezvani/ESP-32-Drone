@@ -9,6 +9,7 @@
 \usepackage{wrapfig}
 \usepackage{comment}
 \usepackage{bm}
+\usepackage{listings}
 
 \titleformat{\section}
     {\normalfont\bfseries}
@@ -840,6 +841,16 @@ python fire_detect.py
 \end{lstlisting}
 
 By default, this script opens \texttt{test\_videos/palisades\_fire.mp4} and POSTs the detected fire to the ground station. Alternatively, it can be redirected to a live ESP32-CAM stream by setting the appropriate environment variable: \texttt{FIREFLY\_VIDEO=http://<ip>:81/stream}.
+
+
+\subsection{Limitations}
+This prototype was able to implement many, but not all, features outlined in this design document. These features were implemented to the highest degree possible within the limitations of the project.
+\begin{itemize}
+    \item \textbf{Server Hosting} - Render, The service used to host the FireFly server, has a limited rate for data transfer on the free tier. Due to financial restraints, the prototype is unable to take advantage of higher tiers of data transfer. This limitation makes it impossible to reliably send video data to the hosted server for frontend display. In a full implementation with proper funding, this limitation would be easily resolved.
+    \item \textbf{Fire Detection} - YOLOv8, the fire detection model used, is a free, public fire detection machine-learning model. This model is fairly reliable, but has infrequent false positives when analyzing red objects in camera feeds. A paid or self-trained model would require access to resources outside of the scope of this prototype. This imperfect detection would be resolved with more expensive / self-trained models. 
+    \item \textbf{Software vs Drone Hardware} - The implementation of the physical drone was not achieved during the prototype time frame. This was due to many factors, including price limitations, delays in parts requests, and faulty hardware. In a full implementation with a larger scope, the proper drone structure can be effectively constructed and utilized.
+    \item \textbf{Single Drone Implementation} - The triangulation architecture used in the prototype is similar to, but not exactly the same as, the design architecture. In the prototype implementation, there was only one drone structure functioning at the time of demonstration. Since the API implentation linked each drone to a unique API key, it was not possible to have multiple simulated drones with only one set of hardware. Due to this, the prototype uses a single-drone implementation that takes two sets of data from the same drone hardware. This limitation is only due to a lack of extra hardware, and would not exist in a full implementation.
+\end{itemize}
 
 \newpage
 
