@@ -376,6 +376,69 @@ To ensure continuous, real-time tracking, the airborne fleet actively captures b
 
 Once the data reaches the internet, it is routed straight into scalable cloud datacenters where virtual servers execute the system’s heavy computational workload. Powerful artificial intelligence models process the incoming video and thermal frames simultaneously, scanning for precise heat anomalies and smoke signatures. When the AI determines that a fire is present with a high statistical probability, the calculation is immediately pushed back down to the command website. The web dashboard alerts the on-duty first responders with a high-priority alarm, mapping the exact coordinates of the ignition point and providing a targeted live stream, allowing emergency personnel to deploy resources before a minor flare-up turns into a catastrophic wildfire.
 
+% ============================================================
+% DESIGN OBJECTIVES
+% ============================================================
+
+\subsection{Design Objectives}
+
+The FireFly system is evaluated against five quantitative design objectives derived directly from the need and goal statements. Each objective is verifiable through the automated test suite in \texttt{main/testing/} and maps to a specific subsystem. Together they define the minimum performance bar the prototype must clear before field deployment.
+
+\vspace{0.75em}
+
+\textbf{DO-1 — Triangulation Geometric Accuracy ($\leq$5\,m error at close range).}
+The primary fire localization output of the system is a GPS coordinate computed by intersecting two bearing rays, one from each drone, using a flat-earth projection anchored at the Santa Cruz Mountains reference origin (36.9956°\,N, 122.0589°\,W). The algorithm must place the computed intersection within 5\,m of the true ignition point when drones are operating at typical close-range patrol separations (100–500\,m). At extended ranges approaching 5\,km the tolerated error grows to 50\,m, reflecting the degraded angular resolution inherent in a long-baseline flat-earth approximation. Parallel bearing rays (drones pointed in the same direction) and diverging rays (drones aimed away from the fire) must both be rejected cleanly without producing a spurious coordinate. These requirements are verified by \texttt{test\_triangulator\_extended.py}, which tests eight geometric configurations including a known-position accuracy case, 90-degree crossing, heading wraparound, and long-range geometry.
+
+\vspace{0.75em}
+
+\textbf{DO-2 — Single-Drone Running-Fix Convergence.}
+When only one drone is airborne, the system falls back to a running-fix algorithm (\texttt{reposition.py}) that accumulates bearing observations from successive positions along the drone's flight path and intersects them once a sufficient geometric baseline has formed. The algorithm must store the first observation without emitting a result, withhold a fix when the drone has moved less than 10\,m or when the bearing-to-fire has changed less than 15°, and produce a fix with a measured positional error of 0\,m against a simulated target once both thresholds are exceeded. The confidence score returned with every fix must lie in the closed interval $[0, 1]$ for all combinations of baseline and crossing angle. Pending observations must be cleared after a successful fix so that the next sighting starts a fresh accumulation, and the module must recover gracefully from missing GPS fields without raising an exception. These behaviors are verified by \texttt{test\_single\_drone\_triangulator.py} across ten test cases.
+
+\vspace{0.75em}
+
+\textbf{DO-3 — Fire Record Merge and Centroid Stability.}
+To prevent the operator map from flooding with duplicate pins when consecutive frames confirm the same fire, the server must merge repeated detections of the same fire into a single record. Any new detection whose coordinates fall within 30\,m of an existing fire (reported within the preceding 5 minutes) must update that record rather than create a new one. Each merge must shift the stored centroid toward the new observation using a running weighted average, record the highest confidence seen across all observations, and grow the estimated perimeter by 2\,m per confirmation up to a hard ceiling of 50\,m. Detections arriving from outside the 30\,m radius must create a new independent record. When multiple fires are stored, a merge must always update the spatially nearest qualifying record and leave all others untouched. These invariants are verified by \texttt{test\_fire\_merge\_logic.py} across ten scenarios including boundary-distance and zero-confidence edge cases.
+
+\vspace{0.75em}
+
+\textbf{DO-4 — Coordinate Math Self-Consistency.}
+All position calculations in the system depend on three shared primitives: a flat-earth projection from WGS-84 latitude/longitude to local Cartesian meters, the inverse unprojection back to geographic coordinates, and a true-bearing computation from one coordinate to another. The projection must be self-inverse to within $10^{-8}$ degrees across the full operational area. The \texttt{distance\_m} function must compute 1° of latitude as $111{,}320 \pm 5$\,m, return exactly 100\,m for a 100\,m northward displacement, and be symmetric. The bearing function must return 0° for due north, 90° for due east, 180° for due south, and 270° for due west, each to within 0.5°. The firmware's heading derivation (\texttt{compute\_heading}) must report 0° for northward movement, 90° for eastward movement, and return no heading for sub-meter displacements that fall below the GPS jitter threshold. NMEA sentence parsing (\texttt{nmea\_to\_deg}) must correctly decode both northern and southern hemisphere coordinates. These 18 invariants are verified by \texttt{test\_geo\_utils.py}.
+
+\vspace{0.75em}
+
+\textbf{DO-5 — Telemetry Packet Integrity and Input Validation.}
+Every telemetry packet entering the server via \texttt{POST /api/drone} or \texttt{POST /api/fire} must be validated before any state is updated. The validation layer must accept any finite latitude in $[-90, 90]$ and longitude in $[-180, 180]$, including boundary values such as the poles and the dateline, and must reject IEEE~754 NaN, positive and negative infinity, out-of-range values, and \texttt{None}. String-encoded numerics (e.g., \texttt{"36.9956"}) must be coerced to float without error to accommodate firmware implementations that serialize differently. A JSON round-trip of a full telemetry packet must preserve latitude and longitude to at least seven decimal places ($\approx$1\,cm resolution at the equator). The \texttt{fire\_detected} field must coerce truthily from both boolean and integer representations. Data destined for the priority queue must be classified correctly: fire alerts, battery failsafe triggers, and manual override commands are \textit{critical}; video frames and MJPEG streams are \textit{high-priority}; GPS updates and hardware health metrics are \textit{normal}. These 29 cases are verified by \texttt{test\_telemetry\_packet.py}.
+
+\vspace{0.75em}
+
+Table~\ref{tab:design_objectives} summarizes the mapping from each design objective to its implementing subsystem, verification script, and the relevant section of the prototype evaluation.
+
+\begin{table}[H]
+    \centering
+    \small
+    \begin{tabular}{|p{0.04\textwidth}|p{0.22\textwidth}|p{0.18\textwidth}|p{0.22\textwidth}|p{0.18\textwidth}|}
+        \hline
+        \textbf{DO} & \textbf{Objective} & \textbf{Subsystem} & \textbf{Test Script} & \textbf{Pass Criterion} \\
+        \hline
+        1 & Triangulation accuracy & Triangulator & \texttt{test\_triangulator\_
+extended.py}& $\leq$5\,m at close range; $\leq$50\,m at 5\,km \\
+        \hline
+        2 & Running-fix convergence & Single-drone tri. & \texttt{test\_single\_drone\_
+triangulator.py}& Fix within 20\,m; confidence in $[0,1]$ \\
+        \hline
+        3 & Fire merge stability & Server / \texttt{/api/fire} & \texttt{test\_fire\_merge\_
+logic.py}& Correct centroid, cap, and confidence \\
+        \hline
+        4 & Coordinate math & All subsystems & \texttt{test\_geo\_utils.py} & Round-trip $<10^{-8}°$; bearings $\pm$0.5° \\
+        \hline
+        5 & Packet validation & Server ingestion & \texttt{test\_telemetry\_
+packet.py}& NaN/Inf/OOB rejected; valid coords accepted \\
+        \hline
+    \end{tabular}
+    \caption{Design objectives and verification mapping.}
+    \label{tab:design_objectives}
+\end{table}
+
 \subsection{Hardware}
 
 \subsubsection{Intro}
