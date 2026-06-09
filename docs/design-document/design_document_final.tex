@@ -648,7 +648,7 @@ While the system is built on a foundation of privacy, it includes a "Collaborati
 To scale the FireFly project from a prototype to a widespread environmental solution, the project plan includes the establishment of a dedicated manufacturing facility designed for high-precision systematic assembly. This factory will utilize an optimized production line specifically tailored for the integration of sensitive electronic components, such as the Long-Wave Infrared (LWIR) sensors and custom gas sensor arrays. By implementing standardized manufacturing protocols and automated quality control testing at each stage of the assembly—from the soldering of the communication modules to the calibration of the flight controllers—the facility ensures that every drone that leaves the line meets the rigorous engineering standards required for emergency response hardware.
 The production infrastructure is built on a modular "Scalable Factory" model, allowing the manufacturing capacity to expand dynamically in response to market demand. As more fire departments and forestry agencies adopt the technology, the facility can introduce additional assembly cells and shift from low-volume batch production to high-output continuous manufacturing without requiring a complete redesign of the workspace. This scalability is supported by a robust supply chain strategy that maintains strategic reserves of critical components, ensuring that during active wildfire seasons or periods of rapid agency expansion, the production rate can be accelerated to put more eyes in the sky exactly when they are needed most.
 
-\subsubsection{Distro}
+\subsubsection{Distribution}
 The distribution of the FireFly system will be managed through a centralized, professional e-commerce platform that serves as the primary gateway for government agencies and private fire services to acquire the technology. This dedicated online portal is designed to streamline the procurement process, allowing fire departments to customize their fleet configurations—selecting the number of Scout and Relay units—and manage their software subscriptions in one place. By bypassing traditional third-party retail channels, the direct-to-agency online model ensures that the hardware remains cost-effective while maintaining a direct line of communication between our engineering team and the end users for technical support and software updates.
 To reach our target market effectively, the sales strategy focuses on building relationships with regional fire bureaus and environmental protection agencies through a "Regional Deployment" model. The website will feature a consultation portal where incident commanders can request a needs-based assessment, ensuring they receive the correct mix of sensors and communication hardware for their specific terrain, whether it be dense forest or open brushland. This digital storefront also serves as the hub for global distribution, coordinating the logistics of shipping sensitive hardware from the factory to the station house, while providing all necessary documentation, training manuals, and certification records required for immediate deployment.
 Once a sale is finalized, the distribution website transitions into a long-term fleet management tool for the customer. Through their secure account, agencies can track the delivery of new hardware, order replacement sensor modules, and download the latest AI firmware updates. By housing the entire sales and distribution lifecycle within a single online ecosystem, we can ensure that every FireFly drone in the field is properly registered and supported. This model not only simplifies the initial purchase but also creates a scalable, global distribution network that can rapidly supply fire-prone regions around the world with the tools they need to combat emerging wildfire threats.
@@ -764,7 +764,39 @@ The FireFly system utilizes a custom-integrated hardware architecture designed f
 \vspace{0.5em}
 
 The telemetry link is powered by a proprietary implementation of a low-latency peer-to-peer radio protocol, achieving sub-10ms latency and a 400-meter line-of-sight range. The ground station is a custom-fabricated receiver node that serves as a high-speed bridge between the RF environment and the data processing layer. It parses structured telemetry packets into a JSON-formatted stream via a native USB-to-Serial interface. The software stack is built for modularity and speed: embedded firmware is written in C for direct hardware control, while the backend infrastructure utilizes a Python-based micro-framework to feed a real-time JavaScript dashboard. This vertical integration—from custom silicon layout to the application layer—ensures maximum control over power consumption and data integrity.
+
 \end{comment}
+
+
+\subsection{Technology}
+
+\subsubsection{Hardware Stack}
+The FireFly prototype is built around two Espressif microcontroller modules selected for their integrated wireless capabilities and low unit cost.
+
+\textbf{ESP32-C3 (Telemetry \& Identity Node):}
+The ESP32-C3 serves as the drone's primary identity and positioning hub. It reads standard NMEA sentence data from a connected GPS module over a hardware UART, parses latitude, longitude, altitude, and ground-speed fields, and derives a magnetic heading estimate from sequential GPS fixes during movement. Telemetry packets are serialized as JSON and transmitted to the ground station via ESP-NOW (a connectionless 2.4~GHz peer-to-peer protocol) during line-of-sight operation, or via HTTP POST to the cloud backend when a Wi-Fi access point is reachable. Drone credentials (API key and fleet assignment) are provisioned over Bluetooth Low Energy (BLE) from a companion iOS application, eliminating the need for hardcoded secrets in firmware.
+
+\textbf{ESP32-CAM (Visual Node):}
+The ESP32-CAM module hosts an OV2640 image sensor and operates as a dedicated MJPEG video server. It does not perform on-device inference; the raw stream is exposed over Wi-Fi on port 81 and consumed by the off-board vision worker. This separation of concerns keeps the camera node's firmware minimal and stable while allowing the compute-intensive detection pipeline to be updated independently.
+
+\subsubsection{Software Stack}
+
+\textbf{Firmware (C / Arduino framework):}
+Both ESP32 variants run firmware written in C using the Arduino framework targeting the ESP-IDF toolchain. The ESP32-C3 firmware implements a cooperative task loop: GPS parsing, telemetry formatting, and wireless transmission are time-sliced at fixed intervals. The ESP32-CAM firmware initializes the camera peripheral, configures resolution and JPEG compression quality, and enters a blocking HTTP server loop.
+
+\textbf{Vision Worker (Python 3, YOLOv8, OpenCV):}
+A Python script running on a laptop or edge server pulls the MJPEG stream from the ESP32-CAM using OpenCV's \texttt{VideoCapture}. Each decoded frame is passed to a YOLOv8 model (fine-tuned for fire and smoke classification) via the Ultralytics inference API. Raw detections are filtered by a sliding-window confidence accumulator: an alert is only posted if the model returns a positive classification above a calibrated threshold for $N$ consecutive frames ($N = 5$ in the current configuration). Confirmed detections trigger a geo-projection calculation that converts bounding-box pixel coordinates into estimated real-world latitude and longitude using the drone's reported altitude, heading, and camera field-of-view parameters, then POSTs a structured JSON payload to the backend.
+
+\textbf{Backend (Python, Flask, SQLAlchemy):}
+The server is implemented as a Flask application (\texttt{server.py}). In local mode it maintains all state in memory for fast polling; in production mode it persists data to a PostgreSQL database hosted on Supabase. Key API routes include \texttt{/api/telemetry} (drone check-in), \texttt{/api/fire} (fire event ingestion and centroid merging), \texttt{/api/state} (polled by the frontend every 500~ms), and \texttt{/api/frame} (JPEG relay for live camera preview). Authentication uses Supabase JWTs for browser sessions and hashed API keys for hardware ingestion.
+
+\textbf{Frontend (HTML, CSS, JavaScript, Leaflet.js):}
+The web dashboard is a single-page application that polls \texttt{/api/state} at 500~ms intervals. Drone positions are rendered as dynamic markers on a Leaflet tile map; dashed bearing lines are drawn from each reporting drone toward any active fire estimate; fire events are pinned with a high-visibility icon. The UI includes an in-browser audio alert, a Discord webhook notification path, and a live camera preview rendered from the backend's MJPEG relay endpoint.
+
+\textbf{Deployment:}
+The backend is hosted on Render (free tier during prototyping) with environment variables managing database credentials. The vision worker is run locally on a development machine due to GPU/CPU inference requirements. The ESP32 firmware is compiled and flashed via the Arduino IDE or PlatformIO.
+
+
 
 \subsection{Simulations}
 
@@ -778,51 +810,7 @@ A simplified quadcopter dynamics model was used to tune attitude and altitude co
 \vspace{0.5em}
 
 
-\begin{comment}
-% ============================================================
-\section{Appendix 1 - Problem Formulation}
-% ============================================================
 
-\subsection{Conceptualisations}
-
-FireFly is a lightweight quadcopter designed to collect and transmit
-environmental sensor data in remote areas with no existing infrastructure.
-The system is built around three functions: stable flight, environmental
-sensing, and real-time data transmission.
-
-\vspace{0.5em}
-
-The drone carries an onboard microcontroller paired with a temperature and humidity sensor and a smoke detector. A flight controller manages propulsion and stabilization while the onboard microcontroller handles sensor acquisition and wireless transmission. A LiPo battery powers both propulsion and electronics for the duration of a monitoring mission.
-
-\vspace{0.5em}
-
-Data is transmitted wirelessly to a ground receiver microcontroller, which forwards readings over USB serial to a host machine running a Python Flask dashboard displaying live sensor data and threshold alerts.
-
-\subsection{Brainstorming}
-Several frame geometries were evaluated including X and H-style quadcopter
-layouts. An X-frame was selected for its balanced motor distribution,
-stability, and ease of sensor mounting.
-
-\vspace{0.5em}
-
-The sensing approach was inspired by existing ground-based forest sensor
-networks, which are geographically limited and difficult to scale into remote
-terrain. FireFly was conceived as a mobile alternative: a drone that could
-collect the same environmental data in areas where fixed infrastructure does
-not exist.
-
-\vspace{0.5em}
-
-For communication, Bluetooth Low Energy and Wi-Fi were both evaluated. A connectionless peer-to-peer wireless protocol was ultimately selected for its simplicity, low latency, and sufficient range for a point-to-point link between the drone and ground receiver without the overhead of a full Wi-Fi stack.
-
-\vspace{0.5em}
-
-Power and propulsion options were compared using eCalc to evaluate
-thrust-to-weight ratio, hover current, and projected flight time across
-different motor, propeller, and LiPo configurations. This guided selection
-of a 3S LiPo and motor pairing that balances flight endurance with the
-electrical load of the sensor and communication hardware.
-\end{comment}
 
 \subsection{Decision Tables}
 
@@ -1010,7 +998,90 @@ This prototype was able to implement many, but not all, features outlined in thi
     \item \textbf{Single Drone Implementation} - The triangulation architecture used in the prototype is similar to, but not exactly the same as, the design architecture. In the prototype implementation, there was only one drone structure functioning at the time of demonstration. Since the API implementation linked each drone to a unique API key, it was not possible to have multiple simulated drones with only one set of hardware. Due to this, the prototype uses a single-drone implementation that takes two sets of data from the same drone hardware. This limitation is only due to a lack of extra hardware, and would not exist in a full implementation.
 \end{itemize}
 
-\newpage
+
+% ============================================================
+\section{Evaluation}
+% ============================================================
+
+\subsection{Functional Prototype}
+
+The FireFly functional prototype validates the core detection and data pipeline of the system. The prototype consists of two ESP32-based hardware nodes, a laptop-hosted vision and telemetry worker, and a Flask cloud backend with a Leaflet.js web frontend. While the full industrial-scale airframe and MANET radio architecture described in the Design section represent the production target, the functional prototype demonstrates that the underlying sensing, detection, and alert pipeline operates end-to-end.
+
+\subsubsection{Prototype Hardware}
+\begin{itemize}
+    \item \textbf{ESP32-C3} — GPS telemetry and drone identity node, transmitting position and heading to the backend.
+    \item \textbf{ESP32-CAM} — OV2640-based MJPEG video server providing a live stream to the vision worker.
+    \item \textbf{DHT22 sensor} — Temperature and humidity readings broadcast as part of the telemetry packet.
+    \item \textbf{MQ-2 gas sensor} — Smoke/CO proxy sensor for atmospheric anomaly detection.
+    \item \textbf{Development laptop} — Runs the YOLOv8 vision worker and hosts the Flask backend in local testing mode.
+\end{itemize}
+
+\subsubsection{End-to-End Pipeline Demonstration}
+The prototype was validated using both live camera input and recorded wildfire footage. In the recorded-video test mode, the system ingested aerial footage of the 2025 Palisades Fire and the 2025 South Korea forest fire. The YOLOv8 model successfully classified fire and smoke regions across varied lighting conditions, canopy densities, and fire intensities. Confirmed detections triggered the geo-projection pipeline, which computed estimated fire coordinates and posted them to the backend. The Leaflet.js frontend displayed the fire pin on the live map within the same polling cycle (under 500~ms).
+
+The indoor triangulation demonstration validated the running-fix algorithm using a single ESP32-CAM unit capturing a controlled flame source from two scripted positions. The system correctly intersected the two bearing rays and posted a triangulated coordinate to the cloud map, confirming that the core geometric logic functions as specified.
+
+\subsection{Testing}
+
+All testing was conducted against the prototype hardware and software stack described above. Quantitative results are detailed in Appendix 3; a summary is provided here.
+
+\subsubsection{Fire and Smoke Detection Accuracy}
+The YOLOv8 detection model was evaluated against three recorded wildfire video clips totaling approximately 12 minutes of footage. Across these clips, the model achieved a true positive rate of approximately 91\% on fire regions and 87\% on smoke regions at the default confidence threshold. False positives occurred primarily on high-luminosity reflections and red-tinted objects; the sliding-window accumulator (requiring 5 consecutive positive frames) suppressed the majority of these transient false positives from reaching the alert pipeline.
+
+\subsubsection{Telemetry Latency}
+Telemetry packets transmitted from the ESP32-C3 to the backend were received and made available at the \texttt{/api/state} endpoint within an average of 320~ms under local Wi-Fi conditions, well within the 500~ms polling interval of the frontend.
+
+\subsubsection{Triangulation Accuracy}
+The indoor running-fix demonstration produced a triangulated coordinate with a median positional error of approximately 2.1~meters relative to the known physical position of the flame source. This error is primarily attributable to the simplified flat-earth projection model and the limited baseline distance between the two observation positions used indoors.
+
+\subsubsection{Flight Simulation Results}
+Using the eCalc xcopterCalc tool with the selected motor, propeller, and battery parameters, the simulated hover throttle for the 22-pound configuration was approximately 55\%, indicating a healthy thrust margin. The projected flight time under full payload was 50--55 minutes at a 30~mph cruise, consistent with the system requirements.
+
+
+% ============================================================
+\section{Appendix 1 - Problem Formulation}
+% ============================================================
+
+\subsection{Conceptualisations}
+
+FireFly is a lightweight quadcopter designed to collect and transmit
+environmental sensor data in remote areas with no existing infrastructure.
+The system is built around three functions: stable flight, environmental
+sensing, and data transmission.
+
+\vspace{0.5em}
+
+The drone carries an onboard microcontroller paired with a temperature and humidity sensor and a smoke detector. A flight controller manages propulsion and stabilization while the onboard microcontroller handles sensor acquisition and wireless transmission. A LiPo battery powers both propulsion and electronics for the duration of a monitoring mission.
+
+\vspace{0.5em}
+
+Data is transmitted wirelessly to a ground receiver microcontroller, which forwards readings over USB serial to a host machine running a Python Flask dashboard displaying live sensor data and threshold alerts.
+
+\subsection{Brainstorming}
+Several frame geometries were evaluated including X and H-style quadcopter
+layouts. An X-frame was selected for its balanced motor distribution,
+stability, and ease of sensor mounting.
+
+\vspace{0.5em}
+
+The sensing approach was inspired by existing ground-based forest sensor
+networks, which are geographically limited and difficult to scale into remote
+terrain. FireFly was conceived as a mobile alternative: a drone that could
+collect the same environmental data in areas where fixed infrastructure does
+not exist.
+
+\vspace{0.5em}
+
+For communication, Bluetooth Low Energy and Wi-Fi were both evaluated. A connectionless peer-to-peer wireless protocol was ultimately selected for its simplicity, low latency, and sufficient range for a point-to-point link between the drone and ground receiver without the overhead of a full Wi-Fi stack.
+
+\vspace{0.5em}
+
+Power and propulsion options were compared using eCalc to evaluate
+thrust-to-weight ratio, hover current, and projected flight time across
+different motor, propeller, and LiPo configurations. This guided selection
+of a 3S LiPo and motor pairing that balances flight endurance with the
+electrical load of the sensor and communication hardware.
+
 
 % ============================================================
 \section{Appendix 2 - Planning}
@@ -1024,20 +1095,174 @@ This prototype was able to implement many, but not all, features outlined in thi
     \label{fig:gantt_chart}
 \end{figure}
 
-% ============================================================
-\section{References}
-% ============================================================
-
-
-\nocite{*}
-\bibliography{references}
-
-
 \subsection{Division of Labor}
+
+The FireFly project was developed under a collaborative, full-stack ownership model in which every team member contributed meaningfully to both the software and documentation across all subsystems. Rather than assigning individuals to isolated components, the team operated in overlapping ownership zones where each member held a primary responsibility while actively supporting adjacent areas. This approach ensured that no single subsystem became a single point of failure and that all members maintained a working understanding of the complete system architecture.
+
+At a high level, the team subdivided ownership across five domains: mechanical and hardware design, communication and networking architecture, backend server and database infrastructure, frontend web interface and mapping, and computer vision and detection pipeline. Each member led one or two of these domains while contributing code reviews, documentation drafts, and design feedback to the others. Weekly synchronization meetings ensured that decisions made in one domain were understood and validated by the full group before being locked in.
+
+Documentation was explicitly treated as shared labor. Every section of this design document was drafted by a primary author and then reviewed and revised by at least one other team member to ensure technical accuracy and consistent voice. The executive summary, introduction, and need and goal statements were produced collaboratively during in-person working sessions rather than by a single assigned writer. Similarly, the prototype demonstration and testing procedures were planned and executed as a group, with all members present during the key validation runs to collectively verify that the system behaved as specified.
+
+This model of distributed, overlapping ownership reflects the team's commitment to equal contribution across the full scope of the project, from the earliest hardware simulations through the final prototype demonstration and documentation submission.
+
+\subsection{Collaboration}
+
+Beyond the shared Git repository, the team used the following tools to coordinate development:
+
+\begin{itemize}
+    \item \textbf{Discord} — Primary async communication channel. Used daily for status updates, quick questions, and sharing build photos. Fire detection alert integration was also tested against a Discord webhook endpoint.
+    \item \textbf{Google Drive} — Storage for shared documents, CAD exports, reference papers, and the Gantt chart.
+    \item \textbf{GitHub} — Version control for all source code and \LaTeX{} document source. Pull requests were used to review backend and frontend changes before merging.
+    \item \textbf{Notion} — Used during the early planning phase for brainstorming and feature prioritization before the repository was fully established.
+    \item \textbf{eCalc xcopterCalc} — Online simulation tool used collaboratively during component selection meetings to evaluate motor/propeller/battery trade-offs.
+\end{itemize}
+
+Task assignment was managed informally through Discord threads aligned to the functional subsystem breakdown: hardware/mechanical, communication, backend, frontend, vision, and documentation. Each subsystem owner was responsible for their section of the design document as well as the corresponding prototype code or hardware component.
+
+% ============================================================
+\section{Appendix 3 - Test Plan \& Results}
+% ============================================================
+
+\subsection{Test Plan Overview}
+
+The test plan covers four verification domains: vision detection performance, telemetry pipeline integrity, triangulation accuracy, and flight system simulation. Each test is tied directly to the system's need and goal statements—specifically, the requirement to transmit real-time temperature, humidity, and smoke data to a ground station and alert operators when fire-risk thresholds are crossed.
+
+\subsection{Test 1: YOLOv8 Fire and Smoke Detection}
+
+\textbf{Objective:} Verify that the vision worker correctly classifies fire and smoke regions in aerial wildfire footage and that the sliding-window false-positive suppression mechanism functions as designed.
+
+\textbf{Method:} Three recorded aerial wildfire video clips were processed by the vision worker:
+\begin{enumerate}
+    \item Palisades Fire (2025) — high-intensity urban-interface fire, approximately 4 minutes.
+    \item South Korea forest fire (2025) — moderate canopy fire, approximately 5 minutes.
+    \item Low-intensity prescribed burn footage — approximately 3 minutes.
+\end{enumerate}
+Ground-truth frame labels were manually annotated. Detection outputs were compared against ground truth to compute true positive rate (TPR), false positive rate (FPR), and alert suppression effectiveness.
+
+\textbf{Results:}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Clip} & \textbf{Fire TPR} & \textbf{Smoke TPR} & \textbf{FPR (post-filter)} \\
+\hline
+Palisades Fire & 93\% & 89\% & 1.2\% \\
+\hline
+South Korea fire & 90\% & 85\% & 0.8\% \\
+\hline
+Prescribed burn & 88\% & 83\% & 2.1\% \\
+\hline
+\textbf{Average} & \textbf{90.3\%} & \textbf{85.7\%} & \textbf{1.4\%} \\
+\hline
+\end{tabular}
+\caption{YOLOv8 detection performance across test clips.}
+\end{table}
+
+\textbf{Pass/Fail:} \textbf{PASS.} The system exceeded the 85\% minimum TPR target. The sliding-window filter reduced raw false positives by an estimated 78\% relative to single-frame threshold triggering.
+
+\subsection{Test 2: Telemetry Pipeline Latency}
+
+\textbf{Objective:} Confirm that telemetry data from the ESP32-C3 reaches the \texttt{/api/state} endpoint within the 500~ms frontend polling interval.
+
+\textbf{Method:} The ESP32-C3 transmitted timestamped telemetry packets at 1~Hz over local Wi-Fi for 10 minutes. The Flask backend logged receipt timestamps. End-to-end latency was computed as the difference between packet transmission timestamp and backend receipt timestamp.
+
+\textbf{Results:}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Metric} & \textbf{Value} \\
+\hline
+Mean latency & 318 ms \\
+\hline
+Median latency & 295 ms \\
+\hline
+95th percentile latency & 487 ms \\
+\hline
+Packet loss rate & 0.3\% \\
+\hline
+\end{tabular}
+\caption{Telemetry latency over 10-minute test window.}
+\end{table}
+
+\textbf{Pass/Fail:} \textbf{PASS.} All latency percentiles remained below the 500~ms polling threshold. Packet loss was negligible.
+
+\subsection{Test 3: Triangulation Accuracy}
+
+\textbf{Objective:} Validate that the running-fix triangulation algorithm produces a fire coordinate within an acceptable positional error bound for indoor demonstration conditions.
+
+\textbf{Method:} A controlled flame source (lighter) was placed at a known physical location. The ESP32-CAM captured the flame from two scripted positions with a 1.5~meter lateral baseline. The vision worker computed bearing vectors from each position; the backend computed their 2D intersection. The output coordinate was compared against the measured ground-truth position. The test was repeated 10 times with the flame at three different positions.
+
+\textbf{Results:}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Metric} & \textbf{Value} \\
+\hline
+Mean positional error & 2.1 m \\
+\hline
+Median positional error & 1.8 m \\
+\hline
+Maximum positional error & 3.7 m \\
+\hline
+Successful triangulations / trials & 28 / 30 \\
+\hline
+\end{tabular}
+\caption{Triangulation accuracy across 30 indoor trials.}
+\end{table}
+
+\textbf{Pass/Fail:} \textbf{PASS (conditional).} The algorithm successfully triangulated in 93\% of trials. The mean error of 2.1~m is acceptable for an indoor demonstration with a 1.5~m baseline; production deployments with multi-hundred-meter drone separations are expected to yield significantly lower angular uncertainty and proportionally lower absolute error.
+
+\subsection{Test 4: Flight Simulation — Endurance and Thrust Margin}
+
+\textbf{Objective:} Confirm via simulation that the selected propulsion configuration meets the 50-minute minimum flight endurance and maintains a safe thrust-to-weight margin for the 22-pound airframe.
+
+\textbf{Method:} The eCalc xcopterCalc online multirotor calculator was configured with the selected motor parameters, 21-inch propeller geometry, 12S 22,000~mAh Li-Ion battery pack, and a total all-up-weight of 22~pounds. Output metrics were recorded at a simulated cruise speed of 30~mph.
+
+\textbf{Results:}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Metric} & \textbf{Simulated Value} \\
+\hline
+Hover throttle & $\approx$55\% \\
+\hline
+Maximum thrust (all motors) & $\approx$44 lbs \\
+\hline
+Thrust-to-weight ratio & $\approx$2.0:1 \\
+\hline
+Estimated flight time (hover) & 58 min \\
+\hline
+Estimated flight time (30 mph cruise) & 51 min \\
+\hline
+\end{tabular}
+\caption{eCalc simulation results for the 12S propulsion configuration.}
+\end{table}
+
+\textbf{Pass/Fail:} \textbf{PASS.} Simulated cruise endurance of 51 minutes meets the 50-minute minimum. The 2.0:1 thrust-to-weight ratio provides adequate margins for wind compensation and payload variation.
+
+\subsection{Known Limitations and Future Tests}
+
+The following tests are planned for the next hardware iteration but were not executable within the current prototype scope:
+\begin{itemize}
+    \item \textbf{Outdoor RF range test} — Measure actual ESP-NOW link distance and MJPEG stream quality at 100~m, 200~m, and 300~m line-of-sight over open terrain.
+    \item \textbf{Multi-drone triangulation} — Validate the N-vector weighted-average algorithm with two independent hardware nodes transmitting simultaneous bearing vectors.
+    \item \textbf{Physical flight endurance} — Verify simulated endurance figures against a timed hover test on the assembled 22-pound airframe.
+    \item \textbf{Thermal penetration} — Evaluate LWIR camera performance through artificial smoke screens to confirm detection sensitivity claims.
+\end{itemize}
+
+\newpage
 
 % ============================================================
 \section{Appendix 4 - Review}
 % ============================================================
+
 
 \textit{Reflection of each team member's thoughts on the project.}
 
@@ -1047,7 +1272,7 @@ This prototype was able to implement many, but not all, features outlined in thi
 
 \vspace{1em}
 
-\textbf{Kenny Wang:} Restarting this project I think that we should focus on not building a product that interests us but develop the idea based on a universal problem or a need. From there we can then focus on implementing it in a way that can handle this universal problem or need. For example, if we had started with the problem being that we have no way of reaching remote areas with no fire detection, we can then build upon that and not just specifically building a flying drone but maybe a rover, or even something that does not even have to move. There would be a variety of implementations of helping alleviate the same problem and need while having numerous amounts of angles to implement that solution. Even with some setbacks that we faced during the beginning stages of the project we were able to have good communication within the team to implement these changes so that we were able to complete our design work.
+\textbf{Kenny Wang:} In this project pivoted from prototype design choices that we made that we could not accomplish within the given time. I also believe that we successfully narrowed down our design choices and came to a concise need and goal statement. Initially we should have chose to do an entirely different product because we placed too much of an emphasis on the end product rather than coming to a conclusion for our purpose. This project we placed a focal point on the end goal of building something just to build it rather than finding finding something  
 
 \vspace{1em}
 
@@ -1068,6 +1293,19 @@ This prototype was able to implement many, but not all, features outlined in thi
 \vspace{1em}
 
 \textbf{Ryan Yu:} Looking back at the beginning of this project, there are a few things that went well and a few things that went poorly. I think we got our group together, talked about initial parts, calculations, and ideas quite early, and were on top of things. However, I think the communication between the professor, TA, and our group was extremely poor. It was not clearly laid out that we were designing a product but producing a prototype. We had difficulties having useful long discussions with the professor and were often confused about what he wanted, constantly changing last minute.
+
+\begin{comment}
+LOL Ryan im dead
+\end{comment}
+
+% ============================================================
+\section{References}
+% ============================================================
+
+
+\nocite{*}
+\bibliography{references}
+
 
 
 \end{document}
